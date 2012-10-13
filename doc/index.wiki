@@ -1,0 +1,119 @@
+<title>Home</title>
+
+   *   [./gallery.wiki | Galerie] 
+   *   [./parts.wiki | Composants]
+   *   [./schema.wiki | Schema]
+   *   [./firmware.wiki | Firmware]
+   *   [./software.wiki | Software]
+   *   [./links.wiki | Liens]
+
+<h1>Specifications de SolexTronic</h1>
+
+
+<h2>1. Introduction</h2>
+Solextronic est un boitier d'injection et d'allumage electronique pour Solex.
+
+<h2>2. Design global</h2>
+
+
+<blockquote><center><img border="0" alt="Global design" src="global.png"></blockquote></center>
+
+<h2>3. Alimentation</h2>
+L'alimentation de SolexTronic se fait par une batterie 12v
+
+    *  entree de +10v a +15v
+    *  consommation estimee : 1A
+    *  courant maximum : 4A
+    *  mesure de la tension d'entree, alarme batterie basse 
+
+
+<h2>4. Sorties</h2>
+
+<h3>4.1 Commande allumage</h3>
+Cette sortie commande l'allumage.
+
+    *  Niveau de sortie 0-5v
+    *  Controle du decalage par rapport a l'impulsion PMH
+    *  Controle de la duree de l'impulsion (dwell)
+    *  Polarite reglable
+
+
+<h3>4.2 Commande injection</h3>
+Cette sortie commande l'injection.
+
+    *  Niveau de sortie 0-5v
+    *  Controle du decalage par rapport a l'impulsion PMH
+    *  Controle de la duree de l'impulsion (temps d'injection)
+    *  Polarite reglable
+
+
+<h3>4.3 Commande pompe</h3>
+Cette sortie commande la pompe d'injection.
+
+    *  Sortie sur relais 12v
+    *  Possibilite de forcer le fonctionnement de la pompe
+
+
+
+<h2>5. Entrees</h2>
+
+<h3>5.1 Impulsion PMH</h3>
+Cette entree est connecte sur le capteur de PMH.
+
+    *  niveau d'entree : 0-5v
+    *  frequence d'entree de 300 tr/min (4Hz) a 12000 tr/min (200 Hz). Resolution 100 tr/min.
+    *  synchro sur front montant ou descendant
+
+
+Ce signal est la base de temps pour les mesures d'allumage et d'injection.
+
+<h3>5.2 Entrees analogiques</h3>
+<h4>5.2.1 Temperatures 1 & 2</h4>
+Ces entrees sont connectees sur les capteurs de temperature. Le capteur 1 est sur la culasse, le capteur 2 est sur la boite a air.
+
+    *  niveau d'entree : 0-2.0v (0 to 200 deg)
+    *  detection haute impedance pour test default capteurs 
+
+
+<h4>5.2.2 Papillon d'accelerateur</h4>
+Cette entree mesure la position du papillon d'acceleration. 
+
+    *  niveau d'entree : 0-5.0v
+    *  detection haute impedance pour test default capteur 
+
+
+<h4>5.2.3 Capteur de pression</h4>
+Cette entree mesure le capteur de pression d'admission. 
+
+    *  niveau d'entree : 0-10.0v ???
+    *  detection haute impedance pour test default capteur 
+
+
+
+<h2>6. Connections externes</h2>
+La connexion vers le faisceau se fait a travers un connecteur DB15. Un faux faisceau permet de se connecter a SolexBench.
+
+<blockquote><center><table border=1 cellpadding=5>
+<tr><th>Pin</th><th>Nom</th><th>Type</th><th>Direction</th></tr>
+<tr><td>1</td><td>Masse</td><td>Alim</td><td>in</td></tr>
+<tr><td>2</td><td>Impulsion PMH</td><td>Logique</td><td>in</td></tr>
+<tr><td>3</td><td>Commande allumage</td><td>Logique</td><td>out</td></tr>
+<tr><td>4</td><td>Papillon</td><td>Analogique</td><td>in</td></tr>
+<tr><td>5</td><td>Temp 1</td><td>Analogique</td><td>in</td></tr>
+<tr><td>6</td><td>Temp 2</td><td>Analogique</td><td>in</td></tr>
+<tr><td>7</td><td>Pression</td><td>Analogique</td><td>in</td></tr>
+<tr><td>8</td><td>Commande injection</td><td>Logique</td><td>out</td></tr>
+<tr><td>9</td><td>Commande allumage</td><td>Logique</td><td>out</td></tr>
+<tr><td>10</td><td>+10v</td><td>Alim</td><td>out</td></tr>
+<tr><td>11</td><td>+5v</td><td>Alim</td><td>out</td></tr>
+<tr><td>12</td><td>+5v</td><td>Alim</td><td>out</td></tr>
+<tr><td>13</td><td>+batt</td><td>Alim</td><td>in</td></tr>
+<tr><td>14</td><td>+batt</td><td>Alim</td><td>in</td></tr>
+<tr><td>15</td><td>Masse</td><td>Alim</td><td>in</td></tr>
+</table></center></blockquote>
+
+
+
+<h2>7. Controle externe</h2>
+SolexTronic est piloté à travers une application PC (ou un terminal) connecté sur un port série ou un bridge USB-série.
+Les commandes sont au format texte et donc utilisable dans un terminal et sont detaillées dans la page [./firmware.wiki | Firmware].
