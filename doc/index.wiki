@@ -5,6 +5,7 @@
    *   [./schema.wiki | Schema]
    *   [./firmware.wiki | Firmware]
    *   [./software.wiki | Software]
+   *   [./todo.wiki | Roadmap et Todo List]
    *   [./links.wiki | Liens]
 
 <h1>Specifications de SolexTronic</h1>

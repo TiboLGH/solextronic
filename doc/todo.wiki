@@ -1,0 +1,32 @@
+<title>Todo List et Roadmap</title>
+
+   *   [./gallery.wiki | Galerie] 
+   *   [./parts.wiki | Composants]
+   *   [./schema.wiki | Schema]
+   *   [./firmware.wiki | Firmware]
+   *   [./software.wiki | Software]
+   *   [./todo.wiki | Roadmap et Todo List]
+   *   [./links.wiki | Liens]
+
+<h2>Roadmap</h2>
+   *   0.1 : mesure du RPM, mesures des temperatures, tension batterie et position papillon. Systeme de trace (printf RS232)
+   *   0.2 : génération des signaux d'injection et d'allumage avec un timing fixe
+   *   0.3 : gestion d'un table d'avance pour l'allumage
+   *   0.4 : gestion de la table de VE pour l'injection
+   *   0.5 : gestion de compensation en phase d'accélération
+   *   0.6 : mesure de la quantité de carburant, gestion dynamique de la pompe
+   *   0.7 : service de logs en EEPROM pour mesure de performances
+
+<h2>ToDo List</h2>
+  *    Makefile et 1er programme de communication USART
+  *    Description des principes généraux
+  *    Bloc diagramme général
+  *    Bloc diagramme électronique
+  *    Bloc diagramme carburant
+  *    Choix techniques
+  *    Choix des composants
+  *    Schéma faisceau
+  *    Relation avec Solexbench
+  *    Affichage LCD et boutons
+  *    Détails des commandes série
+  *    Simulation ?

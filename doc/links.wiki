@@ -1,0 +1,25 @@
+<title>Liens</title>
+
+   *   [./gallery.wiki | Galerie] 
+   *   [./parts.wiki | Composants]
+   *   [./schema.wiki | Schema]
+   *   [./firmware.wiki | Firmware]
+   *   [./software.wiki | Software]
+   *   [./todo.wiki | Roadmap et Todo List]
+   *   [./links.wiki | Liens]
+
+<h2>Injection</h2>
+   *   [http://www.megasquirt.info/ | Megasquirt] : la source principale d'informations. Beaucoup de détails, schémas, codes sources...
+
+
+<h2>Allumage</h2>
+   *   [http://www.transmic.net/index.htm | Transmic] : plusieurs montages AC-CDI et DC-CDI très bien expliqués.
+
+
+<h2>Atmel AVR</h2>
+  *  [http://www.avrfreaks.net/ | AVRFreaks] : excellent site communautaire avec un forum très actif.
+  *  [http://www.atmel.com/products/microcontrollers/avr/default.aspx | Site Atmel] : le site officiel de Atmel.
+  *  [http://www.nongnu.org/avr-libc/ | AVR-LibC] : le site de la libC pour AVR.
+
+<h2>Solex</h2>
+  *  [http://rocknsolex.fr/ | Rock'n'Solex] : le festival et la course de Solex de l'INSA de Rennes
