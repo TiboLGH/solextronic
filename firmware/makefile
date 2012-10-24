@@ -15,9 +15,6 @@ OBJ_FILES2	= $(C_SRCS:.c=.o)
 
 all:	$(TARGET).hex
 
-clean: 
-	rm -f $(TARGET).elf *.o *.hex
-
 %.o: %.c
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
@@ -33,4 +30,13 @@ upload: $(TARGET).hex
 
 size: $(TARGET).elf
 	avr-size -C --mcu=$(MCU) $(TARGET).elf
-	
+
+.PHONY: tags clean
+
+tags:
+	ctags -R
+	ctags -R -a /usr/lib/avr/include/
+
+clean: 
+	rm -f $(TARGET).elf *.o *.hex
+
