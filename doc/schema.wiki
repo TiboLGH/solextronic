@@ -46,4 +46,9 @@
 <tr><td>Vin/30</td><td>/</td><td>Alim (in)</td><td>Alim generale +12v</td></tr>
 </table></center></blockquote>
 
+<h3>1.2. Montage elevateur FlyBack</h3>
+Le montage se base sur les schema des sites proposes dans la page liens.
+
+
+
 <h2>2. Faisceau</h2>
