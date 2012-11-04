@@ -1,5 +1,6 @@
 <title>Liens</title>
 
+   *   [./index.wiki | Accueil] 
    *   [./gallery.wiki | Galerie] 
    *   [./parts.wiki | Composants]
    *   [./schema.wiki | Schema]
