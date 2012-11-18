@@ -5,7 +5,7 @@
  *                                                                         *
  *   This file is part of SolexTronic                                      *
  *                                                                         *
- *   SolexTronic is free software; you can redistribute it and/or modify   *
+ *   Solextronic is free software; you can redistribute it and/or modify   *
  *   it under the terms of the GNU General Public License as published by  *
  *   the Free Software Foundation; either version 3 of the License, or     *
  *   any later version.                                                    *
@@ -20,72 +20,69 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
- /**
- * \file main.c
- * \brief Main file of the project
+/**
+ * \file command.h
+ * \brief Manage USART command interpreter
  * \author Thibault Bouttevin
  * \date October 2012
  *
- * This file includes main function and main loop
+ * This file implements commands interpretation and serial port buffers management.
  *
  */
+
+
+#ifndef COMMAND_H
+#define COMMAND_H
+
 #include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <util/delay.h>
-#include <avr/io.h>
-#include <avr/interrupt.h>
 
-#include "common.h"
-#include "platform.h"
-#include "command.h"
+#define BUFSIZE      256
+#define MAXARGS    	 6
 
-#define LED_DDR		DDRB
-#define LED_PORT	PORTB
-#define LED			PB5
-#define LED_PIN		PINB
+/* macro to manage buffer pointer */
+#define INCPTR(X) ((X)==(BUFSIZE-1) ? ((X)=0) : (X)++)
 
-#define MAXSTR 	10
-
-volatile unsigned char rReady = 0;
-
-Flags_t          Flags;
-eeprom_data_t    eData;
-Current_Data_t   CurrentValues;
-
-
-int main(void)
+enum
 {
-	LED_DDR |= _BV(LED);
-	
-    InitUart();
-    InitTimer();
-    eData.timerLed = 1000;
+   VOID = 0,
+   OK,
+   BAD_PARAMETER,
+   BAD_LENGTH, 
+   BAD_COMMAND,
+   LAST_ARG,
+   NEXT_ARG,
+   ERROR_ARG
+};
 
-	sei();
-    StartTimer(TIMER_100MS);
-    printstr("demarrage");
-    USART_RX_EN;
+typedef enum
+{
+    IDLE = 0,
+    WAIT_CR,
+    WAIT_ARG,
+    END
+} state_e;
 
-	while(1)
-	{
-        if(EndTimer(TIMER_100MS, eData.timerLed))
-        {
-            LED_PIN |= _BV(LED);
-            StartTimer(TIMER_100MS);
-        }
-        
-        if(rReady)
-		{
-			if(rReady == 1)
-			{
-                rReady = 0;
-                ProcessCommand();
-                USART_RX_EN;
-			}
-		}
-	}
+/*** Command Types ***/
+#define Cmd_Reset          'r'
+#define Cmd_Version	       'v'
+#define Cmd_Set            's'
+#define Cmd_Get            'g'
+#define Cmd_Debug          'd'
+#define Cmd_Error          'e'
 
-	return(0);
-}
+typedef struct
+{
+	uint8_t		cmdType;
+	uint8_t		cmdId;
+	int8_t		nbArgSet;
+	int8_t		nbArgGet;
+	int8_t		result;
+} commandType_t;
 
+
+void SendToUsart(void);
+void ProcessCommand(void);
+uint8_t CommandDispatch(void);
+
+
+#endif // COMMAND_H

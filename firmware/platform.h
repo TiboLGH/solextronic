@@ -5,7 +5,7 @@
  *                                                                         *
  *   This file is part of SolexTronic                                      *
  *                                                                         *
- *   SolexTronic is free software; you can redistribute it and/or modify   *
+ *   Solextronic is free software; you can redistribute it and/or modify   *
  *   it under the terms of the GNU General Public License as published by  *
  *   the Free Software Foundation; either version 3 of the License, or     *
  *   any later version.                                                    *
@@ -20,72 +20,62 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
- /**
- * \file main.c
- * \brief Main file of the project
+/**
+ * \file platform.c
+ * \brief Manage all low-level and hardware interfaces.
  * \author Thibault Bouttevin
- * \date October 2012
+ * \date February 2012
  *
- * This file includes main function and main loop
+ * This file implements low-level services and hardware interfaces including
+ * USART emission/reception, EEPROM management, software timers and SPI bus.
+ * It is targetted for ATMega328p on Arduino Nano board.
  *
  */
+
+
+#ifndef PLATFORM_H
+#define PLATFORM_H
+
 #include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <util/delay.h>
-#include <avr/io.h>
-#include <avr/interrupt.h>
-
-#include "common.h"
-#include "platform.h"
-#include "command.h"
-
-#define LED_DDR		DDRB
-#define LED_PORT	PORTB
-#define LED			PB5
-#define LED_PIN		PINB
-
-#define MAXSTR 	10
-
-volatile unsigned char rReady = 0;
-
-Flags_t          Flags;
-eeprom_data_t    eData;
-Current_Data_t   CurrentValues;
 
 
-int main(void)
+enum
 {
-	LED_DDR |= _BV(LED);
-	
-    InitUart();
-    InitTimer();
-    eData.timerLed = 1000;
+   TIMER_BASE = 0,   /*!< Master clock timer : 1ms */
+   TIMER_100MS,      /*!< 100 msec based timer */
+   TIMER_QTY         /*!< timer quantity */
+};
 
-	sei();
-    StartTimer(TIMER_100MS);
-    printstr("demarrage");
-    USART_RX_EN;
 
-	while(1)
-	{
-        if(EndTimer(TIMER_100MS, eData.timerLed))
-        {
-            LED_PIN |= _BV(LED);
-            StartTimer(TIMER_100MS);
-        }
-        
-        if(rReady)
-		{
-			if(rReady == 1)
-			{
-                rReady = 0;
-                ProcessCommand();
-                USART_RX_EN;
-			}
-		}
-	}
+/* USART related functions */
+void InitUart(void);
+#define USART_RX_EN  (UCSR0B |= _BV(RXCIE0))
+#define USART_RX_DIS (UCSR0B &= ~_BV(RXCIE0))
+#define USART_TX_EN  (UCSR0B |= _BV(TXCIE0))
+#define USART_TX_DIS (UCSR0B &= ~_BV(TXCIE0))
+void printstr(unsigned char *s);
 
-	return(0);
-}
+/* EEPROM related functions */
+void InitEeprom(void);
+void resetEeprom(void);
+uint8_t readEeprom(uint8_t address);
+void writeEeprom(uint8_t address, uint8_t value);
+void updateEeprom(void);
 
+
+/* Software Timers related functions */
+void InitTimer(void);
+void StartTimer(uint8_t timerHandle);
+uint32_t GetTimer(const uint8_t timerHandle);
+uint8_t EndTimer(const uint8_t timerHandle, const uint32_t duration); 
+
+/* ADC related functions */
+void InitADC(void);
+void ADCProcessing(void);
+void ADCCompute(void);
+
+/* PWM related functions */
+void InitPWM(void);
+void writePWMValue(uint8_t value);
+
+#endif // PLATFORM_H
