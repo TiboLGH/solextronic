@@ -84,6 +84,9 @@ int main(void)
                 USART_RX_EN;
 			}
 		}
+
+        // Process ADC Samples
+        ADCProcessing();
 	}
 
 	return(0);

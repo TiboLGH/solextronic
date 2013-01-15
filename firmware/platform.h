@@ -46,6 +46,17 @@ enum
    TIMER_QTY         /*!< timer quantity */
 };
 
+enum
+{
+   ADC_BATTERY = 0,  /*!< ADC0 */
+   ADC_TEMP1,        /*!< ADC1 */
+   ADC_TEMP2,        /*!< ADC2 */
+   ADC_THROTTLE,     /*!< ADC3 */
+   ADC_FLYBACK,      /*!< ADC6 */
+   ADC_PRESSURE,     /*!< ADC7 */
+   ADC_IDLE
+};
+
 
 /* USART related functions */
 void InitUart(void);
@@ -70,9 +81,8 @@ uint32_t GetTimer(const uint8_t timerHandle);
 uint8_t EndTimer(const uint8_t timerHandle, const uint32_t duration); 
 
 /* ADC related functions */
-void InitADC(void);
+void ADCInit(void);
 void ADCProcessing(void);
-void ADCCompute(void);
 
 /* PWM related functions */
 void InitPWM(void);

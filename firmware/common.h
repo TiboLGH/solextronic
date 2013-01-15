@@ -42,6 +42,8 @@
 
 #define LOG(msg)  if(Flags.debug) printf(msg)
 
+#define True  (1)
+#define False (0)
 
 typedef enum
 {
@@ -51,27 +53,12 @@ typedef enum
 
 typedef enum
 {
-    CURRENT = 0,
-    VDC10
-}ADC_SEL;
-
-typedef enum
-{
     POL_IGNITION = 0,
     POL_INJECTION,
 	POL_PUMP,
     POL_PMH,
 	POL_QTY
 }POL_SEL;
-
-typedef enum
-{
-    VOUT = 0,
-    TEMP1,
-    TEMP2,
-    THROTTLE,
-    PRESSURE
-}DAC_SEL;
 
 /**
  * \struct Switch_t
@@ -94,7 +81,7 @@ typedef struct {
 * eeprom_data consists off the EEPROM organisation
 */
 typedef struct {
-    unsigned char   ratio[5];      /*!< ratios to adjust ADC/DAC conversion in % */
+    unsigned char   ratio[6];      /*!< ratios to adjust ADC/DAC conversion in % */
     uint16_t        timerLed;      /*!< ratios to adjust ADC/DAC conversion in % */
 }eeprom_data_t;
 
@@ -105,14 +92,14 @@ typedef struct {
  * Current_data stores variable of system
  */
 typedef struct {
-   uint16_t Current;          /*!< in 10mA */
-   uint16_t DacCmd[4];        /*!< 12 bits */
-   uint16_t Status;           /*!< status register */
+   uint16_t battery;          /*!< in 10mV */
+   uint16_t temp1;            /*!< in degC */
+   uint16_t temp2;            /*!< in degC */
+   uint8_t throttle;          /*!< in %    */
+   uint8_t flybackFB;         /*!< in V    */
+   uint16_t pressure;          /*!< in MPa  */
    Switch_t Ignition;       /*!< ignition mesurements */
    Switch_t Injection;      /*!< injection mesurements */
-   uint16_t Vdc10;            /*!< 10v power supply voltage in 0.1v */
-   uint16_t PMHLow;           /*!< PMH low state reload value */
-   uint16_t PMHHigh;          /*!< PMH high state reload value */
 }Current_Data_t;
 
 

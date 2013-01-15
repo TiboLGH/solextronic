@@ -53,19 +53,14 @@ extern uint8_t indexTxRead;
 extern uint8_t indexTxWrite;
 extern uint8_t rReady;
 
-const uint8_t ECHO_CMD[] = "Le Galet Hurlant";
-
-
+static volatile uint16_t adcValues[6];
+const uint8_t adcIndex[] = {0, 1, 2, 3, 6, 7, 255};
+static volatile uint8_t adcState;
+static volatile uint8_t adcTrigger;
 static uint32_t	timerTable[TIMER_QTY];
-void (*masterClkCB[])(void) = {ADCProcessing};
-const uint8_t nbCB = 1;
-static uint32_t masterClk;
+static volatile uint32_t masterClk;
+static volatile uint8_t count10ms;
 
-const uint8_t default_parameters [] = {
-   100, 100, 100, 100, 100,             /* ratio for ADC and DAC */
-   0x03, 0xE8,					      /* Vset : 10v */
-   0x00, 0x64,					      /* Iset : 1 A */
-};
 
 
 /**
@@ -170,7 +165,7 @@ void resetEeprom(void)
    /* reset all */
    for(i = 0; i < sizeof(eeprom_data_t); i ++)
    {
-     ((uint8_t *) &eData)[i] = default_parameters[i];
+     ((uint8_t *) &eData)[i] = 0;
    }	
 	
    return;
@@ -242,10 +237,17 @@ void updateEeprom(void)
 
 ISR(TIMER2_COMPA_vect)
 {
-    uint8_t i;
     masterClk++;
-    // attached call backs 
-    for(i = 0; i < nbCB; i++) (*masterClkCB[i])();
+
+    count10ms++;
+    if(count10ms >= 10)
+    {
+        count10ms = 0;
+        // start ADC acquisition
+        ADMUX = (1 << REFS0) | ((adcIndex[adcState]) & 0x0F);
+        ADCSRA |= (1 << ADSC);
+        adcTrigger = True;
+    }
 }
 
 /**
@@ -323,24 +325,41 @@ uint8_t EndTimer(const uint8_t timerHandle, const unsigned long duration)
 
 /**
  * \fn ISR(ADC_vect)
- * \brief End on conversion interrupt
+ * \brief Fired on conversion end. Set next conversion parameter and restart conversion
  *
  * \param none
  * \return none
 */
 ISR(ADC_vect)
 {
+    // save results
+    adcValues[adcState] = ADC;
+    // Next channel
+    adcState++;
+    // start ADC acquisition
+    if(adcState < ADC_IDLE)
+    {
+        ADMUX = (1 << REFS0) | ((adcIndex[adcState]) & 0x0F);
+        ADCSRA |= (1 << ADSC);
+    }
 }
 
 /**
- * \fn void InitADC(void)
+ * \fn void ADCInit(void)
  * \brief Init ADC inputs
  *
  * \param none
  * \return none
 */
-void InitADC(void)
+void ADCInit(void)
 {
+    ADCSRA = (1 << ADEN)  |
+             (0 << ADATE) |
+             (1 << ADIE) | 
+             (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0); // prescaler 128
+    DIDR0 = 0x0F; // set ADC0..3 pin to ADC inputs
+    adcTrigger = False; 
+    adcState = ADC_BATTERY;
 }
 
 /**
@@ -352,17 +371,65 @@ void InitADC(void)
 */
 void ADCProcessing(void)
 {
-}
+    static uint8_t adcProcessed = 0;
 
-/**
- * \fn void ADCCompute(void)
- * \brief convert and filter ADC values
- *
- * \param none
- * \return none
-*/
-void ADCCompute(void)
-{
+    if(adcTrigger)
+    {
+        // Conversion and filtering
+        switch(adcIndex[adcProcessed])
+        {
+            case ADC_BATTERY:
+                if(adcState > ADC_BATTERY) // Battery voltage
+                {
+                    CurrentValues.battery = 3/2 * eData.ratio[ADC_BATTERY] * adcValues[ADC_BATTERY] / 100;     
+                }
+                break;
+
+            case ADC_TEMP1:
+                if(adcState > ADC_TEMP1)
+                {
+                    CurrentValues.temp1 = eData.ratio[ADC_TEMP1] * adcValues[ADC_TEMP1] / 100;     
+                }
+                break;
+            
+            case ADC_TEMP2:
+                if(adcState > ADC_TEMP2)
+                {
+                    CurrentValues.temp2 = eData.ratio[ADC_TEMP2] * adcValues[ADC_TEMP2] / 100;     
+                }
+                break;
+
+            case ADC_THROTTLE:
+                if(adcState > ADC_THROTTLE)
+                {
+                    CurrentValues.throttle = (eData.ratio[ADC_THROTTLE] * adcValues[ADC_THROTTLE]) / 256;     
+                }
+                break;
+            
+            case ADC_FLYBACK:
+                if(adcState > ADC_FLYBACK)
+                {
+                    CurrentValues.flybackFB = (eData.ratio[ADC_FLYBACK] * adcValues[ADC_FLYBACK]) / 4;     
+                }
+                break;
+            
+            case ADC_PRESSURE:
+                if(adcState > ADC_PRESSURE)
+                {
+                    CurrentValues.pressure = eData.ratio[ADC_PRESSURE] * adcValues[ADC_PRESSURE] / 100;     
+                }
+                break;
+
+            default:
+                //ASSERT(0);
+                adcState = ADC_BATTERY;
+        }
+        adcProcessed++;
+    }
+    else
+    {
+       adcProcessed = 0;
+    } 
 }
 
 /**
