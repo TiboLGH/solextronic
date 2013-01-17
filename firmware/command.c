@@ -223,9 +223,11 @@ uint8_t CommandDispatch(void)
             break;
 
         case Cmd_Version:
-            args[0] = VERSION_SOFT;
-            args[1] = VERSION_HARD;
-            command.nbArgSet = 2;
+            args[0] = VERSION_SOFT_MAJOR;
+            args[1] = VERSION_SOFT_MINOR;
+            args[2] = VERSION_HARD;
+            args[3] = VERSION_FOSSIL;
+            command.nbArgSet = 4;
             SendToUsart();
             return result;
             break;
@@ -306,10 +308,10 @@ void SendToUsart(void)
  */
 uint8_t SetArg(uint8_t argIndex)
 {
-    uint8_t str[8];
+    uint8_t str[16];
     uint8_t *pstr = &str[0];
 
-    ltoa(args[argIndex], str, 10);
+    ultoa(args[argIndex], str, 10);
 
     while(*pstr)
     {

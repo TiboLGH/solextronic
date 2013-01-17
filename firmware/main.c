@@ -60,7 +60,7 @@ int main(void)
 	
     InitUart();
     InitTimer();
-    eData.timerLed = 1000;
+    eData.timerLed = 100;
 
 	sei();
     StartTimer(TIMER_100MS);

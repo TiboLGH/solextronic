@@ -3,11 +3,12 @@ TARGET_ARCH	= -mmcu=$(MCU)
 TARGET		= Solextronic
 CC		= avr-gcc
 CPPFLAGS	= -mmcu=$(MCU)
-CFLAGS		= -Os -g -Wall -I. -DF_CPU=16000000
+CFLAGS		= -Os -g -Wall -I. -DF_CPU=16000000 -D$(FOSSIL_VER)
 LDFLAGS		= -g -mmcu=$(MCU) -lm -Wl,--gc-sections -Os
 PGMER		= -c arduino -b 57600 -P /dev/ttyUSB0
 PGMERISP	= -c avrispv2 -P /dev/ttyUSB0
 DUDE		= /usr/bin/avrdude -V -p $(MCU)
+FOSSIL_VER	:=VERSION_FOSSIL=0x$(shell /home/tibo/tools/fossil/fossil info | grep checkout | awk '{print $$2}' | head -c 8)
 
 C_SRCS		= $(wilcard *.c)
 OBJ_FILES	= main.o platform.o command.o

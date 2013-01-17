@@ -37,8 +37,9 @@
 #include <stdint.h>
 
 
-#define VERSION_SOFT       0x01
-#define VERSION_HARD       0x04
+#define VERSION_SOFT_MAJOR       0
+#define VERSION_SOFT_MINOR       1
+#define VERSION_HARD             1
 
 #define LOG(msg)  if(Flags.debug) printf(msg)
 
