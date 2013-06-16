@@ -1,0 +1,153 @@
+<title>Firmware</title>
+
+
+http://ingo.orgizm.net/articles/2012-02-02-simulating-and-inspecting-code-with-gdb-and-simavr
+https://gitorious.org/simavr/pages/GetStarted
+
+
+Le firmware est concu pour tourner sur un Atmel ATMega328 (sur une carte Arduino Nano v3). Il est ecrit en C et compile avec avr-gcc et la avr-libc.
+
+Neanmoins, la plupart du code specifique à l'AVR est regroupe dans le fichier platform.c. Utiliser un autre MCU doit se limiter a une readaptation de ce fichier + changement des headers. 
+Ce systeme permet également de faire un simulateur qui tourne sur PC (on execute du code PC, pas le code original sur un emulateur AVR): il "suffit" de ré-implémenter ou de remplacer les accès hardware par du code PC. 
+
+<h2>1. Description generale</h2>
+Le firmware est compose de plusieurs taches : 
+  *  une tache de fond basse priorité 
+  *  une tache de mesure du signal PMH et de generation des signaux allumage et injection sous interruption.
+  *  une tache periodique (1ms) : pseudo-RTC, trigger des conversions analogique-numerique, calcul de l'asservissement du Flyback.
+
+<b>Tache de fond</b>
+Cette tache implemente :
+  *  gestion de l'EEPROM
+  *  gestion aux commandes USB/RS232
+  *  calcul des timings d'allumage et d'injection
+  *  controle de la tension d'alimentation
+  *  (gestion de la face avant, plus tard)
+
+
+<b>Tache "PMH"</b>
+
+Cette tache se base sur un timer hardware et est cadencee sur le top PMH.
+Elle implemente également la boucle de régulation de la vitesse du moteur électrique.
+
+<b>Tache periodique (1ms)</b>
+Cette tache se base sur un timer hardware.
+  *   
+
+<b>Autres taches</b>
+
+  *  Emission/reception des caracteres sur l'USART avec une interruption basse priorite
+
+
+<h2>2. Fichiers sources </h2>
+Il y a 4 fichiers principaux :
+
+<b>main.c</b>
+  *  Initialisation
+  *  Tache de fond
+  *  Tache haute prioritÃ©
+
+<b>command.c/.h</b>
+  *  Interpretation des commandes RS232
+
+<b>platform.c/.h</b>
+  *  Interface USART 
+  *  Gestion EEPROM 
+  *  Service de timer software
+  *  interface I²C 
+  *  interface ADC 
+  *  interface PWM 
+
+<b>common.h</b>
+  *  Définitions des structures communes
+  *  Mapping de l'EEPROM
+  *  Version
+  *  Mapping des commandes RS232
+
+
+<h2>3. Platforme</h2>
+  *  Horloge principale a 16MHz
+  *  RS232 : 57600, 8bits, pas de parité
+
+
+<h3>3.1 Timers</h3>
+  *  Timer 0 (8 bits) : generation PWM pour le FlyBack
+  *  Timer 1 (16 bits): Mesure RPM et generation des signaux allumage et injection
+  *  Timer 2 (8 bits) : horloge 1ms pour la pseudo RTC, les timers software et la boucle d'asservissement
+
+
+<h3>3.2 Génération signaux allumage et injection</h3>
+
+Un cycle complet se compose des étapes suivantes:
+1/ 
+
+<h3>3.3 Interuptions externes</h3>
+
+  
+<h2>4. Commandes</h2>
+Les commandes RS232 sont basÃ©es sur un protocole ASCII avec des commandes "get", "set" et "special".
+
+<h3>4.1 Commandes Get </h3>
+
+<blockquote><center><table border=1 cellpadding=5>
+<tr><th>Commande</th><th>RequÃ¨te</th><th>RÃ©ponse</th><th>Format</th></tr>
+<tr><td>Statut</td><td>g11</td><td>g11 xxyy</td><td>Registre de statut</td></tr>
+<tr><td>Allumage</td><td>g12</td><td>g12 xxxx yyyy</td>
+<td>
+xxxx : decalage en Âµs par rapport au PMH de l'Ã©tat actif<br/>
+yyyy : decalage en Âµs par rapport au PMH de l'Ã©tat inactif<br/>
+</td></tr>
+<tr><td>Injection</td><td>g13</td><td>g13 xxxx yyyy</td>
+<td>
+xxxx : decalage en Âµs par rapport au PMH de l'Ã©tat actif<br/>
+yyyy : decalage en Âµs par rapport au PMH de l'Ã©tat inactif<br/>
+</td></tr>
+<tr><td>Pompe</td><td>g14</td><td>g14 xx</td><td>Etat de la commande de la pompe</td></tr>
+<tr><td>Courant</td><td>g15</td><td>g15 xxxx</td><td>xxxx mesure du courant de sortie (pas de 10mA)</td></tr>
+</table></center></blockquote>
+
+<h3>4.2 Commandes Set</h3>
+Note: Toutes les commandes Set ont une commande Get correspondante pour relire les valeurs courantes.
+<blockquote><center><table border=1 cellpadding=5>
+<tr><th>Commande</th><th>RequÃ¨te</th><th>RÃ©ponse</th><th>Format</th></tr>
+<tr><td>RPM</td><td>s01 xxxx</td><td>s01 OK</td><td>xxxx : rÃ©gime en tr/min</td></tr>
+<tr><td>Alimentation</td><td>s02 xxxx</td><td>s02 OK</td><td>xxxx : Tension d'alimentation de 10 Ã  15v (unitÃ© : 100mV). 0 coupe l'alimentation.</td></tr>
+<tr><td>Temperatures</td><td>s03 xxxx yyyy</td><td>s03 OK</td><td>xxxx : temp1 en Â°c, yyyy : temp2 en Â°c</td></tr>
+<tr><td>AccelÃ©rateur</td><td>s04 xx</td><td>s04 OK</td><td>xx: position de l'accelÃ©rateur en %</td></tr>
+<tr><td>Pression</td><td>s05 xxxx</td><td>s05 OK</td><td>xxxx: valeur du capteur de pression</td></tr>
+<tr><td>Ratio analogiques</td><td>s06 aa bb cc dd ee</td><td>s06 OK</td>
+<td>aa: ratio pour l'alimentation (%)<br/>
+bb: ratio pour les temperatures (%)<br/>
+cc: ratio pour le papillon d'accelerateur (%)<br/>
+dd: ratio pour le capteur de pression (%)<br/>
+ee: ratio pour la mesure de courant (%)<br/>
+</td></tr>
+<tr><td>PolaritÃ©s</td><td>s07 aa bb cc</td><td>s07 OK</td>
+<td>aa: polaritÃ© pour la commande d'allumage (0 => actif Ã©tat bas)<br/>
+bb: polaritÃ© pour la commande d'injection (0 => actif Ã©tat bas)<br/>
+cc: polaritÃ© pour la commande de la pompe (0 => actif Ã©tat bas)<br/>
+</td></tr>
+<tr><td>Controle moteur</td><td>s08 aa bbbb</td><td>s08 OK</td>
+<td>aa: 0 => moteur coupé, 1 => moteur allumé<br/>
+bbbb: consigne RPM<br/>
+</td></tr>
+<tr><td>Debug Set</td><td>s0F 0aaa 0bbb 0ccc 0ddd eeee</td><td>s0F OK</td>
+<td>
+0aaa: VDAC 1 sortie A (12bits)<br/>
+0bbb: VDAC 1 sortie B (12bits)<br/>
+0ccc: VDAC 2 sortie A (12bits)<br/>
+0ddd: VDAC 2 sortie B (12bits)<br/>
+eeee: consigne PWM<br/>
+</td></tr>
+</table></center></blockquote>
+
+<h3>4.3 Commandes Special </h3>
+
+<blockquote><center><table border=1 cellpadding=5>
+<tr><th>Commande</th><th>RequÃ¨te</th><th>RÃ©ponse</th><th>Format</th></tr>
+<tr><td>Version</td><td>v</td><td>v xxyy</td><td>xx : version hardware, yy : version firmware</td></tr>
+<tr><td>Reset</td><td>r</td><td>none</td><td>System reset</td></tr>
+<tr><td>Debug</td><td>d</td><td>d ON/NO</td><td>Debug printf actif/inactif</td></tr>
+<tr><td>Mem</td><td>m xxxx</td><td>m ww xx yy zz</td><td>Debug memory read : return 4 bytes starting from address xxxx</td></tr>
+</table></center></blockquote>
+

@@ -69,22 +69,32 @@ Cette entree est connecte sur le capteur de PMH.
 
 Ce signal est la base de temps pour les mesures d'allumage et d'injection.
 
-<h3>5.2 Entrees analogiques</h3>
-<h4>5.2.1 Temperatures 1 & 2</h4>
+<h3>5.2 Impulsion roue</h3>
+Cette entree est connecte sur le capteur de rotation de la roue.
+
+    *  niveau d'entree : 0-5v
+    *  Gamme de vitesse : 0-100 km/h. Resolution 0.1 km/h.
+    *  synchro sur front montant ou descendant
+
+
+Ce signal est la base de temps pour les mesures d'allumage et d'injection.
+
+<h3>5.3 Entrees analogiques</h3>
+<h4>5.3.1 Temperatures 1 & 2</h4>
 Ces entrees sont connectees sur les capteurs de temperature. Le capteur 1 est sur la culasse, le capteur 2 est sur la boite a air.
 
     *  niveau d'entree : 0-2.0v (0 to 200 deg)
     *  detection haute impedance pour test default capteurs 
 
 
-<h4>5.2.2 Papillon d'accelerateur</h4>
+<h4>5.3.2 Papillon d'accelerateur</h4>
 Cette entree mesure la position du papillon d'acceleration. 
 
     *  niveau d'entree : 0-5.0v
     *  detection haute impedance pour test default capteur 
 
 
-<h4>5.2.3 Capteur de pression</h4>
+<h4>5.3.3 Capteur de pression</h4>
 Cette entree mesure le capteur de pression d'admission. 
 
     *  niveau d'entree : 0-10.0v ???
