@@ -40,7 +40,9 @@
 #include "common.h"
 #include "platform.h"
 
-#define BAUD 	57600
+#define BAUD 	        57600
+#define HTINPUT 	    (PIND & (1 << PD6))
+
 
 extern Flags_t          Flags;
 extern eeprom_data_t    eData;
@@ -53,8 +55,8 @@ extern uint8_t indexTxRead;
 extern uint8_t indexTxWrite;
 extern uint8_t rReady;
 
-static volatile uint16_t adcValues[6];
-const uint8_t adcIndex[] = {0, 1, 2, 3, 6, 7, 255};
+static volatile uint16_t adcValues[5];
+const uint8_t adcIndex[] = {0, 1, 2, 3, 6, 255};
 static volatile uint8_t adcState;
 static volatile uint8_t adcTrigger;
 static uint32_t	timerTable[TIMER_QTY];
@@ -131,6 +133,19 @@ ISR(USART_TX_vect)
     }
 }
 
+
+/**
+ * \fn void InitIOs(void)
+ * \brief Init GPIO directions and mode
+ * \param none
+ * \return none
+ */
+void InitIOs(void)
+{
+    // HTINPUT on PD6 : input, pull-up enable
+    DDRD &= ~(1 << DDD6);
+    PORTD |= (1 << PORTD6);
+}
 
 /**
  * \fn void InitEeprom(void)
@@ -238,7 +253,6 @@ void updateEeprom(void)
 ISR(TIMER2_COMPA_vect)
 {
     masterClk++;
-
     count10ms++;
     if(count10ms >= 10)
     {
@@ -247,6 +261,21 @@ ISR(TIMER2_COMPA_vect)
         ADMUX = (1 << REFS0) | ((adcIndex[adcState]) & 0x0F);
         ADCSRA |= (1 << ADSC);
         adcTrigger = True;
+
+        // run HV loop
+        if(eData.HVstep)
+        {
+            if(HTINPUT == 0)
+            {
+                CurrentValues.HVvalue += eData.HVstep;
+            }else{
+                CurrentValues.HVvalue -= eData.HVstep;
+            }
+            if(CurrentValues.HVvalue > 100) CurrentValues.HVvalue = 100;
+            else if((signed)CurrentValues.HVvalue < 0) CurrentValues.HVvalue = 0;
+            WritePWMValue(CurrentValues.HVvalue);
+        } 
+
     }
 }
 
@@ -406,13 +435,6 @@ void ADCProcessing(void)
                 }
                 break;
             
-            case ADC_FLYBACK:
-                if(adcState > ADC_FLYBACK)
-                {
-                    CurrentValues.flybackFB = (eData.ratio[ADC_FLYBACK] * adcValues[ADC_FLYBACK]) / 4;     
-                }
-                break;
-            
             case ADC_PRESSURE:
                 if(adcState > ADC_PRESSURE)
                 {
@@ -434,22 +456,35 @@ void ADCProcessing(void)
 
 /**
  * \fn void InitPWM(void)
- * \brief Initialissation of the PWM
+ * \brief Initialisation of the PWM block (with Timer0)
  *
  * \return none 
 */
 void InitPWM(void)
 {
+    // Set PD5/OC0B as output
+    DDRD |= (1 << DDD5);
+    // Fast PWM, prescaler 1 (~60kHz), output on OC0B
+    TCCR0A = (0 << COM0A1) | (0 << COM0A0) |
+             (1 << COM0B1) | (0 << COM0B0) |
+             (1 << WGM01)  | (1 << WGM00);
+    TCCR0B = (0 << FOC0A)  | (0 << FOC0B) |
+             (1 << WGM02)  | (0	<< CS02)  |
+             (0 << CS01)   | (1 << CS00); 
+
+    OCR0B = 0; // off state
+    CurrentValues.HVvalue = 0;
 }
 
 /**
- * \fn void writePWMValue(uint8_t value)
+ * \fn void WritePWMValue(uint8_t value)
  * \brief write value to PWM
  *
  * \param uint8_t value : value to set in %
  * \return none
 */
-void writePWMValue(uint8_t value)
+void WritePWMValue(uint8_t value)
 {
+    OCR0B = (uint8_t)(value * 255 / 100); 
 }
 

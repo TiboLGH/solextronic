@@ -79,10 +79,6 @@ typedef struct
 	int8_t		result;
 } commandType_t;
 
-
-void SendToUsart(void);
 void ProcessCommand(void);
-uint8_t CommandDispatch(void);
-
 
 #endif // COMMAND_H

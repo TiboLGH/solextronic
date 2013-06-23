@@ -84,6 +84,8 @@ typedef struct {
 typedef struct {
     unsigned char   ratio[6];      /*!< ratios to adjust ADC/DAC conversion in % */
     uint16_t        timerLed;      /*!< ratios to adjust ADC/DAC conversion in % */
+    uint8_t         HVstep;        /*!< step of high voltage loop in %. 0 set manual mode */
+    uint8_t         HVmanual;      /*!< HT duty cycle in manual mode in % */
 }eeprom_data_t;
 
 /**
@@ -98,9 +100,10 @@ typedef struct {
    uint16_t temp2;            /*!< in degC */
    uint8_t throttle;          /*!< in %    */
    uint8_t flybackFB;         /*!< in V    */
-   uint16_t pressure;          /*!< in MPa  */
-   Switch_t Ignition;       /*!< ignition mesurements */
-   Switch_t Injection;      /*!< injection mesurements */
+   uint16_t pressure;         /*!< in MPa  */
+   uint8_t  HVvalue;          /*!< PWM duty cycle for High voltage supply */
+   Switch_t Ignition;         /*!< ignition mesurements */
+   Switch_t Injection;        /*!< injection mesurements */
 }Current_Data_t;
 
 

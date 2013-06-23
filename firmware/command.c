@@ -41,8 +41,7 @@
 
 /*** Commands ***/
 
-
-
+#define Cmd_SetHT           8
 #define Cmd_SetLed          11
 
 extern Flags_t          Flags;
@@ -61,8 +60,94 @@ static commandType_t command;
 
 uint8_t dbg[16];
 
-uint8_t GetArg(uint8_t *argIndex, uint8_t *indexRxRead);
-uint8_t SetArg(uint8_t argIndex);
+
+static uint8_t GetArg(uint8_t *argIndex, uint8_t *indexRxRead);
+static uint8_t SetArg(uint8_t argIndex);
+static void SendToUsart(uint8_t result, uint8_t nbArg, uint8_t type);
+
+/****
+*
+* CommandDispatch
+*
+* Parameters:
+*       none
+*
+* Description:
+*		This function implements answer to remote commands
+*
+* Returns:
+*		OK if no error, else error
+*
+*/
+static uint8_t CommandDispatch(void)
+{
+    uint8_t result = OK;
+
+    /* Process the command type */
+    switch(command.cmdType)
+    {
+        case Cmd_Reset:
+            // Hara Kiri !!
+            // TODO : implement a clean reset not interfering with bootloader
+            break;
+
+        case Cmd_Version:
+            args[0] = VERSION_SOFT_MAJOR;
+            args[1] = VERSION_SOFT_MINOR;
+            args[2] = VERSION_HARD;
+            args[3] = VERSION_FOSSIL;
+            SendToUsart(OK, 4, command.cmdType);
+            return result;
+            break;
+
+        case Cmd_Set:
+        case Cmd_Debug:
+            // Check that command exists and the number of args 
+            switch(args[0])
+            {
+                case Cmd_SetHT:
+                    eData.HVstep = args[1];
+                    eData.HVmanual = args[2];
+                    if(eData.HVstep == 0)   WritePWMValue(eData.HVmanual);
+                    SendToUsart(OK, 1, command.cmdType);
+                    break;
+                case Cmd_SetLed:
+                    eData.timerLed = args[1];
+                    SendToUsart(OK, 1, command.cmdType);
+                    break;
+                default:
+                    SendToUsart(BAD_COMMAND, 1, Cmd_Error);
+            }
+            break;
+        
+        case Cmd_Get:
+            // Check that command exists and the number of args 
+            switch(args[0])
+            {
+                case Cmd_SetHT:
+                    args[1] = eData.HVstep;
+                    args[2] = eData.HVmanual;
+                    args[3] = CurrentValues.HVvalue;
+                    SendToUsart(OK, 3, command.cmdType);
+                    break;
+                case Cmd_SetLed:
+                    args[1] = eData.timerLed;
+                    SendToUsart(OK, 1, command.cmdType);
+                    break;
+                default:
+                    SendToUsart(BAD_COMMAND, 1, Cmd_Error);
+            }
+            break;
+
+        default:
+            args[0] = command.cmdType;
+            SendToUsart(BAD_COMMAND, 1, Cmd_Error);
+            result = BAD_COMMAND;
+            return result;
+    }
+
+    return result;
+}
 
 /**
 *
@@ -151,6 +236,36 @@ void ProcessCommand(void)
     return;
 }
 
+/**
+ * \fn void SendToUsart(uint8_t result, uint8_t nbArg, uint8_t type)
+ * \brief send buffer to usart
+ *
+ * \param none
+ * \return none
+ */
+static void SendToUsart(uint8_t result, uint8_t nbArg, uint8_t type)
+{
+    uint8_t i;
+
+    // write command type
+    bufTx[indexTxWrite++] = command.cmdType;     
+    bufTx[indexTxWrite++] = ' ';     
+    // write args
+    for(i=0; i<command.nbArgSet; i++)
+    {
+        SetArg(i);
+        bufTx[indexTxWrite++] = ' ';     
+    }
+    // result if requested
+    if(command.result)
+    {
+        bufTx[indexTxWrite++] = command.result;     
+    }
+    bufTx[indexTxWrite++] = '\r';     
+    bufTx[indexTxWrite++] = '\n';     
+    USART_TX_EN;
+    return;
+}
 
 /**
  * \fn uint8_t GetArg(uint8_t *argIndex, uint8_t *indexRxRead)
@@ -160,7 +275,7 @@ void ProcessCommand(void)
  * \param indexRxRead index of the current position in the RX buffer, will be updated by the function
  * \return LAST_ARG if the final character is CR, NEXT_ARG if there is still an arg to read, ERROR_ARG if conversion failed
  */
-uint8_t GetArg(uint8_t *argIndex, uint8_t *indexRxRead)
+static uint8_t GetArg(uint8_t *argIndex, uint8_t *indexRxRead)
 {
     int8_t str[8];
     int8_t c; 
@@ -196,109 +311,6 @@ uint8_t GetArg(uint8_t *argIndex, uint8_t *indexRxRead)
     return ERROR_ARG;
 }
 
-/****
-*
-* CommandDispatch
-*
-* Parameters:
-*       none
-*
-* Description:
-*		This function implements answer to remote commands
-*
-* Returns:
-*		OK if no error, else error
-*
-*/
-uint8_t CommandDispatch(void)
-{
-    uint8_t result = OK;
-
-    /* Process the command type */
-    switch(command.cmdType)
-    {
-        case Cmd_Reset:
-            // Hara Kiri !!
-            // TODO : implement a clean reset not interfering with bootloader
-            break;
-
-        case Cmd_Version:
-            args[0] = VERSION_SOFT_MAJOR;
-            args[1] = VERSION_SOFT_MINOR;
-            args[2] = VERSION_HARD;
-            args[3] = VERSION_FOSSIL;
-            command.nbArgSet = 4;
-            SendToUsart();
-            return result;
-            break;
-
-        case Cmd_Set:
-        case Cmd_Get:
-        case Cmd_Debug:
-            // Check that command exists and the number of args 
-            switch(args[0])
-            {
-                case Cmd_SetLed:
-                    eData.timerLed = args[1];
-                    command.nbArgSet = 1;
-                    command.result = OK;
-                    SendToUsart();
-                    break;
-            }
-            break;
-
-        default:
-            args[0] = command.cmdType;
-            command.nbArgSet = 1;
-            command.cmdType = Cmd_Error;
-            SendToUsart();
-            result = BAD_COMMAND;
-            return result;
-    }
-
-    switch(command.cmdId)
-    {
-        case 0:
-        break;
-
-        default:
-            result = BAD_COMMAND;
-    }
-
-    return result;
-}
-
-/**
- * \fn void SendToUsart(void)
- * \brief send buffer to usart
- *
- * \param none
- * \return none
- */
-void SendToUsart(void)
-{
-    uint8_t i;
-
-    // write command type
-    bufTx[indexTxWrite++] = command.cmdType;     
-    bufTx[indexTxWrite++] = ' ';     
-    // write args
-    for(i=0; i<command.nbArgSet; i++)
-    {
-        SetArg(i);
-        bufTx[indexTxWrite++] = ' ';     
-    }
-    // result if requested
-    if(command.result)
-    {
-        bufTx[indexTxWrite++] = command.result;     
-    }
-    bufTx[indexTxWrite++] = '\r';     
-    bufTx[indexTxWrite++] = '\n';     
-    USART_TX_EN;
-    return;
-}
-
 /**
  * \fn uint8_t SetArg(uint8_t argIndex)
  * \brief write args to output buffer 
@@ -306,12 +318,12 @@ void SendToUsart(void)
  * \param argIndex index of the current arg in the arg table
  * \return OK in case of succes
  */
-uint8_t SetArg(uint8_t argIndex)
+static uint8_t SetArg(uint8_t argIndex)
 {
     uint8_t str[16];
     uint8_t *pstr = &str[0];
 
-    ultoa(args[argIndex], str, 10);
+    ultoa(args[argIndex], (char *)str, 10);
 
     while(*pstr)
     {

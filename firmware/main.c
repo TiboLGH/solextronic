@@ -58,6 +58,7 @@ int main(void)
 {
 	LED_DDR |= _BV(LED);
 	
+    InitIOs();
     InitUart();
     InitTimer();
     eData.timerLed = 100;

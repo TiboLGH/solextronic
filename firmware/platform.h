@@ -52,8 +52,7 @@ enum
    ADC_TEMP1,        /*!< ADC1 */
    ADC_TEMP2,        /*!< ADC2 */
    ADC_THROTTLE,     /*!< ADC3 */
-   ADC_FLYBACK,      /*!< ADC6 */
-   ADC_PRESSURE,     /*!< ADC7 */
+   ADC_PRESSURE,     /*!< ADC6 */
    ADC_IDLE
 };
 
@@ -65,6 +64,9 @@ void InitUart(void);
 #define USART_TX_EN  (UCSR0B |= _BV(TXCIE0))
 #define USART_TX_DIS (UCSR0B &= ~_BV(TXCIE0))
 void printstr(unsigned char *s);
+
+/* GPIOs functions */
+void InitIOs(void);
 
 /* EEPROM related functions */
 void InitEeprom(void);
@@ -86,6 +88,6 @@ void ADCProcessing(void);
 
 /* PWM related functions */
 void InitPWM(void);
-void writePWMValue(uint8_t value);
+void WritePWMValue(uint8_t value);
 
 #endif // PLATFORM_H

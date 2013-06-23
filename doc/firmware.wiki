@@ -107,7 +107,7 @@ Les commandes RS232 sont basÃ©es sur un protocole ASCII avec des commandes "ge
 <h3>4.1 Commandes Get </h3>
 
 <blockquote><center><table border=1 cellpadding=5>
-<tr><th>Commande</th><th>RequÃ¨te</th><th>RÃ©ponse</th><th>Format</th></tr>
+<tr><th>Commande</th><th>Requete</th><th>Reponse</th><th>Format</th></tr>
 <tr><td>Statut</td><td>g11</td><td>g11 xxyy</td><td>Registre de statut</td></tr>
 <tr><td>Allumage</td><td>g12</td><td>g12 xxxx yyyy</td>
 <td>
@@ -144,9 +144,10 @@ ee: ratio pour la mesure de courant (%)<br/>
 bb: polaritÃ© pour la commande d'injection (0 => actif Ã©tat bas)<br/>
 cc: polaritÃ© pour la commande de la pompe (0 => actif Ã©tat bas)<br/>
 </td></tr>
-<tr><td>Controle moteur</td><td>s08 aa bbbb</td><td>s08 OK</td>
-<td>aa: 0 => moteur coupé, 1 => moteur allumé<br/>
-bbbb: consigne RPM<br/>
+<tr><td>Controle alim HT</td><td>s08 aa bb (cc)</td><td>s08 OK</td>
+<td>aa: 0 => mode manuel, autre valeur => pas de variation de la boucle d'asservissement <br/>
+bb: consigne PWM en mode manuel<br/>
+cc: en lecture, valeur courante du PWM<br/>
 </td></tr>
 <tr><td>Debug Set</td><td>s0F 0aaa 0bbb 0ccc 0ddd eeee</td><td>s0F OK</td>
 <td>
