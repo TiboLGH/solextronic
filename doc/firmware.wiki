@@ -45,7 +45,7 @@ Il y a 4 fichiers principaux :
 <b>main.c</b>
   *  Initialisation
   *  Tache de fond
-  *  Tache haute prioritÃ©
+  *  Tache haute priorité
 
 <b>command.c/.h</b>
   *  Interpretation des commandes RS232
@@ -66,22 +66,39 @@ Il y a 4 fichiers principaux :
 
 
 <h2>3. Platforme</h2>
+Cette section décrit les ressources matérielles utilisées dans le microcontroleur.
+
+<h3>3.1 General</h3>
   *  Horloge principale a 16MHz
   *  RS232 : 57600, 8bits, pas de parité
 
 
-<h3>3.1 Timers</h3>
+<h3>3.2 Timers</h3>
   *  Timer 0 (8 bits) : generation PWM pour le FlyBack
   *  Timer 1 (16 bits): Mesure RPM et generation des signaux allumage et injection
   *  Timer 2 (8 bits) : horloge 1ms pour la pseudo RTC, les timers software et la boucle d'asservissement
 
 
-<h3>3.2 Génération signaux allumage et injection</h3>
+<h3>3.3 Génération signaux allumage et injection</h3>
 
 Un cycle complet se compose des étapes suivantes:
 1/ 
 
-<h3>3.3 Interuptions externes</h3>
+<h3>3.4 Interuptions externes</h3>
+
+
+<h3>3.5 ADC</h3>
+ADC0	Niveau batterie
+	Le facteur de conversion est x3
+ADC1	Temperature 1, culasse
+ADC2	Temperature 2, admission
+	Le facteur de conversion est de 10mV/°
+ADC3	Papillon
+	
+ADC6	Mesure FlyBack
+	Le facteur de conversion est de /100 (100v HT -> 1v entrée ADC)
+ADC7	Capteur de pression
+	FFS
 
   
 <h2>4. Commandes</h2>
