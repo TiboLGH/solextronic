@@ -248,21 +248,22 @@ static void SendToUsart(uint8_t result, uint8_t nbArg, uint8_t type)
     uint8_t i;
 
     // write command type
-    bufTx[indexTxWrite++] = command.cmdType;     
+    bufTx[indexTxWrite++] = type;     
     bufTx[indexTxWrite++] = ' ';     
     // write args
-    for(i=0; i<command.nbArgSet; i++)
+    for(i=0; i<nbArg; i++)
     {
         SetArg(i);
         bufTx[indexTxWrite++] = ' ';     
     }
     // result if requested
-    if(command.result)
+    if(result)
     {
         bufTx[indexTxWrite++] = command.result;     
     }
     bufTx[indexTxWrite++] = '\r';     
     bufTx[indexTxWrite++] = '\n';     
+    printstr(bufTx);
     USART_TX_EN;
     return;
 }
