@@ -64,6 +64,7 @@ void InitUart(void);
 #define USART_TX_EN  (UCSR0B |= _BV(TXCIE0))
 #define USART_TX_DIS (UCSR0B &= ~_BV(TXCIE0))
 void printstr(unsigned char *s);
+void putchr(char c);
 
 /* GPIOs functions */
 void InitIOs(void);

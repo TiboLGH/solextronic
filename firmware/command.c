@@ -109,11 +109,11 @@ static uint8_t CommandDispatch(void)
                     eData.HVstep = args[1];
                     eData.HVmanual = args[2];
                     if(eData.HVstep == 0)   WritePWMValue(eData.HVmanual);
-                    SendToUsart(OK, 1, command.cmdType);
+                    SendToUsart(OK, 3, command.cmdType);
                     break;
                 case Cmd_SetLed:
                     eData.timerLed = args[1];
-                    SendToUsart(OK, 1, command.cmdType);
+                    SendToUsart(OK, 2, command.cmdType);
                     break;
                 default:
                     SendToUsart(BAD_COMMAND, 1, Cmd_Error);
@@ -128,11 +128,11 @@ static uint8_t CommandDispatch(void)
                     args[1] = eData.HVstep;
                     args[2] = eData.HVmanual;
                     args[3] = CurrentValues.HVvalue;
-                    SendToUsart(OK, 3, command.cmdType);
+                    SendToUsart(OK, 4, command.cmdType);
                     break;
                 case Cmd_SetLed:
                     args[1] = eData.timerLed;
-                    SendToUsart(OK, 1, command.cmdType);
+                    SendToUsart(OK, 2, command.cmdType);
                     break;
                 default:
                     SendToUsart(BAD_COMMAND, 1, Cmd_Error);
@@ -245,8 +245,14 @@ void ProcessCommand(void)
  */
 static void SendToUsart(uint8_t result, uint8_t nbArg, uint8_t type)
 {
-    uint8_t i;
+    uint8_t i, start = 0, bufEmpty = 0;
 
+    if(indexTxWrite == indexTxRead) // nothing in buffer
+    {
+        start = indexTxWrite;
+        indexTxRead = start + 1;
+        bufEmpty = 1;
+    }
     // write command type
     bufTx[indexTxWrite++] = type;     
     bufTx[indexTxWrite++] = ' ';     
@@ -262,8 +268,8 @@ static void SendToUsart(uint8_t result, uint8_t nbArg, uint8_t type)
         bufTx[indexTxWrite++] = command.result;     
     }
     bufTx[indexTxWrite++] = '\r';     
-    bufTx[indexTxWrite++] = '\n';     
-    printstr(bufTx);
+    bufTx[indexTxWrite++] = '\n';    
+    if(bufEmpty) putchr(bufTx[start]); 
     USART_TX_EN;
     return;
 }
