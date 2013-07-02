@@ -1,6 +1,6 @@
 MCU		= atmega328p
 TARGET_ARCH	= -mmcu=$(MCU)
-TARGET		= Solextronic
+TARGET		= solextronic
 CC		= avr-gcc
 CPPFLAGS	= -mmcu=$(MCU)
 CFLAGS		= -Os -g -Wall -I. -DF_CPU=16000000 -D$(FOSSIL_VER)
@@ -36,9 +36,12 @@ size: $(TARGET).elf
 sim: test/simMain.c
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) test/test.c -o test/test.o
 	$(CC) $(LDFLAGS) test/test.o -o test/test.elf
+	$(CC) -c $(CPPFLAGS) $(CFLAGS) test/atTest.c -o test/atTest.o
+	$(CC) $(LDFLAGS) test/atTest.o -o test/atTest.elf
 	gcc --std=gnu99 -MMD -fPIC -Wall -I$(SIMAVR)/simavr/sim -c test/simMain.c -o test/simMain.o
-	gcc -MMD -fPIC -Wl,-rpath,$(SIMAVR)/simavr/obj-i486-linux-gnu -L$(SIMAVR)/simavr/obj-i486-linux-gnu -lsimavr -lelf test/simMain.o -o test/simMain.exe
-
+	gcc --std=gnu99 -MMD -fPIC -Wall -I$(SIMAVR)/simavr/sim -c test/pulse_input.c -o test/pulse_input.o
+	gcc --std=gnu99 -MMD -fPIC -Wall -I$(SIMAVR)/simavr/sim -c test/uart_pty.c -o test/uart_pty.o
+	gcc -MMD -fPIC -Wl,-rpath,$(SIMAVR)/simavr/obj-i486-linux-gnu -L$(SIMAVR)/simavr/obj-i486-linux-gnu -lpthread -lutil -lsimavr -lelf test/uart_pty.o test/pulse_input.o test/simMain.o -o test/simMain.exe
 
 
 
