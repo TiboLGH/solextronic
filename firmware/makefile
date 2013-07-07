@@ -18,10 +18,12 @@ SIMAVR		= /home/tibo/Projets/simavr
 all:	$(TARGET).hex
 
 %.o: %.c
-	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
+	@$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
+	@echo CC $<
 
 $(TARGET).elf: $(OBJ_FILES)
-	$(CC) $(LDFLAGS) $(OBJ_FILES) -o $@ 
+	@$(CC) $(LDFLAGS) $(OBJ_FILES) -o $@ 
+	@echo LD $<
 
 $(TARGET).hex: $(TARGET).elf
 	avr-objcopy -j .text -j .data -O ihex $(TARGET).elf $(TARGET).hex
@@ -33,16 +35,8 @@ upload: $(TARGET).hex
 size: $(TARGET).elf
 	avr-size -C --mcu=$(MCU) $(TARGET).elf
 
-sim: test/simMain.c
-	$(CC) -c $(CPPFLAGS) $(CFLAGS) test/test.c -o test/test.o
-	$(CC) $(LDFLAGS) test/test.o -o test/test.elf
-	$(CC) -c $(CPPFLAGS) $(CFLAGS) test/atTest.c -o test/atTest.o
-	$(CC) $(LDFLAGS) test/atTest.o -o test/atTest.elf
-	gcc --std=gnu99 -MMD -fPIC -Wall -I$(SIMAVR)/simavr/sim -c test/simMain.c -o test/simMain.o
-	gcc --std=gnu99 -MMD -fPIC -Wall -I$(SIMAVR)/simavr/sim -c test/pulse_input.c -o test/pulse_input.o
-	gcc --std=gnu99 -MMD -fPIC -Wall -I$(SIMAVR)/simavr/sim -c test/uart_pty.c -o test/uart_pty.o
-	gcc -MMD -fPIC -Wl,-rpath,$(SIMAVR)/simavr/obj-i486-linux-gnu -L$(SIMAVR)/simavr/obj-i486-linux-gnu -lpthread -lutil -lsimavr -lelf test/uart_pty.o test/pulse_input.o test/simMain.o -o test/simMain.exe
-
+sim: $(TARGET).hex
+	make -C test/
 
 
 .PHONY: tags clean sim
@@ -50,7 +44,8 @@ sim: test/simMain.c
 tags:
 	ctags -R
 	ctags -R -a /usr/lib/avr/include/
+	ctags -R -a /home/tibo/Projets/simavr/simavr/sim/
 
 clean: 
 	rm -f $(TARGET).elf *.o *.hex
-
+	make -C test clean

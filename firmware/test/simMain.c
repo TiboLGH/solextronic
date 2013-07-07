@@ -1,23 +1,33 @@
-/*
-	charlcd.c
-
-	Copyright Luki <humbell@ethz.ch>
-	Copyright 2011 Michel Pollet <buserror@gmail.com>
-
- 	This file is part of simavr.
-
-	simavr is free software: you can redistribute it and/or modify
-	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
-
-	simavr is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with simavr.  If not, see <http://www.gnu.org/licenses/>.
+/***************************************************************************
+ *   Copyright (C) 2013 by Thibault Bouttevin                              *
+ *   thibault.bouttevin@gmail.com                                          *
+ *   www.legalethurlant.fr.st                                              *
+ *                                                                         *
+ *   This file is part of SolexTronic                                      *
+ *                                                                         *
+ *   SolexTronic is free software; you can redistribute it and/or modify   *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 3 of the License, or     *
+ *   any later version.                                                    *
+ *                                                                         *
+ *   This program is distributed in the hope that it will be useful,       *
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ *   GNU General Public License for more details.                          *
+ *                                                                         *
+ *   You should have received a copy of the GNU General Public License     *
+ *   along with this program; if not, write to the                         *
+ *   Free Software Foundation, Inc.,                                       *
+ *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ ***************************************************************************/
+ /**
+ * \file simMain.c
+ * \brief Main file of the simulation
+ * \author Thibault Bouttevin
+ * \date June 2013
+ *
+ * This file includes main function and main loop
+ *
  */
 
 #include <stdlib.h>
@@ -60,13 +70,13 @@ static void SpeedtoPeriod(const uint32_t speed, uint32_t *tHigh, uint32_t *tLow)
     *tLow  = 1000000 / (speed / 3.6 / 1.82) - *tHigh;
 }
 
-void pwm_changed_hook(struct avr_irq_t * irq, uint32_t value, void * param)
+static void pwm_changed_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 {
 	display_pwm = value;
 }
 
 /**************************************/
-static void * avr_run_thread(void * oaram)
+static void *avr_run_thread(void * oaram)
 {
 	while (1) {
 		int state = avr_run(avr);
@@ -79,9 +89,66 @@ static void * avr_run_thread(void * oaram)
 	return NULL;
 }
 
+/* Print help an exit with exit code exit_msg */
+static void printHelp(FILE *stream, int exitMsg, const char* progName)
+{
+	fprintf(stream,"usage : %s [options] elfFile\n", progName);
+	fprintf(stream,"Les options valides sont :\n");
+	fprintf(stream,
+	"  -h\t\t affiche ce message\n"
+	"  -m\t\t mode manuel\n"
+	"  -l\t\t liste des tests disponibles\n"
+    "  -a\t\t lancement de tous les tests\n"
+    "  -t <test>\t\t lancement du test <test>\n"
+    );
+	exit(exitMsg);
+}
 
+/********* Main ************/
 int main(int argc, char *argv[])
 {
+    char elfName[256], testName[256];
+    /* read command-line arguments */
+    int c;
+    opterr = 0;
+    if(argc == 1)
+    {
+        printHelp(stdout, EXIT_SUCCESS, argv[0]);
+    }
+    while ((c = getopt (argc, argv, "hlmat:")) != -1)
+    {
+        switch (c)
+        {
+            case 'h': // help
+                printHelp(stdout, EXIT_SUCCESS, argv[0]);
+                break;
+            case 'l': // list of available tests
+                break;
+            case 'm': // manual mode
+                break;
+            case 'a': // run all tests
+                break;
+            case 't': // run test <test>
+                strncpy(testName, optarg, 256);
+                break;
+            case '?':
+                if (optopt == 't')
+                    fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+                else
+                    fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+                printHelp(stderr, EXIT_FAILURE, argv[0]);
+            default:
+                abort();
+        }
+    }
+    if((optind == argc) || (argc - optind > 1))
+    {
+        fprintf (stderr, "ELF file is mandatory !\n");
+        printHelp(stderr, EXIT_FAILURE, argv[0]);
+    }
+    strncpy(elfName, argv[optind], 256);
+
+
 	elf_firmware_t f;
 	const char * fname = "../solextronic.elf";
 	elf_read_firmware(fname, &f);
