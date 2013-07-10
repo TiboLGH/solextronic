@@ -62,6 +62,7 @@ int main(void)
     InitUart();
     InitTimer();
     eData.timerLed = 100;
+    eData.wheelSize = 182;
 
 	sei();
     StartTimer(TIMER_100MS);

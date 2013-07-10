@@ -62,6 +62,7 @@ static volatile uint8_t adcTrigger;
 static uint32_t	timerTable[TIMER_QTY];
 static volatile uint32_t masterClk;
 static volatile uint8_t count10ms;
+static TimeStamp_t     prevTs, newTs; 
 
 
 
@@ -149,8 +150,7 @@ void InitIOs(void)
     PORTD = 0b10110010;
 
     EICRA = (1 << ISC11) | (1 << ISC10) | (1 << ISC01) | (1 << ISC00);
-    
-    EIMSK = (0 << INT1) | (1 << INT0);
+    EIMSK = (1 << INT1) | (1 << INT0);
 }
 
 /**
@@ -541,4 +541,19 @@ ISR(INT0_vect)
 */
 ISR(INT1_vect)
 {
+    uint16_t period; // unit is 4us
+    // save current timestamp
+    newTs.clk  = masterClk;
+    newTs.tick = TCNT2;
+
+    // Compute period
+    period = (newTs.clk - prevTs.clk) * 250;
+    period += (signed)(newTs.tick - prevTs.tick);
+
+    prevTs.clk  = newTs.clk;
+    prevTs.tick = newTs.tick;
+
+    // Compute speed in 1/10 of km/h
+    //wh/period = cm/4us
+    CurrentValues.speed = ((uint32_t)eData.wheelSize * 25 * 3600) / period;
 }

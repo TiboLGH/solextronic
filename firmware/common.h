@@ -97,6 +97,7 @@ typedef struct {
     uint16_t        timerLed;      /*!< ratios to adjust ADC/DAC conversion in % */
     uint8_t         HVstep;        /*!< step of high voltage loop in %. 0 set manual mode */
     uint8_t         HVmanual;      /*!< HT duty cycle in manual mode in % */
+    uint8_t         wheelSize;     /*!< distance run in one wheel rotation */
 }eeprom_data_t;
 
 /**
@@ -135,5 +136,16 @@ typedef struct {
 }Flags_t;
 
 
+/**
+ * \struct TimeStamp_t
+ * \brief Timestamp for accurate timing
+ *
+ * Store master clock timestamp + timer tick
+ * there are 250 ticks of 4 us per masterclk period
+ */
+typedef struct {
+    uint32_t clk;
+    uint8_t  tick;
+}TimeStamp_t; 
 
 #endif
