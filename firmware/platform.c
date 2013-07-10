@@ -142,9 +142,15 @@ ISR(USART_TX_vect)
  */
 void InitIOs(void)
 {
-    // HTINPUT on PD6 : input, pull-up enable
-    DDRD &= ~(1 << DDD6);
-    PORTD |= (1 << PORTD6);
+    /* HTINPUT on PD6 : input, pull-up enable
+       Dead high on PD2/INT0 : input, pull-up, interrupt on rising edge
+       Wheel synchro on PD3/INT1 : input, pull-up, interrupt on rising edge */
+    DDRD  = 0b10110010;
+    PORTD = 0b10110010;
+
+    EICRA = (1 << ISC11) | (1 << ISC10) | (1 << ISC01) | (1 << ISC00);
+    
+    EIMSK = (0 << INT1) | (1 << INT0);
 }
 
 /**
@@ -249,7 +255,6 @@ void updateEeprom(void)
  * \param none
  * \return none
  */
-
 ISR(TIMER2_COMPA_vect)
 {
     masterClk++;
@@ -280,6 +285,18 @@ ISR(TIMER2_COMPA_vect)
 }
 
 /**
+ * \fn ISR(TIMER1_OVF_vect)
+ * \brief Interrupt on overflow of Timer1 : engine is stalled
+ *
+ * \param none
+ * \return none
+ */
+ISR(TIMER1_OVF_vect)
+{
+    CurrentValues.state = STALLED;
+}
+
+/**
  * \fn void InitTimer(void)
  * \brief Init software timers
  *
@@ -288,15 +305,23 @@ ISR(TIMER2_COMPA_vect)
  */
 void InitTimer(void)
 {
+    // Enable the TIMER1, set normal mode, internal clock with 1/64 prescaler.
+    // With 16MHz XTAL, tick is 4us
+    // Overflow is 262 ms = 229 tr/min => considered as stall
+    TCCR1A = (1 << COM1A1) | (1 << COM1A0) | (1 << COM1B1) | (1 << COM1B0) | (0 << WGM11) | (0 << WGM10);
+    TCCR1B = (0 << ICNC1 ) | (1 << ICES1 ) | (0 << WGM13 ) | (0 << WGM12 ) | (0 << CS12 ) | (1 << CS11 ) | (1 << CS10);
+    TCNT1H = 0;
+    TCNT1L = 0;
+    TIMSK1 = (0 << ICIE1) | (0 << OCIE1B) | (0 << OCIE1A) | (1 << TOIE1);
+    
     // Enable the TIMER2, set CTC mode, internal clock with 1/64 prescaler.
     // With 16MHz XTAL, tick is 4us
     // To get 1ms period, set compare to 250
-
     TCCR2A = 0x02;
     TCCR2B = 0x04;
     OCR2A  = 250;
     TIMSK2 = (0 << OCIE2B) | (1 << OCIE2A) | (0 << TOIE2);
-
+    
     return;
 }
 
@@ -488,3 +513,32 @@ void WritePWMValue(uint8_t value)
     OCR0B = (uint8_t)(value * 255 / 100); 
 }
 
+/**
+ * \fn ISR(INT0_vect)
+ * \brief Fired on INT0 rising/falling edge at dead high point to measure RPM, start ignition/injection cycle
+ *
+ * \param none
+ * \return none
+*/
+ISR(INT0_vect)
+{
+    // Save timer value
+    uint16_t period; 
+    period = TCNT1;
+    // clear timer for next period
+    TCNT1 = 0;
+    // compute RPM : tick is 4us
+    CurrentValues.RPM = 60 * (250000 / period);
+    CurrentValues.state = RUNNING;
+}
+
+/**
+ * \fn ISR(INT1_vect)
+ * \brief Fired on INT1 rising/falling edge of wheel captor
+ *
+ * \param none
+ * \return none
+*/
+ISR(INT1_vect)
+{
+}

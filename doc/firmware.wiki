@@ -102,22 +102,24 @@ ADC7	Capteur de pression
 
   
 <h2>4. Commandes</h2>
-Les commandes RS232 sont basÃ©es sur un protocole ASCII avec des commandes "get", "set" et "special".
+Les commandes RS232 sont basees sur un protocole ASCII avec des commandes "get", "set" et "special".
 
 <h3>4.1 Commandes Get </h3>
 
 <blockquote><center><table border=1 cellpadding=5>
 <tr><th>Commande</th><th>Requete</th><th>Reponse</th><th>Format</th></tr>
-<tr><td>Statut</td><td>g11</td><td>g11 xxyy</td><td>Registre de statut</td></tr>
-<tr><td>Allumage</td><td>g12</td><td>g12 xxxx yyyy</td>
+<tr><td>Statut</td><td>g 11</td><td>g 11 xxyy</td><td>Registre de statut</td></tr>
+<tr><td>General</td><td>g 12</td><td>g 12 xx yy zz</td>
 <td>
-xxxx : decalage en Âµs par rapport au PMH de l'Ã©tat actif<br/>
-yyyy : decalage en Âµs par rapport au PMH de l'Ã©tat inactif<br/>
+xx : etat => 0 : stop, 1 : demarrage, 2 : run, 3 : alarme, 4 : erreur<br/>
+yy : regime en RPM<br/>
+zz : vitesse en 1/10 km/h<br/>
 </td></tr>
-<tr><td>Injection</td><td>g13</td><td>g13 xxxx yyyy</td>
+<tr><td>Allumage</td><td>g 13</td><td>g 13 xx yy zz</td>
 <td>
-xxxx : decalage en Âµs par rapport au PMH de l'Ã©tat actif<br/>
-yyyy : decalage en Âµs par rapport au PMH de l'Ã©tat inactif<br/>
+xx : avance en 1/10 deg<br/>
+yy : index dans la table RPM<br/>
+zz : index dans la table charge<br/>
 </td></tr>
 <tr><td>Pompe</td><td>g14</td><td>g14 xx</td><td>Etat de la commande de la pompe</td></tr>
 <tr><td>Courant</td><td>g15</td><td>g15 xxxx</td><td>xxxx mesure du courant de sortie (pas de 10mA)</td></tr>

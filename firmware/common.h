@@ -61,6 +61,17 @@ typedef enum
 	POL_QTY
 }POL_SEL;
 
+enum
+{
+    STOP = 0,
+    CRANKING,
+    RUNNING,
+    ALARM,
+    ERROR,
+    STALLED
+};
+
+
 /**
  * \struct Switch_t
  * \brief Store switch timings
@@ -102,6 +113,9 @@ typedef struct {
    uint8_t flybackFB;         /*!< in V    */
    uint16_t pressure;         /*!< in MPa  */
    uint8_t  HVvalue;          /*!< PWM duty cycle for High voltage supply */
+   uint16_t RPM;              /*!< RPM */
+   uint16_t speed;            /*!< speed */
+   uint8_t state;             /*!< state => 0 : stop, 1 : cranking, 2 : running, 3 : alarm, 4 : error 5 : stalled */
    Switch_t Ignition;         /*!< ignition mesurements */
    Switch_t Injection;        /*!< injection mesurements */
 }Current_Data_t;

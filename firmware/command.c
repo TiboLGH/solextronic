@@ -43,6 +43,7 @@
 
 #define Cmd_SetHT           8
 #define Cmd_SetLed          11
+#define Cmd_GetGeneral      12 
 
 extern Flags_t          Flags;
 extern eeprom_data_t    eData;
@@ -128,6 +129,12 @@ static uint8_t CommandDispatch(void)
                     args[1] = eData.HVstep;
                     args[2] = eData.HVmanual;
                     args[3] = CurrentValues.HVvalue;
+                    SendToUsart(OK, 4, command.cmdType);
+                    break;
+                case Cmd_GetGeneral:
+                    args[1] = CurrentValues.state;
+                    args[2] = CurrentValues.RPM;
+                    args[3] = CurrentValues.speed;
                     SendToUsart(OK, 4, command.cmdType);
                     break;
                 case Cmd_SetLed:
