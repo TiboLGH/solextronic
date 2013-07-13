@@ -1,8 +1,13 @@
 <title>Firmware</title>
 
-
-http://ingo.orgizm.net/articles/2012-02-02-simulating-and-inspecting-code-with-gdb-and-simavr
-https://gitorious.org/simavr/pages/GetStarted
+   *   [./index.wiki | Accueil] 
+   *   [./gallery.wiki | Galerie] 
+   *   [./schema.wiki | Schema]
+   *   [./firmware.wiki | Firmware]
+   *   [./software.wiki | Software]
+   *   [./simulation.wiki | Simulation]
+   *   [./todo.wiki | Roadmap et Todo List]
+   *   [./links.wiki | Liens]
 
 
 Le firmware est concu pour tourner sur un Atmel ATMega328 (sur une carte Arduino Nano v3). Il est ecrit en C et compile avec avr-gcc et la avr-libc.

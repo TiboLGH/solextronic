@@ -2,10 +2,10 @@
 
    *   [./index.wiki | Accueil] 
    *   [./gallery.wiki | Galerie] 
-   *   [./parts.wiki | Composants]
    *   [./schema.wiki | Schema]
    *   [./firmware.wiki | Firmware]
    *   [./software.wiki | Software]
+   *   [./simulation.wiki | Simulation]
    *   [./todo.wiki | Roadmap et Todo List]
    *   [./links.wiki | Liens]
 
