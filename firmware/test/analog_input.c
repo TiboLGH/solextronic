@@ -1,3 +1,33 @@
+/***************************************************************************
+ *   Copyright (C) 2013 by Thibault Bouttevin                              *
+ *   thibault.bouttevin@gmail.com                                          *
+ *   www.legalethurlant.fr.st                                              *
+ *                                                                         *
+ *   This file is part of SolexTronic                                      *
+ *                                                                         *
+ *   SolexTronic is free software; you can redistribute it and/or modify   *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 3 of the License, or     *
+ *   any later version.                                                    *
+ *                                                                         *
+ *   This program is distributed in the hope that it will be useful,       *
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ *   GNU General Public License for more details.                          *
+ *                                                                         *
+ *   You should have received a copy of the GNU General Public License     *
+ *   along with this program; if not, write to the                         *
+ *   Free Software Foundation, Inc.,                                       *
+ *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+ ***************************************************************************/
+ /**
+ * \file analog_input.c
+ * \brief Analog generator simulation 
+ * \author Thibault Bouttevin
+ * \date June 2013
+ *
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
