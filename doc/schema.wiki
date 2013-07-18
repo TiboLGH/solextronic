@@ -22,9 +22,9 @@
 <tr><td>D3/6</td><td>INT1/PD3</td><td>Input</td><td>Impulsion roue</td></tr>
 <tr><td>D4/7</td><td> </td><td> </td><td></td></tr>
 <tr><td>D5/8</td><td>OC0B/PD5</td><td>Output</td><td>Commande flyback </td></tr>
-<tr><td>D6/9</td><td>PD6/AIN0</td><td>Input</td><td>Retour mesure HT</td></tr>
+<tr><td>D6/9</td><td>OC0A/PD6</td><td>Output</td><td>PWM injecteur</td></tr>
 <tr><td>D7/10</td><td>PD7</td><td>Output</td><td>Commande pompe</td></tr>
-<tr><td>D8/11</td><td> </td><td> </td><td></td></tr>
+<tr><td>D8/11</td><td>PB0</td><td>Input</td><td>Retour mesure HT</td></tr>
 <tr><td>D9/12</td><td>OC1A/PB1</td><td>Output</td><td>Commande allumage</td></tr>
 <tr><td>D10/13</td><td>OC1B/PB2</td><td>Output</td><td>Commande injection</td></tr>
 <tr><td>D11/14</td><td> </td><td> </td><td></td></tr>
