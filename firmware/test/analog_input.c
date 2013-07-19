@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "sim_avr.h"
+#include "avr_adc.h"
 #include "analog_input.h"
 
 
@@ -39,25 +40,51 @@ static const char * irq_names[IRQ_ANALOG_INPUT_COUNT] = {
 		[IRQ_ANALOG_INPUT_VALUE] 		 = "<analog_input.value",
 };
 
+/*
+ * called when ADC conversion is called
+ */
+void analog_input_hook(struct avr_irq_t * irq, uint32_t value, void * param)
+{
+	analog_input_t *p = (analog_input_t*)param;
+    avr_adc_mux_t mux;
+    memcpy(&mux, &value, sizeof(mux));
+    for(int i = 0; i < p->nb_inputs; i++)
+    {
+        if(mux.src == p->adc_irq_index[i]){
+            //printf("index %d, value %d\n", mux.src, p->value[i]*1000);
+            avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_ADC_GETIRQ, mux.src), (int)(p->value[i]*1000));
+            return;
+        }
+    }
+}
+
 void
 analog_input_init(
 		struct avr_t * avr,
 		analog_input_t *p,
-		const float value,
-		const char *name)
+        const int nb_input,
+		const int *adc_irq_index,
+		const float *value)
 {
-	char *pName = &(p->name[0]);
-	strncpy(pName, name, 256);
+    if(nb_input > MAX_ADC) return;
+    p->avr = avr;
+    p->nb_inputs = nb_input;
+    for(int i = 0; i < nb_input;i++)
+    {
+        p->adc_irq_index[i] = adc_irq_index[i];
+        p->value[i] = value[i];
+        //printf("index %d, adc %d, value %f\n", i, p->adc_irq_index[i], p->value[i]*1000);
+    }
 	p->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_ANALOG_INPUT_COUNT, irq_names);
-	p->value = value;
-	avr_raise_irq(p->irq + IRQ_ANALOG_INPUT_VALUE, value);
+    avr_irq_t * i_adc = avr_io_getirq(avr, AVR_IOCTL_ADC_GETIRQ, ADC_IRQ_OUT_TRIGGER);
+	avr_irq_register_notify(i_adc, analog_input_hook, p);	
 }
 
 void
 analog_input_set_value(
 		analog_input_t *p,
+        const int adc_index,
 		const float value)
 {
-	p->value = value;
-	avr_raise_irq(p->irq + IRQ_ANALOG_INPUT_VALUE, value);
+	p->value[adc_index] = value;
 }

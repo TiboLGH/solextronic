@@ -33,6 +33,8 @@
 
 #include "sim_irq.h"
 
+#define MAX_ADC 10
+
 /*
  * This part is a anlog input driver
  */
@@ -42,20 +44,25 @@ enum {
 };
 
 typedef struct analog_input_t {
-	avr_irq_t *	irq;		// irq list
-    char      name[256];
-	float	  value;		// value in v
+	avr_irq_t *	irq;		          // irq list
+	struct avr_t * avr;		          // avr instance for current time
+    int       nb_inputs;              // number of inputs 
+	float	  value[MAX_ADC];		  // value in v
+	int 	  adc_irq_index[MAX_ADC]; // adc channel
 } analog_input_t;
 
 void
 analog_input_init(
 		struct avr_t * avr,
 		analog_input_t *p,
-		const float value,
-		const char *name);
+        const int nb_input,
+		const int *adc_irq_index,
+		const float *value);
+
 void
 analog_input_set_value(
 		analog_input_t *p,
+        const int adc_index,
 		const float value);
 
 #endif

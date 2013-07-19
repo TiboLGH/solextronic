@@ -39,6 +39,7 @@
 #include "sim_avr.h"
 #include "avr_ioport.h"
 #include "avr_timer.h"
+#include "avr_adc.h"
 #include "sim_elf.h"
 #include "sim_gdb.h"
 #include "sim_vcd_file.h"
@@ -46,6 +47,7 @@
 #include "sim_time.h"
 #include "uart_pty.h"
 #include "pulse_input.h"
+#include "analog_input.h"
 
 #include <pthread.h>
 
@@ -54,6 +56,8 @@ avr_vcd_t vcd_file;
 uart_pty_t uart_pty;
 pulse_input_t pulse_input_engine;
 pulse_input_t pulse_input_wheel;
+analog_input_t analog;
+
 
 volatile uint8_t	display_pwm = 0;
 
@@ -75,7 +79,7 @@ static void pwm_changed_hook(struct avr_irq_t * irq, uint32_t value, void * para
 	display_pwm = value;
 }
 
-/**************************************/
+/************** Core thread **********************/
 static void *avr_run_thread(void * oaram)
 {
 	while (1) {
@@ -155,6 +159,9 @@ int main(int argc, char *argv[])
     
     strcpy(f.mmcu, "atmega328");
     f.frequency = 16000000;
+    f.vcc  = 5000;
+    f.avcc = 5000;
+    f.aref = 5000;
 	avr = avr_make_mcu_by_name(f.mmcu);
 	if (!avr) {
 		fprintf(stderr, "%s: AVR '%s' not known\n", argv[0], f.mmcu);
@@ -177,6 +184,9 @@ int main(int argc, char *argv[])
 	avr_connect_irq(pulse_input_wheel.irq  + IRQ_PULSE_OUT, avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 3));
     avr_irq_t * i_pwm = avr_io_getirq(avr, AVR_IOCTL_TIMER_GETIRQ('0'), TIMER_IRQ_OUT_PWM1);
 	avr_irq_register_notify(i_pwm, pwm_changed_hook, NULL);	
+    int   adc_input[3] = {ADC_IRQ_ADC0, ADC_IRQ_ADC1, ADC_IRQ_ADC2}; 
+    float adc_value[3] = {2.500,        2.000,        1.000}; 
+    analog_input_init(avr, &analog, 3, adc_input, adc_value);
 	
     /* VCD files */
     avr_vcd_init(avr, "gtkwave_output.vcd", &vcd_file, 100 /* usec */);

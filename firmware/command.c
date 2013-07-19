@@ -44,6 +44,7 @@
 #define Cmd_SetHT           8
 #define Cmd_SetLed          11
 #define Cmd_GetGeneral      12 
+#define Cmd_GetADC          13 
 
 extern Flags_t          Flags;
 extern eeprom_data_t    eData;
@@ -136,6 +137,14 @@ static uint8_t CommandDispatch(void)
                     args[2] = CurrentValues.RPM;
                     args[3] = CurrentValues.speed;
                     SendToUsart(OK, 4, command.cmdType);
+                    break;
+                case Cmd_GetADC:
+                    args[1] = CurrentValues.battery;
+                    args[2] = CurrentValues.temp1;
+                    args[3] = CurrentValues.temp2;
+                    args[4] = CurrentValues.throttle;
+                    args[5] = CurrentValues.pressure;
+                    SendToUsart(OK, 6, command.cmdType);
                     break;
                 case Cmd_SetLed:
                     args[1] = eData.timerLed;

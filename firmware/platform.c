@@ -435,7 +435,7 @@ void ADCProcessing(void)
             case ADC_BATTERY:
                 if(adcState > ADC_BATTERY) // Battery voltage
                 {
-                    CurrentValues.battery = 3/2 * eData.ratio[ADC_BATTERY] * adcValues[ADC_BATTERY] / 100;     
+                    CurrentValues.battery = adcValues[ADC_BATTERY]; //3/2 * eData.ratio[ADC_BATTERY] * adcValues[ADC_BATTERY] / 100;     
                 }
                 break;
 
@@ -454,7 +454,7 @@ void ADCProcessing(void)
                 break;
 
             case ADC_THROTTLE:
-                if(adcState > ADC_THROTTLE)
+                    if(adcState > ADC_THROTTLE)
                 {
                     CurrentValues.throttle = (eData.ratio[ADC_THROTTLE] * adcValues[ADC_THROTTLE]) / 256;     
                 }

@@ -61,8 +61,14 @@ int main(void)
     InitIOs();
     InitUart();
     InitTimer();
+    ADCInit();
     eData.timerLed = 100;
     eData.wheelSize = 182;
+    eData.ratio[0] = 100;
+    eData.ratio[1] = 100;
+    eData.ratio[2] = 100;
+    eData.ratio[3] = 100;
+    eData.ratio[4] = 100;
 
 	sei();
     StartTimer(TIMER_100MS);
