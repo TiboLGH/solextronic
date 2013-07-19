@@ -109,7 +109,7 @@ La connexion vers le faisceau se fait a travers un connecteur DB15. Un faux fais
 <tr><th>Pin</th><th>Nom</th><th>Type</th><th>Direction</th></tr>
 <tr><td>1</td><td>Masse</td><td>Alim</td><td>in</td></tr>
 <tr><td>2</td><td>Impulsion PMH</td><td>Logique</td><td>in</td></tr>
-<tr><td>3</td><td>Commande allumage</td><td>Logique</td><td>out</td></tr>
+<tr><td>3</td><td>Impulsion roue</td><td>Logique</td><td>in</td></tr>
 <tr><td>4</td><td>Papillon</td><td>Analogique</td><td>in</td></tr>
 <tr><td>5</td><td>Temp 1</td><td>Analogique</td><td>in</td></tr>
 <tr><td>6</td><td>Temp 2</td><td>Analogique</td><td>in</td></tr>
