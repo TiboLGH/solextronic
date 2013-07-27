@@ -73,7 +73,7 @@ pulse_input_init(
     b->low = tLow;
     b->high = tHigh;
 	avr_cycle_timer_register_usec(avr, b->low, switch_auto, b);
-	printf("pulse_input_init period %duS, duty cycle %.1f%%\n", tHigh+tLow, 100*(float)tHigh/(tHigh+tLow));
+	//printf("pulse_input_init period %duS, duty cycle %.1f%%\n", tHigh+tLow, 100*(float)tHigh/(tHigh+tLow));
 }
 
 void pulse_input_config(
@@ -83,5 +83,5 @@ void pulse_input_config(
 {
     b->low = tLow;
     b->high = tHigh;
-	printf("pulse_input_init period %duS, duty cycle %.1f%%\n", tHigh+tLow, 100*(float)tHigh/(tHigh+tLow));
+	//printf("pulse_input_init period %duS, duty cycle %.1f%%\n", tHigh+tLow, 100*(float)tHigh/(tHigh+tLow));
 }
