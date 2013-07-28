@@ -37,7 +37,7 @@
 #include <stdint.h>
 
 #define BUFSIZE      256
-#define MAXARGS    	 6
+#define MAXARGS    	 10
 
 /* macro to manage buffer pointer */
 #define INCPTR(X) ((X)==(BUFSIZE-1) ? ((X)=0) : (X)++)

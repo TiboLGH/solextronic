@@ -41,10 +41,20 @@
 
 /*** Commands ***/
 
+#define Cmd_SetGeneral      1
+#define Cmd_SetIgnition     2
+#define Cmd_SetInjection    3
+#define Cmd_SetInjectionTable    4
+#define Cmd_SetIgnitionTable     5
+#define Cmd_SetRatio        6
+#define Cmd_SetPolarity     7
 #define Cmd_SetHT           8
 #define Cmd_SetLed          11
+#define Cmd_GetStatus       11
 #define Cmd_GetGeneral      12 
 #define Cmd_GetADC          13 
+#define Cmd_GetIgnition     14 
+#define Cmd_GetInjection    15 
 
 extern Flags_t          Flags;
 extern eeprom_data_t    eData;
@@ -107,6 +117,13 @@ static uint8_t CommandDispatch(void)
             // Check that command exists and the number of args 
             switch(args[0])
             {
+                case Cmd_SetGeneral:
+                    eData.wheelSize = args[1];
+                    eData.PMHOffset = args[2];
+                    eData.maxRPM    = args[3];
+                    eData.maxTemp   = args[4];
+                    eData.minBat    = args[5];
+                    break;
                 case Cmd_SetHT:
                     eData.HVstep = args[1];
                     eData.HVmanual = args[2];
@@ -126,6 +143,14 @@ static uint8_t CommandDispatch(void)
             // Check that command exists and the number of args 
             switch(args[0])
             {
+                case Cmd_SetGeneral:
+                    args[1] = eData.wheelSize;
+                    args[2] = eData.PMHOffset;
+                    args[3] = eData.maxRPM;
+                    args[4] = eData.maxTemp;
+                    args[5] = eData.minBat;
+                    SendToUsart(OK, 6, command.cmdType);
+                    break;
                 case Cmd_SetHT:
                     args[1] = eData.HVstep;
                     args[2] = eData.HVmanual;

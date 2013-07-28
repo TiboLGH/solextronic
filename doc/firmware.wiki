@@ -145,8 +145,9 @@ zz : index dans la table charge<br/>
 Note: Toutes les commandes Set ont une commande Get correspondante pour relire les valeurs courantes.
 <blockquote><center><table border=1 cellpadding=5>
 <tr><th>Commande</th><th>Requete</th><th>Reponse</th><th>Format</th></tr>
-<tr><td>General</td><td>s01 ww xx yy zz</td><td>s01 OK</td>
+<tr><td>General</td><td>s01 vv ww xx yy zz</td><td>s01 OK</td>
 <td>
+vv : circonference de la roue (cm)<br/>
 ww : decalage PMH en °<br/>
 xx : regime max en tr/min<br/>
 yy : temperature max en °c<br/>

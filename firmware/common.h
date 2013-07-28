@@ -98,6 +98,10 @@ typedef struct {
     uint8_t         HVstep;        /*!< step of high voltage loop in %. 0 set manual mode */
     uint8_t         HVmanual;      /*!< HT duty cycle in manual mode in % */
     uint8_t         wheelSize;     /*!< distance run in one wheel rotation */
+    uint8_t         PMHOffset;     /*!< PMH offset in deg */
+    uint16_t        maxRPM;        /*!< RPM limitation, 0 if no limit */
+    uint8_t         maxTemp;       /*!< max temperature threshold, 0 if no limit */
+    uint8_t         minBat;        /*!< alarm on low battery, 0.1v */
 }eeprom_data_t;
 
 /**
