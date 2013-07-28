@@ -21,8 +21,31 @@ Solextronic est un boitier d'injection et d'allumage electronique pour Solex.
 <blockquote><center><img border="0" alt="Global design" src="global.png"></blockquote></center>
 
 
+<h2>3. Principes</h2>
+Le calcul des temps d'injection est base sur les principes decrit sur l'excellent site [http://www.megamanual.com/mtabcon.htm|MegaSquirt].
+
+<h2>4. Simulation</h2>
+
+Parametres d'entree :
+
+  *  RPM
+  *  Ouverture papillon
+  *  Temperature culasse
+  *  Temperature admission
+  *  Tension batterie
+  *  Debit injecteur
+  *  Avance admission
+  *  Courbe de remplissage en % (en fonction du RPM/charge)
+  *  Table d'avance (en fonction du RPM/charge)
+  *  Regime max
+  *  Temps d'injection maximal
 
 
+Donnees de sortie :
+
+  *  Courbe d'avance a l'allumage (en us)
+  *  Courbe d'injection (temps et avance, en us)
+  *  Warning sur les temps d'injection min/max
 
 
 <h2>7. Controle externe</h2>
