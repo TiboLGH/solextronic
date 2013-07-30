@@ -71,9 +71,6 @@ void InitIOs(void);
 
 /* EEPROM related functions */
 void InitEeprom(void);
-void resetEeprom(void);
-uint8_t readEeprom(uint8_t address);
-void writeEeprom(uint8_t address, uint8_t value);
 void updateEeprom(void);
 
 

@@ -37,12 +37,15 @@
 #include <stdint.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/eeprom.h>
 #include "common.h"
 #include "platform.h"
 
 #define BAUD 	        57600
 #define HTINPUT 	    (PIND & (1 << PD6))
 
+uint16_t EEMEM magic = 0xCAFE;
+eeprom_data_t EEMEM eeprom;
 
 extern Flags_t          Flags;
 extern eeprom_data_t    eData;
@@ -162,61 +165,17 @@ void InitIOs(void)
  */
 void InitEeprom(void)
 {
-   uint8_t i;
-   /* read all data in EEPROM */
-   for(i = 0; i < sizeof(eeprom_data_t); i ++)
-   {
-       ((uint8_t *) &eData)[i] = readEeprom(i);
-   }
-   
-   return;
+    /* read 2 first bytes to check magic : 
+     * allow to see if eeprom is void */
+    if(0xCAFE != eeprom_read_word(&magic))
+    {
+        /* initialise eeprom */
+    } 
+
+    /* read all data from EEPROM to cache */
+    eeprom_read_block((void*)&eData, &eeprom, sizeof(eeprom_data_t)); 
+    return;
 }
-
-/**
- * \fn void resetEeprom(void)
- * \brief set default parameters in EEPROM
- *
- * \param none
- * \return none
- */
-void resetEeprom(void)
-{
-   uint8_t i;
-
-   /* reset all */
-   for(i = 0; i < sizeof(eeprom_data_t); i ++)
-   {
-     ((uint8_t *) &eData)[i] = 0;
-   }	
-	
-   return;
-}
-
-/**
- * \fn uint8_t readEeprom(uint8_t address)
- * \brief read one byte from EEPROM
- *
- * \param address EEPROM address
- * \return none
- */
-uint8_t readEeprom(uint8_t address)
-{
-   return 0;    // recover data from eeprom byte to byte
-}
-
-/**
- * \fn void writeEeprom(uint8_t address, uint8_t value)
- * \brief write one byte to EEPROM
- *
- * \param address EEPROM address
- * \param value value to write
- * \return none
- */
-void writeEeprom(uint8_t address, uint8_t value)
-{
-   return ;
-}
-
 
 /**
  * \fn void updateEeprom(void)
@@ -227,23 +186,12 @@ void writeEeprom(uint8_t address, uint8_t value)
  */
 void updateEeprom(void)
 {
-    static uint8_t 	state = 0;
-    static uint8_t    index = 0;
-
-    if(state == 0)
+    static uint8_t index = 0;
+    uint8_t *pData = &eData;
+    if(eeprom_is_ready())
     {
-        /* in this case, one byte is different, so EEPROM must be updated */
-        if(((uint8_t *) &eData) [index] != readEeprom(index))
-        {
-            writeEeprom(index,((uint8_t *) &eData)[index]);
-            state = 1;
-        }else        {
-            index ++;	
-            if(index == sizeof(eeprom_data_t))
-            {
-                index = 0;
-            }
-        }
+        eeprom_update_byte((uint8_t*)(&eeprom + index), *(pData + index));
+        index = (index == sizeof(eeprom_data_t))? 0: index++;
     }
     return;
 }
