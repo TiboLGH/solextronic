@@ -489,7 +489,7 @@ ISR(INT0_vect)
 */
 ISR(INT1_vect)
 {
-    uint16_t period; // unit is 4us
+    uint32_t period; // unit is 4us
     // save current timestamp
     newTs.clk  = masterClk;
     newTs.tick = TCNT2;

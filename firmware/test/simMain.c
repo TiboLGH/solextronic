@@ -375,7 +375,7 @@ int TestSpeed(void)
 		uint32_t high, low;
 		SpeedtoPeriod(speedTable[i], &high, &low);
 		pulse_input_config(&pulse_input_wheel, high, low);
-		SleepMs(2000);
+		SleepMs(5000);
 		/* query result */
 		QueryCommand(command, answer);
 		GetArgs(rspArgs, &rspArgNum, answer);
