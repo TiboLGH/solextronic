@@ -1,0 +1,28 @@
+<title>Liens</title>
+
+   *   [./index.wiki | Accueil] 
+   *   [./gallery.wiki | Galerie] 
+   *   [./schema.wiki | Schema]
+   *   [./firmware.wiki | Firmware]
+   *   [./software.wiki | Software]
+   *   [./simulation.wiki | Simulation]
+   *   [./todo.wiki | Roadmap et Todo List]
+   *   [./links.wiki | Liens]
+
+<h2>Injection</h2>
+   *   [http://www.megasquirt.info/ | Megasquirt] : la source principale d'informations. Beaucoup de détails, schémas, codes sources...
+
+
+<h2>Allumage</h2>
+   *   [http://www.transmic.net/index.htm | Transmic] : plusieurs montages AC-CDI et DC-CDI très bien expliqués.
+   *   [http://veyrat.perso.neuf.fr/allumage_electronique.htm | Site de Jean-Marc Veyrat] : Montage CDI simple et clair.
+   *   [http://elec.facile.chez.com/ | Elec Facile] : montage Fly-back à base de PIC, sans composant dédié.
+
+
+<h2>Atmel AVR</h2>
+  *  [http://www.avrfreaks.net/ | AVRFreaks] : excellent site communautaire avec un forum très actif.
+  *  [http://www.atmel.com/products/microcontrollers/avr/default.aspx | Site Atmel] : le site officiel de Atmel.
+  *  [http://www.nongnu.org/avr-libc/ | AVR-LibC] : le site de la libC pour AVR.
+
+<h2>Solex</h2>
+  *  [http://rocknsolex.fr/ | Rock'n'Solex] : le festival et la course de Solex de l'INSA de Rennes
