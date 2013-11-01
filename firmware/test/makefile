@@ -1,9 +1,9 @@
 TARGET		= simMain.exe
 CC		= gcc
-CFLAGS		= -I$(SIMAVR)/simavr/sim -MMD --std=gnu99 -O2 -Wall -g -D$(FOSSIL_VER) -fPIC
+CFLAGS		= -I$(SIMAVR)/simavr/sim -MMD --std=gnu99 -O2 -Wall -g -D$(GIT_VER) -fPIC
 LIBDIR		= $(SIMAVR)/simavr/obj-i486-linux-gnu
 LDFLAGS		= -MMD -fPIC -Wl,-rpath,$(LIBDIR) -L$(LIBDIR) -lsimavr -lelf -lutil -lpthread
-FOSSIL_VER	:=VERSION_FOSSIL=0xBAD
+GIT_VER		:=VERSION_GIT=0x$(shell git rev-parse --short HEAD)
 
 C_SRCS		= $(wilcard *.c)
 OBJ_FILES	= simMain.o uart_pty.o pulse_input.o analog_input.o timing_analyzer.o  HT_supply.o

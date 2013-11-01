@@ -107,7 +107,7 @@ static uint8_t CommandDispatch(void)
             args[0] = VERSION_SOFT_MAJOR;
             args[1] = VERSION_SOFT_MINOR;
             args[2] = VERSION_HARD;
-            args[3] = VERSION_FOSSIL;
+            args[3] = VERSION_GIT;
             SendToUsart(OK, 4, command.cmdType);
             return result;
             break;

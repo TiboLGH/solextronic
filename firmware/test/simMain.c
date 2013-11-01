@@ -114,8 +114,8 @@ int TestStub(void);
 int testQty;
 Test_t testList[] = {
     {TEST_VERSION, "Version", TestVersion},
-    {TEST_RPM,     "RPM", TestStub}, //TestRPM},
-    {TEST_SPEED,   "Vitesse", TestStub}, //TestSpeed},
+    {TEST_RPM,     "RPM", TestRPM},
+    {TEST_SPEED,   "Vitesse", TestSpeed},
     {TEST_ANALOG,  "Entrees analogiques", TestAnalog},
     {TEST_HV_SUPPLY,  "Alimentation Flyback", TestHvSupply},
 };
