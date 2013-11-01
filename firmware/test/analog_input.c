@@ -51,7 +51,7 @@ void analog_input_hook(struct avr_irq_t * irq, uint32_t value, void * param)
     for(int i = 0; i < p->nb_inputs; i++)
     {
         if(mux.src == p->adc_irq_index[i]){
-            //printf("index %d, value %d\n", mux.src, p->value[i]*1000);
+            //printf("index %d, value %.0f\n", mux.src, p->value[i]*1000);
             avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_ADC_GETIRQ, mux.src), (int)(p->value[i]*1000));
             return;
         }
@@ -87,4 +87,5 @@ analog_input_set_value(
 		const float value)
 {
 	p->value[adc_index] = value;
+    //printf("Index %d = %f\n", adc_index, p->value[adc_index]);
 }

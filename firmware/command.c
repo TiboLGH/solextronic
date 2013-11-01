@@ -123,16 +123,24 @@ static uint8_t CommandDispatch(void)
                     eData.maxRPM    = args[3];
                     eData.maxTemp   = args[4];
                     eData.minBat    = args[5];
+                    SendToUsart(OK, 1, command.cmdType);
                     break;
                 case Cmd_SetHT:
                     eData.HVstep = args[1];
                     eData.HVmanual = args[2];
                     if(eData.HVstep == 0)   WritePWMValue(eData.HVmanual);
-                    SendToUsart(OK, 3, command.cmdType);
+                    SendToUsart(OK, 1, command.cmdType);
                     break;
                 case Cmd_SetLed:
                     eData.timerLed = args[1];
-                    SendToUsart(OK, 2, command.cmdType);
+                    SendToUsart(OK, 1, command.cmdType);
+                    break;
+                case Cmd_SetRatio:
+                    eData.ratio[0] = args[1];
+                    eData.ratio[1] = eData.ratio[2] = args[2];
+                    eData.ratio[3] = args[3];
+                    eData.ratio[4] = args[4];
+                    SendToUsart(OK, 1, command.cmdType);
                     break;
                 default:
                     SendToUsart(BAD_COMMAND, 1, Cmd_Error);
@@ -156,6 +164,13 @@ static uint8_t CommandDispatch(void)
                     args[2] = eData.HVmanual;
                     args[3] = CurrentValues.HVvalue;
                     SendToUsart(OK, 4, command.cmdType);
+                    break;
+                case Cmd_SetRatio:
+                    args[1]= eData.ratio[0];
+                    args[2]= eData.ratio[1];
+                    args[3]= eData.ratio[3];
+                    args[4]= eData.ratio[4];
+                    SendToUsart(OK, 5, command.cmdType);
                     break;
                 case Cmd_GetGeneral:
                     args[1] = CurrentValues.state;

@@ -59,7 +59,7 @@ extern uint8_t indexTxWrite;
 extern uint8_t rReady;
 
 static volatile uint16_t adcValues[5];
-const uint8_t adcIndex[] = {0, 1, 2, 3, 6, 255};
+const uint8_t adcIndex[] = {ADC_BATTERY, ADC_TEMP1, ADC_TEMP2, ADC_THROTTLE, ADC_IDLE};
 static volatile uint8_t adcState;
 static volatile uint8_t adcTrigger;
 static uint32_t	timerTable[TIMER_QTY];
@@ -211,9 +211,12 @@ ISR(TIMER2_COMPA_vect)
     {
         count10ms = 0;
         // start ADC acquisition
-        ADMUX = (1 << REFS0) | ((adcIndex[adcState]) & 0x0F);
+        /*adcState = ADC_BATTERY;
+        uint8_t mux = (1 << REFS0) | ((adcIndex[adcState]) & 0x0F);
+        ADMUX = mux;
+        PORTC = mux;
         ADCSRA |= (1 << ADSC);
-        adcTrigger = True;
+        adcTrigger = True;*/
 
         // run HV loop
         if(eData.HVstep)
@@ -334,14 +337,18 @@ uint8_t EndTimer(const uint8_t timerHandle, const unsigned long duration)
 */
 ISR(ADC_vect)
 {
+    return;
+    uint8_t mux;
     // save results
     adcValues[adcState] = ADC;
     // Next channel
     adcState++;
     // start ADC acquisition
-    if(adcState < ADC_IDLE)
+    if(adcIndex[adcState] != ADC_IDLE)
     {
-        ADMUX = (1 << REFS0) | ((adcIndex[adcState]) & 0x0F);
+        mux = (1 << REFS0) | ((adcIndex[adcState]) & 0x0F);
+        ADMUX = mux;
+        PORTC = mux;
         ADCSRA |= (1 << ADSC);
     }
 }
@@ -357,11 +364,11 @@ void ADCInit(void)
 {
     ADCSRA = (1 << ADEN)  |
              (0 << ADATE) |
-             (1 << ADIE) | 
+             (0 << ADIE) | 
              (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0); // prescaler 128
     DIDR0 = 0x0F; // set ADC0..3 pin to ADC inputs
     adcTrigger = False; 
-    adcState = ADC_BATTERY;
+    adcState = ADC_IDLE;
 }
 
 /**
@@ -373,58 +380,41 @@ void ADCInit(void)
 */
 void ADCProcessing(void)
 {
-    static uint8_t adcProcessed = 0;
 
-    if(adcTrigger)
+    uint8_t mux;
+    // Conversion and filtering
+    switch(adcState)
     {
-        // Conversion and filtering
-        switch(adcIndex[adcProcessed])
-        {
-            case ADC_BATTERY:
-                if(adcState > ADC_BATTERY) // Battery voltage
-                {
-                    CurrentValues.battery = adcValues[ADC_BATTERY]; //3/2 * eData.ratio[ADC_BATTERY] * adcValues[ADC_BATTERY] / 100;     
-                }
-                break;
+        case ADC_BATTERY:
+            CurrentValues.battery = 150 * (uint32_t)ADC / 1024 * eData.ratio[ADC_BATTERY] / 100;     
+            adcState++;
+            break;
 
-            case ADC_TEMP1:
-                if(adcState > ADC_TEMP1)
-                {
-                    CurrentValues.temp1 = eData.ratio[ADC_TEMP1] * adcValues[ADC_TEMP1] / 100;     
-                }
-                break;
-            
-            case ADC_TEMP2:
-                if(adcState > ADC_TEMP2)
-                {
-                    CurrentValues.temp2 = eData.ratio[ADC_TEMP2] * adcValues[ADC_TEMP2] / 100;     
-                }
-                break;
+        case ADC_TEMP1:
+            CurrentValues.temp1 = (uint32_t)ADC * 500 / 1024 * eData.ratio[ADC_TEMP1] / 100;     
+            adcState++;
+            break;
 
-            case ADC_THROTTLE:
-                    if(adcState > ADC_THROTTLE)
-                {
-                    CurrentValues.throttle = (eData.ratio[ADC_THROTTLE] * adcValues[ADC_THROTTLE]) / 256;     
-                }
-                break;
-            
-            case ADC_PRESSURE:
-                if(adcState > ADC_PRESSURE)
-                {
-                    CurrentValues.pressure = eData.ratio[ADC_PRESSURE] * adcValues[ADC_PRESSURE] / 100;     
-                }
-                break;
+        case ADC_TEMP2:
+            CurrentValues.temp2 = (uint32_t)ADC * 500 / 1024 * eData.ratio[ADC_TEMP2] / 100;     
+            adcState++;
+            break;
 
-            default:
-                //ASSERT(0);
-                adcState = ADC_BATTERY;
-        }
-        adcProcessed++;
+        case ADC_THROTTLE:
+            CurrentValues.throttle = (eData.ratio[ADC_THROTTLE] * (uint32_t)ADC) / 1024;     
+            adcState = ADC_BATTERY;
+            break;
+        case ADC_IDLE:
+            adcState = ADC_BATTERY;
+
+        default:
+            //ASSERT(0);
+            adcState = ADC_BATTERY;
     }
-    else
-    {
-       adcProcessed = 0;
-    } 
+    mux = (1 << REFS0) | (adcState & 0x0F);
+    ADMUX = mux;
+    PORTC = mux;
+    ADCSRA |= (1 << ADSC);
 }
 
 /**

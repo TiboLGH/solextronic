@@ -3,17 +3,16 @@ TARGET_ARCH	= -mmcu=$(MCU)
 TARGET		= solextronic
 CC		= avr-gcc
 CPPFLAGS	= -mmcu=$(MCU)
-CFLAGS		= -Os -g -Wall -I. -DF_CPU=16000000 -D$(FOSSIL_VER)
+CFLAGS		= -Os -g -Wall -I. -DF_CPU=16000000 -D$(FOSSIL_VER) -std=c99
 LDFLAGS		= -g -mmcu=$(MCU) -lm -Wl,--gc-sections -Os
 PGMER		= -c arduino -b 57600 -P /dev/ttyUSB0
 PGMERISP	= -c avrispv2 -P /dev/ttyUSB0
 DUDE		= /usr/bin/avrdude -V -p $(MCU)
-FOSSIL_VER	:=VERSION_FOSSIL=0x$(shell /home/tibo/tools/fossil/fossil info | grep checkout | awk '{print $$2}' | head -c 8)
+FOSSIL_VER	:=VERSION_FOSSIL=0xBAD
 
 C_SRCS		= $(wilcard *.c)
 OBJ_FILES	= main.o platform.o command.o
 OBJ_FILES2	= $(C_SRCS:.c=.o)
-SIMAVR		= /home/tibo/Projets/simavr
 
 all:	$(TARGET).hex
 

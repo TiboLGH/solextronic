@@ -3,7 +3,7 @@ CC		= gcc
 CFLAGS		= -I$(SIMAVR)/simavr/sim -MMD --std=gnu99 -O2 -Wall -g -D$(FOSSIL_VER) -fPIC
 LIBDIR		= $(SIMAVR)/simavr/obj-i486-linux-gnu
 LDFLAGS		= -MMD -fPIC -Wl,-rpath,$(LIBDIR) -L$(LIBDIR) -lsimavr -lelf -lutil -lpthread
-FOSSIL_VER	:=VERSION_FOSSIL=0x$(shell /home/tibo/tools/fossil/fossil info | grep checkout | awk '{print $$2}' | head -c 8)
+FOSSIL_VER	:=VERSION_FOSSIL=0xBAD
 
 C_SRCS		= $(wilcard *.c)
 OBJ_FILES	= simMain.o uart_pty.o pulse_input.o analog_input.o timing_analyzer.o  HT_supply.o

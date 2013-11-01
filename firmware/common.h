@@ -93,7 +93,7 @@ typedef struct {
 * eeprom_data consists off the EEPROM organisation
 */
 typedef struct {
-    unsigned char   ratio[6];      /*!< ratios to adjust ADC/DAC conversion in % */
+    unsigned char   ratio[5];      /*!< ratios to adjust ADC/DAC conversion in % */
     uint16_t        timerLed;      /*!< ratios to adjust ADC/DAC conversion in % */
     uint8_t         HVstep;        /*!< step of high voltage loop in %. 0 set manual mode */
     uint8_t         HVmanual;      /*!< HT duty cycle in manual mode in % */

@@ -57,7 +57,7 @@
 const char *ptyName = "/tmp/simavr-uart0";
 #define RPM_QTY 5
 #define SPEED_QTY 5
-#define ANALOG_QTY 5
+#define ANALOG_QTY 4
 
 #define RED(msg, ...) fprintf( stdout, "\033[31m" msg "\033[0m", ##__VA_ARGS__ )
 #define GREEN(msg, ...) fprintf( stdout, "\033[32m" msg "\033[0m", ##__VA_ARGS__ )
@@ -108,15 +108,16 @@ int TestVersion(void);
 int TestRPM(void);
 int TestSpeed(void);
 int TestAnalog(void);
-int TestHVsupply(void);
+int TestHvSupply(void);
+int TestStub(void);
 
 int testQty;
 Test_t testList[] = {
     {TEST_VERSION, "Version", TestVersion},
-    {TEST_RPM,     "RPM", TestRPM},
-    {TEST_SPEED,   "Vitesse", TestSpeed},
+    {TEST_RPM,     "RPM", TestStub}, //TestRPM},
+    {TEST_SPEED,   "Vitesse", TestStub}, //TestSpeed},
     {TEST_ANALOG,  "Entrees analogiques", TestAnalog},
-    {TEST_HV_SUPPLY,  "Alimentation Flyback", TestAnalog},
+    {TEST_HV_SUPPLY,  "Alimentation Flyback", TestHvSupply},
 };
 
 /********* Helpers ************/
@@ -134,7 +135,7 @@ void SpeedtoPeriod(const uint32_t speed, uint32_t *tHigh, uint32_t *tLow)
 
 float BatToVoltage(const float batterie)
 {
-    return (batterie * 2 / 3.);
+    return (batterie * 1 / 30.);
 }
 
 float TempToVoltage(const float degree) // for LM35 10mV/deg
@@ -266,6 +267,12 @@ int GetArgs(int *args, int *argNum, char *command)
 
 
 /****** Tests Cases *******/
+int TestStub(void)
+{
+    HIGH("Test bidon !\n");
+    return PASS;
+}
+
 int TestVersion(void)
 {
 	/* This test aims to check serial link
@@ -413,14 +420,25 @@ int TestAnalog(void)
 	 * and batterie */
 
 	const float tolerance = 5; //%
-	int args[2] = {'g', 13};
+	int args[6] = {'g', 6, 100, 100, 100, 100};
 	int rspArgs[10];
 	int rspArgNum, subTestPassed = 0;
 	char command[256], answer[256], message[256];
-	float analogTable[ANALOG_QTY][4] = {{10, 20, 40, 60}}; // tempMotor, tempAdm, batterie, throtle
+	float analogTable[ANALOG_QTY][4] = {{100, 20, 20, 0},
+                                        {110, 100, 25, 50},
+                                        {120, 120, 30, 90},
+                                        {150, 180, 35, 100}}; // battery, tempMotor, tempAdm, throttle
 
+    // set conversion ratios to 100%
+	//SetArgs(args, 6, command);
+    //QueryCommand(command, answer);
+
+    // now the requests
+    args[0] = 'g';
+    args[1] = 13;
 	SetArgs(args, 2, command);
 
+    avr_vcd_start(&vcd_file);
 	for (int i = 0; i < ANALOG_QTY; i++)
 	{
 		/* set new inputs values */
@@ -429,24 +447,26 @@ int TestAnalog(void)
 		voltage[1] = TempToVoltage(analogTable[i][1]);
 		voltage[2] = TempToVoltage(analogTable[i][2]);
 		voltage[3] = ThrToVoltage(analogTable[i][3]);
-		for(int j = 0; j < 3; j++)
+		for(int j = 0; j < 4; j++)
             analog_input_set_value(&analog, j, voltage[j]);
-		SleepMs(300);
+		SleepMs(1000);
 		/* query result */
 		QueryCommand(command, answer);
 		GetArgs(rspArgs, &rspArgNum, answer);
 				
-		if(rspArgNum != 5)
+		if(rspArgNum != 7)
 		{
 			RED("Erreur sur le nombre d'arguments : %d recus\n", rspArgNum);
 			continue;
 		}
 		/* criteria : values are correct */
+        printf("Expected values : %.0f %.0f %.0f %.0f\n", analogTable[i][0], analogTable[i][1], analogTable[i][2], analogTable[i][3]);
 		float maxError = 0.;
 		for(int j = 0; j < 4; j++)
 		{
-			float error = 100. * (rspArgs[j+1]) / analogTable[i][j];
-			sprintf(message, "Erreur %.1f %% \n", error);
+			float error = 100 - (100. * (rspArgs[j+2]) / analogTable[i][j]);
+			sprintf(message, "Erreur %d / %.0f %.1f %% \n", (rspArgs[j+2]), analogTable[i][j], error);
+            //printf("%s", message);
 			if(error < 0) error = -error;
 			if(error > maxError) maxError = error;
 		}
@@ -466,6 +486,10 @@ int TestAnalog(void)
     return FAIL;
 }
 
+int TestHvSupply(void)
+{
+    return FAIL;
+}
 /************** Core thread **********************/
 static void *avr_run_thread(void * oaram)
 {
@@ -615,6 +639,17 @@ int main(int argc, char *argv[])
 
     /**** Automatic mode ****/
 	// start AVR core
+    /* VCD files */
+    avr_vcd_init(avr, "gtkwave_output.vcd", &vcd_file, 10000);
+    avr_vcd_add_signal(&vcd_file,
+            avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 5),
+            1, "LED");
+    avr_vcd_add_signal(&vcd_file,
+            avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('C'), IOPORT_IRQ_PIN_ALL),
+            8, "ADMUX");
+    avr_vcd_add_signal(&vcd_file,
+            avr_io_getirq(avr, AVR_IOCTL_ADC_GETIRQ, ADC_IRQ_OUT_TRIGGER),
+            8, "ADMUX_2");
 	pthread_t run;
 	pthread_create(&run, NULL, avr_run_thread, NULL);
     SleepMs(1000); 

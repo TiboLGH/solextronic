@@ -62,13 +62,9 @@ int main(void)
     InitUart();
     InitTimer();
     ADCInit();
-    eData.timerLed = 100;
+    eData.timerLed = 20;
     eData.wheelSize = 182;
-    eData.ratio[0] = 100;
-    eData.ratio[1] = 100;
-    eData.ratio[2] = 100;
-    eData.ratio[3] = 100;
-    eData.ratio[4] = 100;
+    for(uint8_t i=0;i<5;i++) eData.ratio[i] = 100;
 
 	sei();
     StartTimer(TIMER_100MS);
@@ -81,6 +77,7 @@ int main(void)
         {
             LED_PIN |= _BV(LED);
             StartTimer(TIMER_100MS);
+            ADCProcessing();
         }
         
         if(rReady)
@@ -94,7 +91,7 @@ int main(void)
 		}
 
         // Process ADC Samples
-        ADCProcessing();
+        //ADCProcessing();
 	}
 
 	return(0);
