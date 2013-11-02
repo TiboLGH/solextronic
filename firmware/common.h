@@ -93,15 +93,34 @@ typedef struct {
 * eeprom_data consists off the EEPROM organisation
 */
 typedef struct {
-    unsigned char   ratio[5];      /*!< ratios to adjust ADC/DAC conversion in % */
+    uint8_t         ratio[5];      /*!< ratios to adjust ADC/DAC conversion in % */
     uint16_t        timerLed;      /*!< ratios to adjust ADC/DAC conversion in % */
     uint8_t         HVstep;        /*!< step of high voltage loop in %. 0 set manual mode */
     uint8_t         HVmanual;      /*!< HT duty cycle in manual mode in % */
     uint8_t         wheelSize;     /*!< distance run in one wheel rotation */
     uint8_t         PMHOffset;     /*!< PMH offset in deg */
     uint16_t        maxRPM;        /*!< RPM limitation, 0 if no limit */
-    uint8_t         maxTemp;       /*!< max temperature threshold, 0 if no limit */
+    uint8_t         maxTemp;       /*!< overheating threshold, 0 if no limit */
     uint8_t         minBat;        /*!< alarm on low battery, 0.1v */
+    uint16_t        igniDuration;  /*!< ignition duration in us */
+    uint8_t         starterAdv;    /*!< advance during crancking in deg */
+    uint8_t         igniOverheat;  /*!< advance decrease in case of overheating in deg */
+    uint8_t         noSparkAtDec;  /*!< 1 to stop ignition when deceleration */
+    uint8_t         injOpen;       /*!< time to open injector in us */
+    uint8_t         injRate;       /*!< flow rate of injector in g/us */
+    uint8_t         injAdv;        /*!< mean injection advance in deg */
+    uint16_t        starterInj;    /*!< advance during crancking in us */
+    uint16_t        injOverheat;   /*!< injection decrease in case of overheating in us */
+    uint16_t        injFullOpen;   /*!< injection duration at full throttle in us */
+    uint8_t         noInjAtDec;    /*!< 1 to stop injection when deceleration */
+    uint16_t        injStart;      /*!< time to open injector in us */
+    uint8_t         holdPWM;       /*!< PWM ratio during hold time in % */
+    uint8_t         igniPolarity;  /*!< 0 active at low state */
+    uint8_t         injPolarity;   /*!< 0 active at low state */
+    uint8_t         pmhPolarity;   /*!< 0 active at low state */
+    uint8_t         pumpPolarity;  /*!< 0 active at low state */
+    uint8_t         injTable[12][12];  /*!< table for injection */
+    uint8_t         igniTable[12][12];  /*!< table for ignition */
 }eeprom_data_t;
 
 /**

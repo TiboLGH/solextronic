@@ -125,6 +125,50 @@ static uint8_t CommandDispatch(void)
                     eData.minBat    = args[5];
                     SendToUsart(OK, 1, command.cmdType);
                     break;
+                case Cmd_SetIgnition:
+                    eData.igniDuration = args[1];
+                    eData.starterAdv   = args[2];
+                    eData.igniOverheat = args[3];
+                    eData.noSparkAtDec = args[4];
+                    SendToUsart(OK, 1, command.cmdType);
+                    break;
+                case Cmd_SetInjection:
+                    eData.injOpen      = args[1];
+                    eData.injRate      = args[2];
+                    eData.injAdv       = args[3];
+                    eData.starterInj   = args[4];
+                    eData.injOverheat  = args[5];
+                    eData.injFullOpen  = args[6];
+                    eData.noInjAtDec   = args[7];
+                    eData.injStart     = args[8];
+                    eData.holdPWM      = args[9];
+                    SendToUsart(OK, 1, command.cmdType);
+                    break;
+                case Cmd_SetPolarity:
+                    eData.igniPolarity = args[1];
+                    eData.injPolarity  = args[2];
+                    eData.pmhPolarity  = args[3];
+                    eData.pumpPolarity = args[4];
+                    SendToUsart(OK, 1, command.cmdType);
+                    break;
+                case Cmd_SetInjectionTable:
+                    if((args[1] > 12) || (args[2] > 12))
+                    {
+                        SendToUsart(BAD_PARAMETER, 1, command.cmdType);
+                    }else{
+                        eData.injTable[args[1]][args[2]]  = args[3];
+                        SendToUsart(OK, 1, command.cmdType);
+                    }
+                    break;
+                case Cmd_SetIgnitionTable:
+                    if((args[1] > 12) || (args[2] > 12))
+                    {
+                        SendToUsart(BAD_PARAMETER, 1, command.cmdType);
+                    }else{
+                        eData.igniTable[args[1]][args[2]]  = args[3];
+                        SendToUsart(OK, 1, command.cmdType);
+                    }
+                    break;
                 case Cmd_SetHT:
                     eData.HVstep = args[1];
                     eData.HVmanual = args[2];
@@ -158,6 +202,50 @@ static uint8_t CommandDispatch(void)
                     args[4] = eData.maxTemp;
                     args[5] = eData.minBat;
                     SendToUsart(OK, 6, command.cmdType);
+                    break;
+                case Cmd_SetIgnition:
+                    args[1] = eData.igniDuration;
+                    args[2] = eData.starterAdv;
+                    args[3] = eData.igniOverheat;
+                    args[4] = eData.noSparkAtDec;
+                    SendToUsart(OK, 5, command.cmdType);
+                    break;
+                case Cmd_SetInjection:
+                    args[1] = eData.injOpen;
+                    args[2] = eData.injRate;
+                    args[3] = eData.injAdv;
+                    args[4] = eData.starterInj;
+                    args[5] = eData.injOverheat;
+                    args[6] = eData.injFullOpen;
+                    args[7] = eData.noInjAtDec;
+                    args[8] = eData.injStart;
+                    args[9] = eData.holdPWM;
+                    SendToUsart(OK, 10, command.cmdType);
+                    break;
+                case Cmd_SetPolarity:
+                    args[1] = eData.igniPolarity;
+                    args[2] = eData.injPolarity;
+                    args[3] = eData.pmhPolarity;
+                    args[4] = eData.pumpPolarity;
+                    SendToUsart(OK, 5, command.cmdType);
+                    break;
+                case Cmd_SetInjectionTable:
+                    if((args[1] > 12) || (args[2] > 12))
+                    {
+                        SendToUsart(BAD_PARAMETER, 1, command.cmdType);
+                    }else{
+                        args[3] = eData.injTable[args[1]][args[2]];
+                        SendToUsart(OK, 2, command.cmdType);
+                    }
+                    break;
+                case Cmd_SetIgnitionTable:
+                    if((args[1] > 12) || (args[2] > 12))
+                    {
+                        SendToUsart(BAD_PARAMETER, 1, command.cmdType);
+                    }else{
+                        args[3] = eData.igniTable[args[1]][args[2]];
+                        SendToUsart(OK, 2, command.cmdType);
+                    }
                     break;
                 case Cmd_SetHT:
                     args[1] = eData.HVstep;
