@@ -106,14 +106,14 @@ typedef struct {
     uint8_t         starterAdv;    /*!< advance during crancking in deg */
     uint8_t         igniOverheat;  /*!< advance decrease in case of overheating in deg */
     uint8_t         noSparkAtDec;  /*!< 1 to stop ignition when deceleration */
-    uint8_t         injOpen;       /*!< time to open injector in us */
-    uint8_t         injRate;       /*!< flow rate of injector in g/us */
+    uint16_t        injOpen;       /*!< time to open injector in us */
+    uint16_t        injRate;       /*!< flow rate of injector in g/us */
     uint8_t         injAdv;        /*!< mean injection advance in deg */
-    uint16_t        starterInj;    /*!< advance during crancking in us */
-    uint16_t        injOverheat;   /*!< injection decrease in case of overheating in us */
+    uint16_t        starterInj;    /*!< injection duration during crancking in us */
+    uint16_t        injOverheat;   /*!< injection increase in case of overheating in % */
     uint16_t        injFullOpen;   /*!< injection duration at full throttle in us */
     uint8_t         noInjAtDec;    /*!< 1 to stop injection when deceleration */
-    uint16_t        injStart;      /*!< time to open injector in us */
+    uint16_t        injStart;      /*!< injector opening duration in us */
     uint8_t         holdPWM;       /*!< PWM ratio during hold time in % */
     uint8_t         igniPolarity;  /*!< 0 active at low state */
     uint8_t         injPolarity;   /*!< 0 active at low state */

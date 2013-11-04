@@ -38,6 +38,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/eeprom.h>
+#include <avr/pgmspace.h>
 #include "common.h"
 #include "platform.h"
 
@@ -46,6 +47,36 @@
 
 uint16_t EEMEM magic = 0xCAFE;
 eeprom_data_t EEMEM eeprom;
+const PROGMEM eeprom_data_t eeInit = {
+    .ratio          = {100, 100, 100, 100, 100},
+    .timerLed       = 20,
+    .HVstep         = 5,
+    .HVmanual       = 50,
+    .wheelSize      = 182,
+    .PMHOffset      = 0,
+    .maxRPM         = 0,
+    .maxTemp        = 150,
+    .minBat         = 110,
+    .igniDuration   = 1000,
+    .starterAdv     = 5,
+    .igniOverheat   = 2,
+    .noSparkAtDec   = 0,
+    .injOpen        = 500,
+    .injRate        = 500, //?
+    .injAdv         = 140, //?
+    .starterInj     = 1000,
+    .injOverheat    = 3,
+    .injFullOpen    = 3000,
+    .noInjAtDec     = 0,
+    .injStart       = 500,
+    .holdPWM        = 50,
+    .igniPolarity   = 0,
+    .injPolarity    = 0,
+    .pmhPolarity    = 0,
+    .pumpPolarity   = 0,
+    //.injTable[12][12];  /* let it to 0 */
+    //.igniTable[12][12];
+};
 
 extern Flags_t          Flags;
 extern eeprom_data_t    eData;
@@ -170,6 +201,8 @@ void InitEeprom(void)
     if(0xCAFE != eeprom_read_word(&magic))
     {
         /* initialise eeprom */
+        eeprom_write_word(&magic, 0xCAFE);
+        memcpy_P((void *)&eeprom, (PGM_VOID_P)&eeInit, sizeof(eeprom_data_t));
     } 
 
     /* read all data from EEPROM to cache */
@@ -187,11 +220,12 @@ void InitEeprom(void)
 void updateEeprom(void)
 {
     static uint8_t index = 0;
-    uint8_t *pData = &eData;
+    uint8_t *pData = (uint8_t *)&eData;
     if(eeprom_is_ready())
     {
         eeprom_update_byte((uint8_t*)(&eeprom + index), *(pData + index));
-        index = (index == sizeof(eeprom_data_t))? 0: index++;
+        index++;
+        if(index > sizeof(eeprom_data_t)) index = 0;
     }
     return;
 }
