@@ -64,7 +64,7 @@ int main(void)
     ADCInit();
     eData.timerLed = 20;
     eData.wheelSize = 182;
-    for(uint8_t i=0;i<5;i++) eData.ratio[i] = 100;
+    for(u8 i=0;i<5;i++) eData.ratio[i] = 100;
 
 	sei();
     StartTimer(TIMER_100MS);

@@ -76,9 +76,9 @@ void updateEeprom(void);
 
 /* Software Timers related functions */
 void InitTimer(void);
-void StartTimer(uint8_t timerHandle);
-uint32_t GetTimer(const uint8_t timerHandle);
-uint8_t EndTimer(const uint8_t timerHandle, const uint32_t duration); 
+void StartTimer(u8 timerHandle);
+u32 GetTimer(const u8 timerHandle);
+u8 EndTimer(const u8 timerHandle, const u32 duration); 
 
 /* ADC related functions */
 void ADCInit(void);
@@ -86,6 +86,6 @@ void ADCProcessing(void);
 
 /* PWM related functions */
 void InitPWM(void);
-void WritePWMValue(uint8_t value);
+void WritePWMValue(u8 value);
 
 #endif // PLATFORM_H

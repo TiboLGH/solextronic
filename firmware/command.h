@@ -35,6 +35,7 @@
 #define COMMAND_H
 
 #include <stdint.h>
+#include "common.h"
 
 #define BUFSIZE      256
 #define MAXARGS    	 10
@@ -72,8 +73,8 @@ typedef enum
 
 typedef struct
 {
-	uint8_t		cmdType;
-	uint8_t		cmdId;
+	u8		cmdType;
+	u8		cmdId;
 	int8_t		nbArgSet;
 	int8_t		nbArgGet;
 	int8_t		result;

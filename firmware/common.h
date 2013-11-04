@@ -36,6 +36,12 @@
 
 #include <stdint.h>
 
+#define u8      uint8_t
+#define u16     uint16_t
+#define u32     uint32_t
+#define s8      int8_t
+#define s16     int16_t
+#define s32     int32_t
 
 #define VERSION_SOFT_MAJOR       0
 #define VERSION_SOFT_MINOR       1
@@ -79,10 +85,10 @@ enum
  * This structure is used for ignition and injection
  */
 typedef struct {
-   uint16_t activeUs;         /*!< active time switch in us */
-   uint16_t activeDeg;        /*!< active time switch in deg */
-   uint16_t inactiveUs;       /*!< inactive time switch in us */
-   uint16_t inactiveDeg;      /*!< inactive time switch in deg */
+   u16 activeUs;         /*!< active time switch in us */
+   u16 activeDeg;        /*!< active time switch in deg */
+   u16 inactiveUs;       /*!< inactive time switch in us */
+   u16 inactiveDeg;      /*!< inactive time switch in deg */
 }Switch_t;
 
 
@@ -93,34 +99,34 @@ typedef struct {
 * eeprom_data consists off the EEPROM organisation
 */
 typedef struct {
-    uint8_t         ratio[5];      /*!< ratios to adjust ADC/DAC conversion in % */
-    uint16_t        timerLed;      /*!< ratios to adjust ADC/DAC conversion in % */
-    uint8_t         HVstep;        /*!< step of high voltage loop in %. 0 set manual mode */
-    uint8_t         HVmanual;      /*!< HT duty cycle in manual mode in % */
-    uint8_t         wheelSize;     /*!< distance run in one wheel rotation */
-    uint8_t         PMHOffset;     /*!< PMH offset in deg */
-    uint16_t        maxRPM;        /*!< RPM limitation, 0 if no limit */
-    uint8_t         maxTemp;       /*!< overheating threshold, 0 if no limit */
-    uint8_t         minBat;        /*!< alarm on low battery, 0.1v */
-    uint16_t        igniDuration;  /*!< ignition duration in us */
-    uint8_t         starterAdv;    /*!< advance during crancking in deg */
-    uint8_t         igniOverheat;  /*!< advance decrease in case of overheating in deg */
-    uint8_t         noSparkAtDec;  /*!< 1 to stop ignition when deceleration */
-    uint16_t        injOpen;       /*!< time to open injector in us */
-    uint16_t        injRate;       /*!< flow rate of injector in g/us */
-    uint8_t         injAdv;        /*!< mean injection advance in deg */
-    uint16_t        starterInj;    /*!< injection duration during crancking in us */
-    uint16_t        injOverheat;   /*!< injection increase in case of overheating in % */
-    uint16_t        injFullOpen;   /*!< injection duration at full throttle in us */
-    uint8_t         noInjAtDec;    /*!< 1 to stop injection when deceleration */
-    uint16_t        injStart;      /*!< injector opening duration in us */
-    uint8_t         holdPWM;       /*!< PWM ratio during hold time in % */
-    uint8_t         igniPolarity;  /*!< 0 active at low state */
-    uint8_t         injPolarity;   /*!< 0 active at low state */
-    uint8_t         pmhPolarity;   /*!< 0 active at low state */
-    uint8_t         pumpPolarity;  /*!< 0 active at low state */
-    uint8_t         injTable[12][12];  /*!< table for injection */
-    uint8_t         igniTable[12][12];  /*!< table for ignition */
+    u8         ratio[5];      /*!< ratios to adjust ADC/DAC conversion in % */
+    u16        timerLed;      /*!< ratios to adjust ADC/DAC conversion in % */
+    u8         HVstep;        /*!< step of high voltage loop in %. 0 set manual mode */
+    u8         HVmanual;      /*!< HT duty cycle in manual mode in % */
+    u8         wheelSize;     /*!< distance run in one wheel rotation */
+    u8         PMHOffset;     /*!< PMH offset in deg */
+    u16        maxRPM;        /*!< RPM limitation, 0 if no limit */
+    u8         maxTemp;       /*!< overheating threshold, 0 if no limit */
+    u8         minBat;        /*!< alarm on low battery, 0.1v */
+    u16        igniDuration;  /*!< ignition duration in us */
+    u8         starterAdv;    /*!< advance during crancking in deg */
+    u8         igniOverheat;  /*!< advance decrease in case of overheating in deg */
+    u8         noSparkAtDec;  /*!< 1 to stop ignition when deceleration */
+    u16        injOpen;       /*!< time to open injector in us */
+    u16        injRate;       /*!< flow rate of injector in g/us */
+    u8         injAdv;        /*!< mean injection advance in deg */
+    u16        starterInj;    /*!< injection duration during crancking in us */
+    u16        injOverheat;   /*!< injection increase in case of overheating in % */
+    u16        injFullOpen;   /*!< injection duration at full throttle in us */
+    u8         noInjAtDec;    /*!< 1 to stop injection when deceleration */
+    u16        injStart;      /*!< injector opening duration in us */
+    u8         holdPWM;       /*!< PWM ratio during hold time in % */
+    u8         igniPolarity;  /*!< 0 active at low state */
+    u8         injPolarity;   /*!< 0 active at low state */
+    u8         pmhPolarity;   /*!< 0 active at low state */
+    u8         pumpPolarity;  /*!< 0 active at low state */
+    u8         injTable[12][12];  /*!< table for injection */
+    u8         igniTable[12][12];  /*!< table for ignition */
 }eeprom_data_t;
 
 /**
@@ -130,16 +136,16 @@ typedef struct {
  * Current_data stores variable of system
  */
 typedef struct {
-   uint16_t battery;          /*!< in 10mV */
-   uint16_t temp1;            /*!< in degC */
-   uint16_t temp2;            /*!< in degC */
-   uint8_t throttle;          /*!< in %    */
-   uint8_t flybackFB;         /*!< in V    */
-   uint16_t pressure;         /*!< in MPa  */
-   uint8_t  HVvalue;          /*!< PWM duty cycle for High voltage supply */
-   uint16_t RPM;              /*!< RPM */
-   uint16_t speed;            /*!< speed */
-   uint8_t state;             /*!< state => 0 : stop, 1 : cranking, 2 : running, 3 : alarm, 4 : error 5 : stalled */
+   u16 battery;          /*!< in 10mV */
+   u16 temp1;            /*!< in degC */
+   u16 temp2;            /*!< in degC */
+   u8 throttle;          /*!< in %    */
+   u8 flybackFB;         /*!< in V    */
+   u16 pressure;         /*!< in MPa  */
+   u8  HVvalue;          /*!< PWM duty cycle for High voltage supply */
+   u16 RPM;              /*!< RPM */
+   u16 speed;            /*!< speed */
+   u8 state;             /*!< state => 0 : stop, 1 : cranking, 2 : running, 3 : alarm, 4 : error 5 : stalled */
    Switch_t Ignition;         /*!< ignition mesurements */
    Switch_t Injection;        /*!< injection mesurements */
 }Current_Data_t;
@@ -152,9 +158,9 @@ typedef struct {
  * Flags stores variable of system state
  */
 typedef struct {
-   uint8_t newCmd;    	/*!< New command in uart buffer */
-   uint8_t debug;      /*!< debug printf enable */
-   uint8_t PMHEnable;  /*!< PMH enable */
+   u8 newCmd;    	/*!< New command in uart buffer */
+   u8 debug;      /*!< debug printf enable */
+   u8 PMHEnable;  /*!< PMH enable */
    STATE PMHState;   /*!< PMH current state : active/inactive */
 }Flags_t;
 
@@ -167,8 +173,8 @@ typedef struct {
  * there are 250 ticks of 4 us per masterclk period
  */
 typedef struct {
-    uint32_t clk;
-    uint8_t  tick;
+    u32 clk;
+    u8  tick;
 }TimeStamp_t; 
 
 #endif

@@ -61,21 +61,21 @@ extern eeprom_data_t    eData;
 extern Current_Data_t   CurrentValues;
 
 
-volatile uint8_t bufTx[BUFSIZE];
-volatile uint8_t bufRx[BUFSIZE];
-volatile uint8_t indexRx;
-volatile uint8_t indexTxRead;
-volatile uint8_t indexTxWrite;
+volatile u8 bufTx[BUFSIZE];
+volatile u8 bufRx[BUFSIZE];
+volatile u8 indexRx;
+volatile u8 indexTxRead;
+volatile u8 indexTxWrite;
 
 static int32_t 	args[MAXARGS];
 static commandType_t command;
 
-uint8_t dbg[16];
+u8 dbg[16];
 
 
-static uint8_t GetArg(uint8_t *argIndex, uint8_t *indexRxRead);
-static uint8_t SetArg(uint8_t argIndex);
-static void SendToUsart(uint8_t result, uint8_t nbArg, uint8_t type);
+static u8 GetArg(u8 *argIndex, u8 *indexRxRead);
+static u8 SetArg(u8 argIndex);
+static void SendToUsart(u8 result, u8 nbArg, u8 type);
 
 /****
 *
@@ -91,9 +91,9 @@ static void SendToUsart(uint8_t result, uint8_t nbArg, uint8_t type);
 *		OK if no error, else error
 *
 */
-static uint8_t CommandDispatch(void)
+static u8 CommandDispatch(void)
 {
-    uint8_t result = OK;
+    u8 result = OK;
 
     /* Process the command type */
     switch(command.cmdType)
@@ -310,9 +310,9 @@ static uint8_t CommandDispatch(void)
 void ProcessCommand(void)
 {
     state_e state = IDLE;
-    uint8_t indexRxRead = 0;
-    uint8_t argIndex = 0;
-    uint8_t c;
+    u8 indexRxRead = 0;
+    u8 argIndex = 0;
+    u8 c;
 
     /* read reception buffer until last received char */
     while(indexRxRead != indexRx)
@@ -381,15 +381,15 @@ void ProcessCommand(void)
 }
 
 /**
- * \fn void SendToUsart(uint8_t result, uint8_t nbArg, uint8_t type)
+ * \fn void SendToUsart(u8 result, u8 nbArg, u8 type)
  * \brief send buffer to usart
  *
  * \param none
  * \return none
  */
-static void SendToUsart(uint8_t result, uint8_t nbArg, uint8_t type)
+static void SendToUsart(u8 result, u8 nbArg, u8 type)
 {
-    uint8_t i, start = 0, bufEmpty = 0;
+    u8 i, start = 0, bufEmpty = 0;
 
     if(indexTxWrite == indexTxRead) // nothing in buffer
     {
@@ -419,18 +419,18 @@ static void SendToUsart(uint8_t result, uint8_t nbArg, uint8_t type)
 }
 
 /**
- * \fn uint8_t GetArg(uint8_t *argIndex, uint8_t *indexRxRead)
+ * \fn u8 GetArg(u8 *argIndex, u8 *indexRxRead)
  * \brief process receive buffer to extract arguments
  *
  * \param argIndex index of the current arg in the arg table, will be updated by the function
  * \param indexRxRead index of the current position in the RX buffer, will be updated by the function
  * \return LAST_ARG if the final character is CR, NEXT_ARG if there is still an arg to read, ERROR_ARG if conversion failed
  */
-static uint8_t GetArg(uint8_t *argIndex, uint8_t *indexRxRead)
+static u8 GetArg(u8 *argIndex, u8 *indexRxRead)
 {
     int8_t str[8];
     int8_t c; 
-    uint8_t index = 0;
+    u8 index = 0;
 
     // Extract digit str
     while((c = bufRx[*indexRxRead]))
@@ -463,16 +463,16 @@ static uint8_t GetArg(uint8_t *argIndex, uint8_t *indexRxRead)
 }
 
 /**
- * \fn uint8_t SetArg(uint8_t argIndex)
+ * \fn u8 SetArg(u8 argIndex)
  * \brief write args to output buffer 
  *
  * \param argIndex index of the current arg in the arg table
  * \return OK in case of succes
  */
-static uint8_t SetArg(uint8_t argIndex)
+static u8 SetArg(u8 argIndex)
 {
-    uint8_t str[16];
-    uint8_t *pstr = &str[0];
+    u8 str[16];
+    u8 *pstr = &str[0];
 
     ultoa(args[argIndex], (char *)str, 10);
 

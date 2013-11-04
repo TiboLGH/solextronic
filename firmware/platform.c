@@ -45,7 +45,7 @@
 #define BAUD 	        57600
 #define HTINPUT 	    (PIND & (1 << PD6))
 
-uint16_t EEMEM magic = 0xCAFE;
+u16 EEMEM magic = 0xCAFE;
 eeprom_data_t EEMEM eeprom;
 const PROGMEM eeprom_data_t eeInit = {
     .ratio          = {100, 100, 100, 100, 100},
@@ -82,20 +82,20 @@ extern Flags_t          Flags;
 extern eeprom_data_t    eData;
 extern Current_Data_t   CurrentValues;
 
-extern uint8_t bufTx[];
-extern uint8_t bufRx[];
-extern uint8_t indexRx;
-extern uint8_t indexTxRead;
-extern uint8_t indexTxWrite;
-extern uint8_t rReady;
+extern u8 bufTx[];
+extern u8 bufRx[];
+extern u8 indexRx;
+extern u8 indexTxRead;
+extern u8 indexTxWrite;
+extern u8 rReady;
 
-static volatile uint16_t adcValues[5];
-const uint8_t adcIndex[] = {ADC_BATTERY, ADC_TEMP1, ADC_TEMP2, ADC_THROTTLE, ADC_IDLE};
-static volatile uint8_t adcState;
-static volatile uint8_t adcTrigger;
-static uint32_t	timerTable[TIMER_QTY];
-static volatile uint32_t masterClk;
-static volatile uint8_t count10ms;
+static volatile u16 adcValues[5];
+const u8 adcIndex[] = {ADC_BATTERY, ADC_TEMP1, ADC_TEMP2, ADC_THROTTLE, ADC_IDLE};
+static volatile u8 adcState;
+static volatile u8 adcTrigger;
+static u32	timerTable[TIMER_QTY];
+static volatile u32 masterClk;
+static volatile u8 count10ms;
 static TimeStamp_t     prevTs, newTs; 
 
 
@@ -219,11 +219,11 @@ void InitEeprom(void)
  */
 void updateEeprom(void)
 {
-    static uint8_t index = 0;
-    uint8_t *pData = (uint8_t *)&eData;
+    static u8 index = 0;
+    u8 *pData = (u8 *)&eData;
     if(eeprom_is_ready())
     {
-        eeprom_update_byte((uint8_t*)(&eeprom + index), *(pData + index));
+        eeprom_update_byte((u8*)(&eeprom + index), *(pData + index));
         index++;
         if(index > sizeof(eeprom_data_t)) index = 0;
     }
@@ -246,7 +246,7 @@ ISR(TIMER2_COMPA_vect)
         count10ms = 0;
         // start ADC acquisition
         /*adcState = ADC_BATTERY;
-        uint8_t mux = (1 << REFS0) | ((adcIndex[adcState]) & 0x0F);
+        u8 mux = (1 << REFS0) | ((adcIndex[adcState]) & 0x0F);
         ADMUX = mux;
         PORTC = mux;
         ADCSRA |= (1 << ADSC);
@@ -312,7 +312,7 @@ void InitTimer(void)
 
 
 /**
- * \fn void StartTimer(uint8_t timerHandle)
+ * \fn void StartTimer(u8 timerHandle)
 
  * \brief start a software timer
  *
@@ -321,7 +321,7 @@ void InitTimer(void)
  *
  * To start timer, internal counter is set to master clock value
  */
-void StartTimer(uint8_t timerHandle)
+void StartTimer(u8 timerHandle)
 {
    timerTable[timerHandle] = masterClk;
    return;
@@ -329,7 +329,7 @@ void StartTimer(uint8_t timerHandle)
 
 
 /**
- * \fn unsigned long GetTimer_ms(const uint8_t timerHandle)
+ * \fn unsigned long GetTimer_ms(const u8 timerHandle)
 
  * \brief return number of milliseconds of timer defined by timerHandle
  *
@@ -337,14 +337,14 @@ void StartTimer(uint8_t timerHandle)
  * \return number of milliseconds of timer defined by timerHandle
  *
  */
-unsigned long GetTimer(const uint8_t timerHandle)
+unsigned long GetTimer(const u8 timerHandle)
 {
    return masterClk - timerTable[timerHandle];
 }
 
 
 /**
- * \fn uint8_t EndTimer(const uint8_t timerHandle, const unsigned long duration)
+ * \fn u8 EndTimer(const u8 timerHandle, const unsigned long duration)
 
  * \brief return if duration is over on timer defined by timerHandle
 
@@ -354,7 +354,7 @@ unsigned long GetTimer(const uint8_t timerHandle)
  * \return 0 if duration is not issued, 1 if issued
  *
  */
-uint8_t EndTimer(const uint8_t timerHandle, const unsigned long duration)
+u8 EndTimer(const u8 timerHandle, const unsigned long duration)
 {
    if(masterClk - timerTable[timerHandle] > duration)
       return 1;
@@ -372,7 +372,7 @@ uint8_t EndTimer(const uint8_t timerHandle, const unsigned long duration)
 ISR(ADC_vect)
 {
     return;
-    uint8_t mux;
+    u8 mux;
     // save results
     adcValues[adcState] = ADC;
     // Next channel
@@ -415,27 +415,27 @@ void ADCInit(void)
 void ADCProcessing(void)
 {
 
-    uint8_t mux;
+    u8 mux;
     // Conversion and filtering
     switch(adcState)
     {
         case ADC_BATTERY:
-            CurrentValues.battery = 150 * (uint32_t)ADC / 1024 * eData.ratio[ADC_BATTERY] / 100;     
+            CurrentValues.battery = 150 * (u32)ADC / 1024 * eData.ratio[ADC_BATTERY] / 100;     
             adcState++;
             break;
 
         case ADC_TEMP1:
-            CurrentValues.temp1 = (uint32_t)ADC * 500 / 1024 * eData.ratio[ADC_TEMP1] / 100;     
+            CurrentValues.temp1 = (u32)ADC * 500 / 1024 * eData.ratio[ADC_TEMP1] / 100;     
             adcState++;
             break;
 
         case ADC_TEMP2:
-            CurrentValues.temp2 = (uint32_t)ADC * 500 / 1024 * eData.ratio[ADC_TEMP2] / 100;     
+            CurrentValues.temp2 = (u32)ADC * 500 / 1024 * eData.ratio[ADC_TEMP2] / 100;     
             adcState++;
             break;
 
         case ADC_THROTTLE:
-            CurrentValues.throttle = (eData.ratio[ADC_THROTTLE] * (uint32_t)ADC) / 1024;     
+            CurrentValues.throttle = (eData.ratio[ADC_THROTTLE] * (u32)ADC) / 1024;     
             adcState = ADC_BATTERY;
             break;
         case ADC_IDLE:
@@ -474,15 +474,15 @@ void InitPWM(void)
 }
 
 /**
- * \fn void WritePWMValue(uint8_t value)
+ * \fn void WritePWMValue(u8 value)
  * \brief write value to PWM
  *
- * \param uint8_t value : value to set in %
+ * \param u8 value : value to set in %
  * \return none
 */
-void WritePWMValue(uint8_t value)
+void WritePWMValue(u8 value)
 {
-    OCR0B = (uint8_t)(value * 255 / 100); 
+    OCR0B = (u8)(value * 255 / 100); 
 }
 
 /**
@@ -495,7 +495,7 @@ void WritePWMValue(uint8_t value)
 ISR(INT0_vect)
 {
     // Save timer value
-    uint16_t period; 
+    u16 period; 
     period = TCNT1;
     // clear timer for next period
     TCNT1 = 0;
@@ -513,7 +513,7 @@ ISR(INT0_vect)
 */
 ISR(INT1_vect)
 {
-    uint32_t period; // unit is 4us
+    u32 period; // unit is 4us
     // save current timestamp
     newTs.clk  = masterClk;
     newTs.tick = TCNT2;
@@ -527,5 +527,5 @@ ISR(INT1_vect)
 
     // Compute speed in 1/10 of km/h
     //wh/period = cm/4us
-    CurrentValues.speed = ((uint32_t)eData.wheelSize * 25 * 3600) / period;
+    CurrentValues.speed = ((u32)eData.wheelSize * 25 * 3600) / period;
 }
