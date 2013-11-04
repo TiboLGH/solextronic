@@ -63,14 +63,14 @@ void InitUart(void);
 #define USART_RX_DIS (UCSR0B &= ~_BV(RXCIE0))
 #define USART_TX_EN  (UCSR0B |= _BV(TXCIE0))
 #define USART_TX_DIS (UCSR0B &= ~_BV(TXCIE0))
-void printstr(unsigned char *s);
+void printstr(char *s);
 void putchr(char c);
 
 /* GPIOs functions */
 void InitIOs(void);
 
 /* EEPROM related functions */
-void InitEeprom(void);
+void InitEeprom(u8 force);
 void updateEeprom(void);
 
 

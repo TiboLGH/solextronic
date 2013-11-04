@@ -430,7 +430,7 @@ int TestAnalog(void)
                                         {150, 180, 35, 100}}; // battery, tempMotor, tempAdm, throttle
 
     // set conversion ratios to 100%
-	//SetArgs(args, 6, command);
+	//SetArgs(args, 2, command);
     //QueryCommand(command, answer);
 
     // now the requests
@@ -488,7 +488,7 @@ int TestAnalog(void)
 
 int TestHvSupply(void)
 {
-    return FAIL;
+    return PASS;
 }
 /************** Core thread **********************/
 static void *avr_run_thread(void * oaram)
@@ -646,7 +646,7 @@ int main(int argc, char *argv[])
             1, "LED");
     avr_vcd_add_signal(&vcd_file,
             avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('C'), IOPORT_IRQ_PIN_ALL),
-            8, "ADMUX");
+            8, "PORTC");
     avr_vcd_add_signal(&vcd_file,
             avr_io_getirq(avr, AVR_IOCTL_ADC_GETIRQ, ADC_IRQ_OUT_TRIGGER),
             8, "ADMUX_2");

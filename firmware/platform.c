@@ -132,7 +132,7 @@ void putchr(char c)
     UDR0 = c;
 }
 
-void printstr (unsigned char *string){
+void printstr (char *string){
 	while(*string){
 		putchr(*string++);
 	}
@@ -191,22 +191,22 @@ void InitIOs(void)
  * \fn void InitEeprom(void)
  * \brief Init EEPROM management at PIC start up
  *
- * \param none
+ * \param force : if 1, force reinit EEPROM content
  * \return none
  */
-void InitEeprom(void)
+void InitEeprom(u8 force)
 {
     /* read 2 first bytes to check magic : 
      * allow to see if eeprom is void */
-    if(0xCAFE != eeprom_read_word(&magic))
+    if(force || (0xCAFE != eeprom_read_word(&magic)))
     {
         /* initialise eeprom */
         eeprom_write_word(&magic, 0xCAFE);
-        memcpy_P((void *)&eeprom, (PGM_VOID_P)&eeInit, sizeof(eeprom_data_t));
+        memcpy_P((void *)&eData, (PGM_VOID_P)&eeInit, sizeof(eeprom_data_t));
+    }else{
+        /* read all data from EEPROM to cache */
+        eeprom_read_block((void*)&eData, &eeprom, sizeof(eeprom_data_t)); 
     } 
-
-    /* read all data from EEPROM to cache */
-    eeprom_read_block((void*)&eData, &eeprom, sizeof(eeprom_data_t)); 
     return;
 }
 
@@ -382,7 +382,7 @@ ISR(ADC_vect)
     {
         mux = (1 << REFS0) | ((adcIndex[adcState]) & 0x0F);
         ADMUX = mux;
-        PORTC = mux;
+        //PORTC = mux;
         ADCSRA |= (1 << ADSC);
     }
 }
@@ -447,7 +447,7 @@ void ADCProcessing(void)
     }
     mux = (1 << REFS0) | (adcState & 0x0F);
     ADMUX = mux;
-    PORTC = mux;
+    //PORTC = mux;
     ADCSRA |= (1 << ADSC);
 }
 

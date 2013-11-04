@@ -62,9 +62,7 @@ int main(void)
     InitUart();
     InitTimer();
     ADCInit();
-    eData.timerLed = 20;
-    eData.wheelSize = 182;
-    for(u8 i=0;i<5;i++) eData.ratio[i] = 100;
+    InitEeprom(1);
 
 	sei();
     StartTimer(TIMER_100MS);
