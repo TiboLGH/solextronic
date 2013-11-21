@@ -1,7 +1,7 @@
 TARGET		= computation.exe
 CC		= gcc
 CFLAGS		= -I "lib" -MMD --std=gnu99 -O2 -Wall -g -D$(GIT_VER) -fPIC
-LDFLAGS		= -MMD -fPIC -Wl
+LDFLAGS		= -MMD -fPIC
 GIT_VER		:=VERSION_GIT=0x$(shell git rev-parse --short HEAD)
 
 C_SRCS		= $(wilcard *.c)
