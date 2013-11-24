@@ -605,7 +605,7 @@ int main(int argc, char *argv[])
 	avr_connect_irq(pulse_input_wheel.irq  + IRQ_PULSE_OUT, avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 3));
     avr_irq_t * i_pwm = avr_io_getirq(avr, AVR_IOCTL_TIMER_GETIRQ('0'), TIMER_IRQ_OUT_PWM1);
 	avr_irq_register_notify(i_pwm, pwm_changed_hook, NULL);	
-    int   adc_input[4] = {ADC_IRQ_ADC0, ADC_IRQ_ADC1, ADC_IRQ_ADC2, ADC_IRQ_ADC3}; 
+    int   adc_input[4] = {ADC_IRQ_ADC7, ADC_IRQ_ADC1, ADC_IRQ_ADC2, ADC_IRQ_ADC3}; 
     float adc_value[4] = {1, 1, 1, 1}; 
     analog_input_init(avr, &analog, 4, adc_input, adc_value);
 	

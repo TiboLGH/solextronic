@@ -48,6 +48,7 @@ void analog_input_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 	analog_input_t *p = (analog_input_t*)param;
     avr_adc_mux_t mux;
     memcpy(&mux, &value, sizeof(mux));
+    //printf("index %d\n", mux.src);
     for(int i = 0; i < p->nb_inputs; i++)
     {
         if(mux.src == p->adc_irq_index[i]){

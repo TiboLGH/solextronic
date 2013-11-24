@@ -48,12 +48,12 @@ enum
 
 enum
 {
-   ADC_BATTERY = 0,  /*!< ADC0 */
-   ADC_TEMP1,        /*!< ADC1 */
-   ADC_TEMP2,        /*!< ADC2 */
-   ADC_THROTTLE,     /*!< ADC3 */
-   ADC_PRESSURE,     /*!< ADC6 */
-   ADC_IDLE
+    ADC_BATTERY = 0, /*!< ADC7 */
+    ADC_TEMP1,       /*!< ADC1 */
+    ADC_TEMP2,       /*!< ADC2 */
+    ADC_THROTTLE,    /*!< ADC3 */
+    ADC_PRESSURE,    /*!< ADC6 */
+    ADC_IDLE
 };
 
 
