@@ -1,22 +1,18 @@
-eeschema (2012-01-19 BZR 3256)-stable  >> Creation date: lun. 11 nov. 2013 15:20:12 CET
+eeschema (2012-01-19 BZR 3256)-stable  >> Creation date: dim. 24 nov. 2013 16:21:02 CET
 
 #Cmp ( ordre = Référence )
 | C1         10nF        
 | C2         2.2uF       
 | C3         10nF        
 | C4         22uF        
-| C5         10uF        
 | D1         RED         
 | D2         Yellow      
-| D3         GREEN       
 | J1         DB15        
-| P1         CONN_1      
-| P2         Batt        
+| P1         CONN_4      
 | R1         680         
 | R2         680         
 | R3         1k          
 | R4         1k          
-| R5         680         
 | RV1        100k        
 | RV2        1k          
 | RV3        1k          
@@ -25,7 +21,6 @@ eeschema (2012-01-19 BZR 3256)-stable  >> Creation date: lun. 11 nov. 2013 15:20
 | RV6        100k        
 | U1         LM555N      
 | U2         LM555N      
-| U3         1N4007      
 #End Cmp
 
 #Cmp ( ordre = Valeur )
@@ -33,23 +28,18 @@ eeschema (2012-01-19 BZR 3256)-stable  >> Creation date: lun. 11 nov. 2013 15:20
 | 100k         RV6       
 | 10nF         C1        
 | 10nF         C3        
-| 10uF         C5        
 | 1k           R3        
 | 1k           R4        
 | 1k           RV2       
 | 1k           RV3       
 | 1k           RV4       
 | 1k           RV5       
-| 1N4007       U3        
 | 2.2uF        C2        
 | 22uF         C4        
 | 680          R1        
 | 680          R2        
-| 680          R5        
-| Batt         P2        
-| CONN_1       P1        
+| CONN_4       P1        
 | DB15         J1        
-| GREEN        D3        
 | LM555N       U1        
 | LM555N       U2        
 | RED          D1        
