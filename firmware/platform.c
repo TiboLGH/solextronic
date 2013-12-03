@@ -90,7 +90,7 @@ extern u8 indexTxWrite;
 extern u8 rReady;
 
 static volatile u16 adcValues[5];
-const u8 adcIndex[] = {ADC_BATTERY, ADC_TEMP1, ADC_TEMP2, ADC_THROTTLE, ADC_IDLE};
+const u8 adcIndex[] = {7, 1, 2, 3, 6, 255};
 static volatile u8 adcState;
 static volatile u8 adcTrigger;
 static u32	timerTable[TIMER_QTY];
@@ -382,7 +382,7 @@ ISR(ADC_vect)
     {
         mux = (1 << REFS0) | ((adcIndex[adcState]) & 0x0F);
         ADMUX = mux;
-        //PORTC = mux;
+        PORTC = mux;
         ADCSRA |= (1 << ADSC);
     }
 }
@@ -400,7 +400,7 @@ void ADCInit(void)
              (0 << ADATE) |
              (0 << ADIE) | 
              (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0); // prescaler 128
-    DIDR0 = 0x0F; // set ADC0..3 pin to ADC inputs
+    DIDR0 = 0x0E; // set ADC1..3 pin to ADC inputs
     adcTrigger = False; 
     adcState = ADC_IDLE;
 }
@@ -421,17 +421,17 @@ void ADCProcessing(void)
     {
         case ADC_BATTERY:
             CurrentValues.battery = 150 * (u32)ADC / 1024 * eData.ratio[ADC_BATTERY] / 100;     
-            adcState++;
+            adcState = ADC_TEMP1;
             break;
 
         case ADC_TEMP1:
             CurrentValues.temp1 = (u32)ADC * 500 / 1024 * eData.ratio[ADC_TEMP1] / 100;     
-            adcState++;
+            adcState = ADC_TEMP2;
             break;
 
         case ADC_TEMP2:
             CurrentValues.temp2 = (u32)ADC * 500 / 1024 * eData.ratio[ADC_TEMP2] / 100;     
-            adcState++;
+            adcState = ADC_THROTTLE;
             break;
 
         case ADC_THROTTLE:
@@ -445,9 +445,9 @@ void ADCProcessing(void)
             //ASSERT(0);
             adcState = ADC_BATTERY;
     }
-    mux = (1 << REFS0) | (adcState & 0x0F);
+    mux = (1 << REFS0) | (adcIndex[adcState] & 0x0F);
     ADMUX = mux;
-    //PORTC = mux;
+    PORTC = mux;
     ADCSRA |= (1 << ADSC);
 }
 
