@@ -1,4 +1,4 @@
-update=mer. 20 nov. 2013 23:24:51 CET
+update=lun. 25 nov. 2013 23:09:41 CET
 version=1
 last_client=eeschema
 [cvpcb]
@@ -141,5 +141,4 @@ LibName27=opto
 LibName28=atmel
 LibName29=contrib
 LibName30=valves
-LibName31=arduino
-LibName32=solextronic
+LibName31=solextronic
