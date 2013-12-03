@@ -44,7 +44,7 @@
 #define NORMAL(msg, ...) fprintf( stdout, msg, ##__VA_ARGS__ )
 #define DEBUG(msg, ...) if(debugTrace) fprintf( stderr, "\033[1m" msg "\n\033[0m", ##__VA_ARGS__ )
 
-#define TABLE_SIZE	12
+#define TABLE_SIZE	10
 
 bool debugTrace = false;
 bool chartOn = false;
@@ -64,6 +64,8 @@ typedef struct {
     int batMin;
     int batStep;
     int batMax;
+	int rpmTable[TABLE_SIZE];
+	int loadTable[TABLE_SIZE];
 }Configuration_t;
 
 Configuration_t conf;
@@ -94,9 +96,111 @@ static void printHelp(FILE *stream, int exitMsg, const char* progName)
 	exit(exitMsg);
 }
 
-/* Read tables from CSV file */
-bool readCsvTable(char* fileName, double **table)
+/* find the next word starting at 's', delimited by characters
+ * in the string 'delim', and store up to 'len' bytes into *buf
+ * returns pointer to immediately after the word, or NULL if done.
+ * From http://pjd-notes.blogspot.fr/2011/09/alternative-to-strtok3-in-c.html
+ */
+char *strwrd(char *s, char *buf, size_t len, char *delim)
 {
+	s += strspn(s, delim);
+	int n = strcspn(s, delim);  /* count the span (spn) of bytes in */
+	if (len-1 < n)              /* the complement (c) of *delim */
+		n = len-1;
+	memcpy(buf, s, n);
+	buf[n] = 0;
+	s += n;
+	return (*s == 0) ? NULL : s;
+}
+
+/* Read tables from CSV file */
+bool readCsvTable(char* key, char* fileName, double table[TABLE_SIZE][TABLE_SIZE], int *RPM, int *load)
+{
+	FILE *pf = NULL;
+	char line[512];
+	char token[12][64];
+	char *result = NULL;
+	int index = 0;
+
+	if(!fileName || !key || !table)
+	{
+		RED("Erreur sur les parametres\n");
+		return false;
+	}
+	if(!(pf = fopen(fileName, "rb")))
+	{
+		RED("Impossible d'ouvrir le fichier %s!\n", fileName);
+		return false;
+	}
+	// read first line
+	result = fgets(line, 512, pf);
+	if(!result)
+	{
+		RED("Fichier %s vide\n", fileName);
+		fclose(pf);
+		return false;
+	}
+	// tokenize line and check keyword
+	result = strwrd(line, &(token[index][0]), 64, ",");
+	if(strncmp(key, &(token[0][0]), 64))
+	{
+		RED("Fichier %s : cle fausse ! %s / %s\n", fileName, &(token[0][0]), key);
+		fclose(pf);
+		return false;
+	}else{
+		//DEBUG("Fichier %s : cle ok ! %s / %s\n", fileName, &(token[0][0]), key);
+	}
+	index = 1;
+	do{
+		result = strwrd(result, &(token[index][0]), 64, ",");
+	
+		//DEBUG("Token %d : %s\n", index, &(token[index][0]));
+		index++;
+		if(index > TABLE_SIZE + 1)
+		{
+			RED("Trop de parametres !");
+			fclose(pf);
+			return false;
+		}
+	}while(result);
+	for(int i=0; i<TABLE_SIZE; i++)
+	{
+		load[i] = atoi(&(token[i+1][0])); // load values
+	}
+	
+	// read each line
+	index = 0;
+	int indexRPM = 0;
+	while(result = fgets(line, 512, pf))
+	{
+		index = 0;
+		do{
+			result = strwrd(result, &(token[index][0]), 64, ",");
+
+			//DEBUG("Token %d : %s\n", index, &(token[index][0]));
+			index++;
+			if(index > TABLE_SIZE + 1)
+			{
+				RED("Trop de parametres !");
+				fclose(pf);
+				return false;
+			}
+		}while(result);
+		RPM[indexRPM] = atoi(&(token[0][0]));
+		for(int i=0; i<TABLE_SIZE; i++)
+		{
+			table[indexRPM][i] = strtod(&(token[i+1][0]), NULL);
+		}
+		indexRPM++;
+		if(indexRPM > TABLE_SIZE)
+		{
+			RED("Trop de lignes !");
+			fclose(pf);
+			return false;
+		}
+	}
+
+	fclose(pf);
 	return true;
 }
 
@@ -228,6 +332,40 @@ int main(int argc, char *argv[])
     parseIniFile("computation.ini");
     dumpConfiguration();
     
+	if(!readCsvTable("Ignition", "ignition.csv", ignTable, conf.rpmTable, conf.loadTable))
+	{
+		RED("Impossible de lire le fichier ignition !");
+		exit(1);
+	}
+	HIGH("Table d'avance :");
+	char str[256];
+	sprintf(str,"\t");
+	for(int i=0; i<TABLE_SIZE; i++) sprintf(str,"%s%d\t", str, conf.loadTable[i]);
+	printf("%s\n", str);
+	for(int j=0; j<TABLE_SIZE; j++)
+	{
+		sprintf(str,"%d\t", conf.rpmTable[j]);
+		for(int i=0; i<TABLE_SIZE; i++) sprintf(str,"%s%.1f\t", str, ignTable[j][i]);
+		printf("%s\n", str);
+	}
+	
+	if(!readCsvTable("Injection", "injection.csv", injTable, conf.rpmTable, conf.loadTable))
+	{
+		RED("Impossible de lire le fichier injection !");
+		exit(1);
+	}
+	HIGH("Table d'injection :");
+	sprintf(str,"\t");
+	for(int i=0; i<TABLE_SIZE; i++) sprintf(str,"%s%d\t", str, conf.loadTable[i]);
+	printf("%s\n", str);
+	for(int j=0; j<TABLE_SIZE; j++)
+	{
+		sprintf(str,"%d\t", conf.rpmTable[j]);
+		for(int i=0; i<TABLE_SIZE; i++) sprintf(str,"%s%.1f\t", str, injTable[j][i]);
+		printf("%s\n", str);
+	}
+
+
     /* Compute ignition curve */
     /**************************/
 
