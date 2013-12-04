@@ -33,8 +33,8 @@
  *
  */
 
-#include <assert.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/eeprom.h>
@@ -138,6 +138,19 @@ void printstr (char *string){
 	}
 	putchr('\r');
 	putchr('\n');
+}
+
+
+void __assert__(char *expr, char *filename, int linenumber)
+{
+    cli();
+	printstr("FATAL");
+	printstr(expr);
+	printstr(filename);
+    char str[8];
+    itoa(linenumber, (char *)str, 10);
+	printstr(str);
+    abort();
 }
 
 ISR(USART_RX_vect)
@@ -323,8 +336,9 @@ void InitTimer(void)
  */
 void StartTimer(u8 timerHandle)
 {
-   timerTable[timerHandle] = masterClk;
-   return;
+    ASSERT(timerHandle < TIMER_QTY);
+    timerTable[timerHandle] = masterClk;
+    return;
 }
 
 
@@ -339,7 +353,8 @@ void StartTimer(u8 timerHandle)
  */
 unsigned long GetTimer(const u8 timerHandle)
 {
-   return masterClk - timerTable[timerHandle];
+    ASSERT(timerHandle < TIMER_QTY);
+    return masterClk - timerTable[timerHandle];
 }
 
 
@@ -356,10 +371,11 @@ unsigned long GetTimer(const u8 timerHandle)
  */
 u8 EndTimer(const u8 timerHandle, const unsigned long duration)
 {
-   if(masterClk - timerTable[timerHandle] > duration)
-      return 1;
-   else
-      return 0;
+    ASSERT(timerHandle < TIMER_QTY);
+    if(masterClk - timerTable[timerHandle] > duration)
+        return 1;
+    else
+        return 0;
 }
 
 /**

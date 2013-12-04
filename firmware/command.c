@@ -101,6 +101,7 @@ static u8 CommandDispatch(void)
         case Cmd_Reset:
             // Hara Kiri !!
             // TODO : implement a clean reset not interfering with bootloader
+			ASSERT(NULL);
             break;
 
         case Cmd_Version:
@@ -364,6 +365,8 @@ void ProcessCommand(void)
                 break;
             case END:
                 break;
+            default:
+                ASSERT(0); // should never reach this point
         }// switch state
     }// while
 

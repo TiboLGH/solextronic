@@ -48,6 +48,8 @@
 #define VERSION_HARD             1
 
 #define LOG(msg)  if(Flags.debug) printf(msg)
+void __assert__(char *expr, char *filename, int linenumber); 
+#define ASSERT(_expr) do {if (!(_expr)) __assert__(#_expr, __FILE__, __LINE__);} while (0);
 
 #define True  (1)
 #define False (0)
