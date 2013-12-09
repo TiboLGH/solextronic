@@ -21,7 +21,7 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
  /**
- * \file computation.c
+ * \file model.c
  * \brief Calcul de l'injection et de l'allumage 
  * \author Thibault Bouttevin
  * \date June 2013
@@ -94,7 +94,7 @@ static void printHelp(FILE *stream, int exitMsg, const char* progName)
 	"  -g\t\t affichage des graphes (avec gnuplot)\n"
 	"  -v\t\t affichage des traces de debug\n"
 	"  -f\t\t calcul du debit de l'injecteur (calcul des tables de timings par default)\n"
-	"  -i <inifile>\t utilisation du fichier <inifile> a la place de computation.ini\n"
+	"  -i <inifile>\t utilisation du fichier <inifile> a la place de model.ini\n"
 	);
 	exit(exitMsg);
 }
@@ -299,7 +299,7 @@ int main(int argc, char *argv[])
     /* Lecture des arguments */
     int c;
     char iniFileName[256];
-    strncpy(iniFileName, "computation.ini", 256);
+    strncpy(iniFileName, "model.ini", 256);
 
     opterr = 0;
     while ((c = getopt (argc, argv, "hfvgi:")) != -1)
@@ -338,7 +338,7 @@ int main(int argc, char *argv[])
 
     /* Lecture de la config et des tables */
     /**************************************/
-    parseIniFile("computation.ini");
+    parseIniFile("model.ini");
     dumpConfiguration();
     
 	if(!readCsvTable("Ignition", conf.ignTableFile, ignTable, conf.rpmTable, conf.loadTable))
