@@ -21,12 +21,13 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
  /**
- * \file compute.c
- * \brief Main file for computation of ignition/injection timings
+ * \file model.c
+ * \brief Calcul de l'injection et de l'allumage 
  * \author Thibault Bouttevin
  * \date June 2013
  *
- * This file includes all the computing core
+ * Ce programme permet de calculer les caracteristiques de l'injecteur 
+ * et/ou de calculer les timings d'injection et d'allumage.
  *
  */
 
@@ -66,6 +67,8 @@ typedef struct {
     int batMax;
 	int rpmTable[TABLE_SIZE];
 	int loadTable[TABLE_SIZE];
+	int injectorMaxDutyCycle;
+	double targetAFR;
 }Configuration_t;
 
 Configuration_t conf;
@@ -81,7 +84,7 @@ double UsToDegree(const double us, const int RPM)
 	return 0;
 }
 
-/* Print help an exit with exit code exit_msg */
+/* Affichage de l'aide */
 static void printHelp(FILE *stream, int exitMsg, const char* progName)
 {
 	fprintf(stream,"usage : %s [options]\n", progName);
@@ -90,16 +93,16 @@ static void printHelp(FILE *stream, int exitMsg, const char* progName)
 	"  -h\t\t affiche ce message\n"
 	"  -g\t\t affichage des graphes (avec gnuplot)\n"
 	"  -v\t\t affichage des traces de debug\n"
-	"  -f\t\t calcul du debit de l'injecteur\n"
-	"  -i <inifile>\t utilisation du fichier <inifile> a la place de computation.ini\n"
+	"  -f\t\t calcul du debit de l'injecteur (calcul des tables de timings par default)\n"
+	"  -i <inifile>\t utilisation du fichier <inifile> a la place de model.ini\n"
 	);
 	exit(exitMsg);
 }
 
-/* find the next word starting at 's', delimited by characters
+/* From http://pjd-notes.blogspot.fr/2011/09/alternative-to-strtok3-in-c.html
+ * find the next word starting at 's', delimited by characters
  * in the string 'delim', and store up to 'len' bytes into *buf
  * returns pointer to immediately after the word, or NULL if done.
- * From http://pjd-notes.blogspot.fr/2011/09/alternative-to-strtok3-in-c.html
  */
 char *strwrd(char *s, char *buf, size_t len, char *delim)
 {
@@ -113,7 +116,7 @@ char *strwrd(char *s, char *buf, size_t len, char *delim)
 	return (*s == 0) ? NULL : s;
 }
 
-/* Read tables from CSV file */
+/* Lecture d'une table depuis un fichier CSV */
 bool readCsvTable(char* key, char* fileName, double table[TABLE_SIZE][TABLE_SIZE], int *RPM, int *load)
 {
 	FILE *pf = NULL;
@@ -132,7 +135,7 @@ bool readCsvTable(char* key, char* fileName, double table[TABLE_SIZE][TABLE_SIZE
 		RED("Impossible d'ouvrir le fichier %s!\n", fileName);
 		return false;
 	}
-	// read first line
+	// Lecture de la 1ere ligne : keyword et load en %
 	result = fgets(line, 512, pf);
 	if(!result)
 	{
@@ -140,7 +143,7 @@ bool readCsvTable(char* key, char* fileName, double table[TABLE_SIZE][TABLE_SIZE
 		fclose(pf);
 		return false;
 	}
-	// tokenize line and check keyword
+	// interpretation et verif du keyword
 	result = strwrd(line, &(token[index][0]), 64, ",");
 	if(strncmp(key, &(token[0][0]), 64))
 	{
@@ -168,10 +171,10 @@ bool readCsvTable(char* key, char* fileName, double table[TABLE_SIZE][TABLE_SIZE
 		load[i] = atoi(&(token[i+1][0])); // load values
 	}
 	
-	// read each line
+	// lecture des autres lignes
 	index = 0;
 	int indexRPM = 0;
-	while(result = fgets(line, 512, pf))
+	while((result = fgets(line, 512, pf)))
 	{
 		index = 0;
 		do{
@@ -204,12 +207,13 @@ bool readCsvTable(char* key, char* fileName, double table[TABLE_SIZE][TABLE_SIZE
 	return true;
 }
 
-/* Read ini file and load parameters table */
+/* Lecture du fichier ini de config */
 bool parseIniFile(char * iniName)
 {
     dictionary *ini ;
     char *s;
     int var;
+	double vard;
 
     ini = iniparser_load(iniName);
     if(!ini) {
@@ -218,7 +222,7 @@ bool parseIniFile(char * iniName)
     }
     //iniparser_dump(ini, stderr);
 
-    /* Get tables attributes */
+    /* Lecture attributs table */
     if((s = iniparser_getstring(ini, "table:injectionFile", NULL)))
     {
         strncpy(conf.injTableFile, s, 256);
@@ -228,22 +232,26 @@ bool parseIniFile(char * iniName)
         strncpy(conf.ignTableFile, s, 256);
     }
 
-    /* Get injection attribute */
+    /* Lecture attributs injection */
     var = iniparser_getint(ini, "Injection:Rate", -1);
     conf.injRate = var; 
     var = iniparser_getint(ini, "Injection:OpenTime", -1);
     conf.injOpen = var; 
     var = iniparser_getint(ini, "Injection:Advance", -1);
     conf.injAdv = var; 
+    var = iniparser_getint(ini, "Injection:MaxDutyCycle", -1);
+    conf.injectorMaxDutyCycle = var; 
+    vard = iniparser_getdouble(ini, "Injection:TargetAFR", -1);
+    conf.targetAFR = vard; 
     
-    /* Get ignition attribute */
+    /* Lecture attributs allumage */
     var = iniparser_getint(ini, "Ignition:PMHAdvance", -1);
     conf.pmhAdv = var; 
     var = iniparser_getint(ini, "Ignition:Duration", -1);
     conf.ignDuration = var; 
 
 
-    /* Get range attribute */
+    /* Lecture attributs range */
     var = iniparser_getint(ini, "Range:TempMin", -1);
     conf.tempMin = var; 
     var = iniparser_getint(ini, "Range:TempStep", -1);
@@ -261,7 +269,7 @@ bool parseIniFile(char * iniName)
     return true;
 }
 
-/* Dump configuration */
+/* Affichage configuration */
 bool dumpConfiguration(void)
 {
     HIGH("Configuration");
@@ -273,6 +281,8 @@ bool dumpConfiguration(void)
     NORMAL("\tDebit d'injecteur :        \t%d\n", conf.injRate); 
     NORMAL("\tOuverture de l'injecteur : \t%d us\n", conf.injOpen); 
     NORMAL("\tAvance de l'injection :    \t%d deg\n", conf.injAdv); 
+    NORMAL("\tRatio max de l'injecteur : \t%d %%\n", conf.injectorMaxDutyCycle); 
+    NORMAL("\tAFR cible :                \t%.1f\n", conf.targetAFR); 
     HIGH("Allumage : ");
     NORMAL("\tAvance du PMH :            \t%d deg\n", conf.pmhAdv); 
     NORMAL("\tDuree de l'allumage :      \t%d us\n", conf.ignDuration); 
@@ -286,29 +296,29 @@ bool dumpConfiguration(void)
 /********* Main ************/
 int main(int argc, char *argv[])
 {
-    /* read command-line arguments */
+    /* Lecture des arguments */
     int c;
     char iniFileName[256];
-    strncpy(iniFileName, "computation.ini", 256);
+    strncpy(iniFileName, "model.ini", 256);
 
     opterr = 0;
     while ((c = getopt (argc, argv, "hfvgi:")) != -1)
     {
         switch (c)
         {
-            case 'h': // help
+            case 'h': // aide
                 printHelp(stdout, EXIT_SUCCESS, argv[0]);
                 break;
-            case 'g': // display charts with gnuplot
+            case 'g': // affichage des graphiques avec gnuplot
                 chartOn = true;
                 break;
-            case 'v': // display debug traces
+            case 'v': // affichage des traces de debug
                 debugTrace = true;
                 break;
-            case 'f': // compute injector flow rate
+            case 'f': // mode calcul du debit de l'injecteur
                 flowrateComputation = true;
 				break;
-            case 'i': // override default ini file
+            case 'i': // remplace le fichier d'ini par default
                 strncpy(iniFileName, optarg, 256);
                 break;
             case '?':
@@ -322,17 +332,16 @@ int main(int argc, char *argv[])
         }
     }
 
-    /* Computation variables */
     double injTable[TABLE_SIZE][TABLE_SIZE];
     double ignTable[TABLE_SIZE][TABLE_SIZE];
 
 
-    /* Read configuration and table files */
+    /* Lecture de la config et des tables */
     /**************************************/
-    parseIniFile("computation.ini");
+    parseIniFile("model.ini");
     dumpConfiguration();
     
-	if(!readCsvTable("Ignition", "ignition.csv", ignTable, conf.rpmTable, conf.loadTable))
+	if(!readCsvTable("Ignition", conf.ignTableFile, ignTable, conf.rpmTable, conf.loadTable))
 	{
 		RED("Impossible de lire le fichier ignition !");
 		exit(1);
@@ -349,7 +358,7 @@ int main(int argc, char *argv[])
 		printf("%s\n", str);
 	}
 	
-	if(!readCsvTable("Injection", "injection.csv", injTable, conf.rpmTable, conf.loadTable))
+	if(!readCsvTable("Injection", conf.injTableFile, injTable, conf.rpmTable, conf.loadTable))
 	{
 		RED("Impossible de lire le fichier injection !");
 		exit(1);
@@ -365,12 +374,18 @@ int main(int argc, char *argv[])
 		printf("%s\n", str);
 	}
 
+	/* Calculs     */
+	/***************/
+	if(flowrateComputation) // calcul des debit min et max de l'injecteur
+	{
 
-    /* Compute ignition curve */
-    /**************************/
+	}else{
 
-    /* Compute injection curve */
-    /***************************/
+		/* Calcul des timings d'allumage */
+		/*********************************/
 
+		/* Calcul des timings d'injection */
+		/**********************************/
+	}
 
 }
