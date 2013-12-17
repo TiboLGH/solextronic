@@ -51,7 +51,7 @@ volatile unsigned char rReady = 0;
 
 Flags_t          Flags;
 eeprom_data_t    eData;
-Current_Data_t   CurrentValues;
+Current_Data_t   gState;
 
 
 int main(void)

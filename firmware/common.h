@@ -81,20 +81,6 @@ enum
 
 
 /**
- * \struct Switch_t
- * \brief Store switch timings
- *
- * This structure is used for ignition and injection
- */
-typedef struct {
-   u16 activeUs;         /*!< active time switch in us */
-   u16 activeDeg;        /*!< active time switch in deg */
-   u16 inactiveUs;       /*!< inactive time switch in us */
-   u16 inactiveDeg;      /*!< inactive time switch in deg */
-}Switch_t;
-
-
-/**
 * \struct eeprom_data_t
 * \brief Map of EEPROM memory
 *
@@ -127,8 +113,12 @@ typedef struct {
     u8         injPolarity;   /*!< 0 active at low state */
     u8         pmhPolarity;   /*!< 0 active at low state */
     u8         pumpPolarity;  /*!< 0 active at low state */
-    u8         injTable[12][12];  /*!< table for injection */
-    u8         igniTable[12][12];  /*!< table for ignition */
+    u16        injTestPW;     /*!< pulse width of injector test mode in us. Max 10ms */
+    u16        injTestCycles; /*!< number of cycle of injector test mode. */
+    u16        rpmBins[10];   /*!< table of RPM indexes */
+    u8         loadBins[10];  /*!< table of load/MAF indexes */
+    u8         injTable[10][10];  /*!< table for injection */
+    u8         igniTable[10][10];  /*!< table for ignition */
 }eeprom_data_t;
 
 /**
@@ -138,18 +128,19 @@ typedef struct {
  * Current_data stores variable of system
  */
 typedef struct {
-   u16 battery;          /*!< in 10mV */
-   u16 temp1;            /*!< in degC */
-   u16 temp2;            /*!< in degC */
+   u8 battery;           /*!< in 100mV */
+   u8 temp1;             /*!< in degC */
+   u8 temp2;             /*!< in degC */
    u8 throttle;          /*!< in %    */
-   u8 flybackFB;         /*!< in V    */
-   u16 pressure;         /*!< in MPa  */
+   u16 pressure;         /*!< in kPa  */
    u8  HVvalue;          /*!< PWM duty cycle for High voltage supply */
    u16 RPM;              /*!< RPM */
    u16 speed;            /*!< speed */
-   u8 state;             /*!< state => 0 : stop, 1 : cranking, 2 : running, 3 : alarm, 4 : error 5 : stalled */
-   Switch_t Ignition;         /*!< ignition mesurements */
-   Switch_t Injection;        /*!< injection mesurements */
+   u8 engine;            /*!< state => 0 : stop, 1 : cranking, 2 : running, 3 : alarm, 4 : error 5 : stalled */
+   u16 injPulseWidth;    /*!< injector on time in us */
+   u16 injStart;         /*!< injector start time in deg before PMH */
+   u8 advance;           /*!< spark advance in deg before PMH */
+   u16 time;             /*!< current time in sec : will be set only when asked by UART command */
 }Current_Data_t;
 
 

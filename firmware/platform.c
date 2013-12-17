@@ -80,7 +80,7 @@ const PROGMEM eeprom_data_t eeInit = {
 
 extern Flags_t          Flags;
 extern eeprom_data_t    eData;
-extern Current_Data_t   CurrentValues;
+extern Current_Data_t   gState;
 
 extern u8 bufTx[];
 extern u8 bufRx[];
@@ -270,13 +270,13 @@ ISR(TIMER2_COMPA_vect)
         {
             if(HTINPUT == 0)
             {
-                CurrentValues.HVvalue += eData.HVstep;
+                gState.HVvalue += eData.HVstep;
             }else{
-                CurrentValues.HVvalue -= eData.HVstep;
+                gState.HVvalue -= eData.HVstep;
             }
-            if(CurrentValues.HVvalue > 100) CurrentValues.HVvalue = 100;
-            else if((signed)CurrentValues.HVvalue < 0) CurrentValues.HVvalue = 0;
-            WritePWMValue(CurrentValues.HVvalue);
+            if(gState.HVvalue > 100) gState.HVvalue = 100;
+            else if((signed)gState.HVvalue < 0) gState.HVvalue = 0;
+            WritePWMValue(gState.HVvalue);
         } 
 
     }
@@ -291,7 +291,7 @@ ISR(TIMER2_COMPA_vect)
  */
 ISR(TIMER1_OVF_vect)
 {
-    CurrentValues.state = STALLED;
+    gState.engine = STALLED;
 }
 
 /**
@@ -436,22 +436,22 @@ void ADCProcessing(void)
     switch(adcState)
     {
         case ADC_BATTERY:
-            CurrentValues.battery = 150 * (u32)ADC / 1024 * eData.ratio[ADC_BATTERY] / 100;     
+            gState.battery = 150 * (u32)ADC / 1024 * eData.ratio[ADC_BATTERY] / 100;     
             adcState = ADC_TEMP1;
             break;
 
         case ADC_TEMP1:
-            CurrentValues.temp1 = (u32)ADC * 500 / 1024 * eData.ratio[ADC_TEMP1] / 100;     
+            gState.temp1 = (u32)ADC * 500 / 1024 * eData.ratio[ADC_TEMP1] / 100;     
             adcState = ADC_TEMP2;
             break;
 
         case ADC_TEMP2:
-            CurrentValues.temp2 = (u32)ADC * 500 / 1024 * eData.ratio[ADC_TEMP2] / 100;     
+            gState.temp2 = (u32)ADC * 500 / 1024 * eData.ratio[ADC_TEMP2] / 100;     
             adcState = ADC_THROTTLE;
             break;
 
         case ADC_THROTTLE:
-            CurrentValues.throttle = (eData.ratio[ADC_THROTTLE] * (u32)ADC) / 1024;     
+            gState.throttle = (eData.ratio[ADC_THROTTLE] * (u32)ADC) / 1024;     
             adcState = ADC_BATTERY;
             break;
         case ADC_IDLE:
@@ -486,7 +486,7 @@ void InitPWM(void)
              (0 << CS01)   | (1 << CS00); 
 
     OCR0B = 0; // off state
-    CurrentValues.HVvalue = 0;
+    gState.HVvalue = 0;
 }
 
 /**
@@ -516,8 +516,8 @@ ISR(INT0_vect)
     // clear timer for next period
     TCNT1 = 0;
     // compute RPM : tick is 4us
-    CurrentValues.RPM = 60 * (250000 / period);
-    CurrentValues.state = RUNNING;
+    gState.RPM = 60 * (250000 / period);
+    gState.engine = RUNNING;
 }
 
 /**
@@ -543,5 +543,5 @@ ISR(INT1_vect)
 
     // Compute speed in 1/10 of km/h
     //wh/period = cm/4us
-    CurrentValues.speed = ((u32)eData.wheelSize * 25 * 3600) / period;
+    gState.speed = ((u32)eData.wheelSize * 25 * 3600) / period;
 }

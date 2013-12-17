@@ -58,7 +58,7 @@
 
 extern Flags_t          Flags;
 extern eeprom_data_t    eData;
-extern Current_Data_t   CurrentValues;
+extern Current_Data_t   gState;
 
 
 volatile u8 bufTx[BUFSIZE];
@@ -251,7 +251,7 @@ static u8 CommandDispatch(void)
                 case Cmd_SetHT:
                     args[1] = eData.HVstep;
                     args[2] = eData.HVmanual;
-                    args[3] = CurrentValues.HVvalue;
+                    args[3] = gState.HVvalue;
                     SendToUsart(OK, 4, command.cmdType);
                     break;
                 case Cmd_SetRatio:
@@ -262,17 +262,17 @@ static u8 CommandDispatch(void)
                     SendToUsart(OK, 5, command.cmdType);
                     break;
                 case Cmd_GetGeneral:
-                    args[1] = CurrentValues.state;
-                    args[2] = CurrentValues.RPM;
-                    args[3] = CurrentValues.speed;
+                    args[1] = gState.engine;
+                    args[2] = gState.RPM;
+                    args[3] = gState.speed;
                     SendToUsart(OK, 4, command.cmdType);
                     break;
                 case Cmd_GetADC:
-                    args[1] = CurrentValues.battery;
-                    args[2] = CurrentValues.temp1;
-                    args[3] = CurrentValues.temp2;
-                    args[4] = CurrentValues.throttle;
-                    args[5] = CurrentValues.pressure;
+                    args[1] = gState.battery;
+                    args[2] = gState.temp1;
+                    args[3] = gState.temp2;
+                    args[4] = gState.throttle;
+                    args[5] = gState.pressure;
                     SendToUsart(OK, 6, command.cmdType);
                     break;
                 case Cmd_SetLed:
