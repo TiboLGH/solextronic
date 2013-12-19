@@ -78,7 +78,8 @@ void updateEeprom(void);
 void InitTimer(void);
 void StartTimer(u8 timerHandle);
 u32 GetTimer(const u8 timerHandle);
-u8 EndTimer(const u8 timerHandle, const u32 duration); 
+u8 EndTimer(const u8 timerHandle, const u32 duration);
+void GetTime(u16 *dst);
 
 /* ADC related functions */
 void ADCInit(void);

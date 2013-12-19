@@ -155,19 +155,10 @@ void __assert__(char *expr, char *filename, int linenumber)
 
 ISR(USART_RX_vect)
 {
-	char c;
-	c = UDR0;
 	if(bit_is_clear(UCSR0A, FE0))
 	{
-		if(c != '\r')
-		{
-            bufRx[indexRx++] = c;
-		}else{
-            bufRx[indexRx++] = c; // let the CR
-            bufRx[indexRx++] = 0; 
-			rReady = 1;
-			USART_RX_DIS;
-		}
+        bufRx[indexRx++] = UDR0;
+        rReady = 1;
 	}
 }
 
@@ -326,7 +317,6 @@ void InitTimer(void)
 
 /**
  * \fn void StartTimer(u8 timerHandle)
-
  * \brief start a software timer
  *
  * \param timerHandle handle on the timer to start
@@ -344,7 +334,6 @@ void StartTimer(u8 timerHandle)
 
 /**
  * \fn unsigned long GetTimer_ms(const u8 timerHandle)
-
  * \brief return number of milliseconds of timer defined by timerHandle
  *
  * \param timerHandle handle on the timer to get
@@ -360,9 +349,7 @@ unsigned long GetTimer(const u8 timerHandle)
 
 /**
  * \fn u8 EndTimer(const u8 timerHandle, const unsigned long duration)
-
  * \brief return if duration is over on timer defined by timerHandle
-
  *
  * \param timerHandle handle on the timer to get
  * \param duration wait time in msec
@@ -376,6 +363,20 @@ u8 EndTimer(const u8 timerHandle, const unsigned long duration)
         return 1;
     else
         return 0;
+}
+
+/**
+ * \fn void GetTime(u16 *dst)
+ * \brief return the current time in second since start
+ *
+ * \param dst variable to hold the result
+ * \return none
+ *
+ */
+void GetTime(u16 *dst)
+{
+    *dst = (u16)(masterClk / 1000); 
+    return;
 }
 
 /**

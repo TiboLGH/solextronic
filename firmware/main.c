@@ -80,12 +80,8 @@ int main(void)
         
         if(rReady)
 		{
-			if(rReady == 1)
-			{
-                rReady = 0;
-                ProcessCommand();
-                USART_RX_EN;
-			}
+            rReady = 0;
+            ProcessCommand();
 		}
 
         // Process ADC Samples
