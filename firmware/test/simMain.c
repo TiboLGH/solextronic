@@ -629,10 +629,24 @@ int main(int argc, char *argv[])
 
 		pthread_t run;
 		pthread_create(&run, NULL, avr_run_thread, NULL);
+        int speed = 0, rpm = 1000;
     	
         while(1)
         {
             sleep(1);
+            for(int j = 0; j < 4; j++)
+            {
+                adc_value[j] += 0.1; 
+                if(adc_value[j] > 5) adc_value[j] = 0.0;
+                analog_input_set_value(&analog, j, adc_value[j]);
+            }
+            uint32_t high, low;
+            if(speed++ > 100) speed = 0;
+            SpeedtoPeriod(speed, &high, &low);
+            pulse_input_config(&pulse_input_wheel, high, low);
+            if((rpm += 100) > 10000) rpm = 1000;
+            RPMtoPeriod(rpm, &high, &low);
+            pulse_input_config(&pulse_input_engine, high, low);
         }
         return 0;
     }

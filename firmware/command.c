@@ -38,86 +38,28 @@
 #include "common.h"
 #include "platform.h"
 
-const char revNum[20] =  {"Solextronic v0.2   "}; // TODO : Print HW/SW version from define 
-const char signature[32] = {"** Solextronic v0.2 beta **    "};
+//const char revNum[20] =  {"Solextronic v0.2   "}; // TODO : Print HW/SW version from define 
+const char revNum[20] =  {"MSII Rev 2.90500    "};   
+const char signature[32] = {"** Solextronic v0.2 beta **     "};
+const char protocol[3] = {"001"};
 
 /*** Commands ***/
 extern eeprom_data_t    eData;
 extern Current_Data_t   gState;
+static Current_Data_t   outputChannel;
 
 
-volatile u8 bufTx[BUFSIZE];
+volatile u8 *bufTx;
 volatile u8 bufRx[BUFSIZE];
 volatile u8 indexRx;
-volatile u8 indexTxRead;
-volatile u8 indexTxWrite;
-
-static int32_t 	args[MAXARGS];
-static commandType_t command;
+volatile u16 txCur = 0;
+volatile u16 txCount = 0;
+volatile u8 isTx = False;
 
 u8 dbg[16];
 
 
-static u8 GetArg(u8 *argIndex, u8 *indexRxRead);
-static u8 SetArg(u8 argIndex);
-static void SendToUsart(u8 *buffer, u8 len);
-
-/****
-*
-* CommandDispatch
-*
-* Parameters:
-*       none
-*
-* Description:
-*		This function implements answer to remote commands
-*
-* Returns:
-*		OK if no error, else error
-*
-*/
-static u8 CommandDispatch(void)
-{
-    u16 curTime;
-
-    /* Process the command type */
-    switch(command.cmdType)
-    {
-        case 'a': // send back the internal state stored in gState
-            SendToUsart((u8 *)&gState, sizeof(gState));
-            return OK;
-
-        case 'S': // send back the signature string
-            SendToUsart((u8 *)signature, 32);
-            return OK;
-
-        case 'Q': // send back the revision string
-            SendToUsart((u8 *)revNum, 20);
-            return OK;
-
-        case 'b': // burn parameters from RAM to EEPROM : faked, done in background
-            return OK;
-
-        case 'c': // send back the second counter 
-            GetTime(&curTime);
-            SendToUsart((u8*) &curTime, 2);
-            return OK;
-
-        case 't': // update a table
-            break;
-
-        case 'r': // read a particular parameter
-            break;
-
-        case 'w': // new parameter to write
-            break;
-
-        default:
-            ASSERT(0);
-    }
-
-    return OK;
-}
+static void SendToUsart(const u8 *buffer, const u16 len);
 
 /**
 *
@@ -135,10 +77,14 @@ static u8 CommandDispatch(void)
 */
 void ProcessCommand(void)
 {
-    state_e state = IDLE;
-    u8 indexRxRead = 0;
-    u8 argIndex = 0;
+    static state_e state = IDLE;
+    static u8  indexRxRead = 0;
+    static u8  command   = 0;
+    static u16 offset    = 0;
+    static u16 nbData    = 0;
+    static u16 dataCount = 0;
     u8 c;
+    u16 curTime; 
 
     /* read reception buffer until last received char */
     while(indexRxRead != indexRx)
@@ -148,144 +94,124 @@ void ProcessCommand(void)
 
         switch(state)
         {
-            /* wait first valid character : a,S,Q,b,c,w,r,t characters */
+            /* wait first valid character : A,S,Q,b,c,w,r,t characters */
             case IDLE:
-                if(c == 'a' || c == 'S' || c == 'Q' || c == 'b' || c == 'c')
-                { 
-                    state = END; // no args
-                }
-                else if(c == 't' || c == 'r' || c == 'w')
+                switch(c)
                 {
-                    state = WAIT_ARG; // wait for args
+                    case 'a':
+                    case 'A': // send back the internal state stored in gState
+                        outputChannel = gState; // copy in outputChannel to avoid change during transfert
+                        SendToUsart((u8 *)&outputChannel, sizeof(gState));
+                        break;
+
+                    case 'S': // send back the signature string
+                        SendToUsart((u8 *)signature, 32);
+                        break;
+
+                    case 'Q': // send back the revision string
+                        SendToUsart((u8 *)revNum, 20);
+                        break;
+
+                    case 'F': // send back the protocol
+                        SendToUsart((u8 *)protocol, 3);
+                        break;
+
+                    case 'c': // send back the second counter
+                        GetTime(&curTime);
+                        SendToUsart((u8*) &curTime, 2);
+                        break;
+                    
+                    case 'b': // burn parameters from RAM to EEPROM : faked, done in background
+                        break;
+
+                    case 't': // TODO update a table
+                        offset = 0;
+                        nbData = 0;
+                        state = DATA;
+                        break;
+
+                    case 'y': // check writing in flash => always successful
+                        SendToUsart((u8 *)"0", 1);
+                        break;
+
+                    case 'r': // read a particular parameter 
+                    case 'e': // update a table
+                    case 'w': // new parameter to write
+                        state = OFFSET_L; // wait for args
+                        break;
                 }
-                command.cmdType = c;
+                command = c;
                 break;
 
-            /* wait for arguments */
-            case WAIT_ARG:
-                c = GetArg(&argIndex, &indexRxRead);
-                if(c == LAST_ARG)
+            case OFFSET_L:
+                offset = c;
+                state = OFFSET_H;
+            break;
+
+            case OFFSET_H:
+                offset += ((u16)c) << 8;
+                state = NUM_L;
+            break;
+
+            case NUM_L:
+                nbData = c;
+                state = NUM_H;
+            break;
+
+            case NUM_H:
+                nbData += ((u16)c) << 8;
+                if(command == 'r')
                 {
-                    state = END;
+                    ASSERT(nbData + offset <= sizeof(eData)); 
+                    SendToUsart((u8 *)&eData + offset, nbData);
+                    state = IDLE;
+                }else{
+                    state = DATA;
+                    dataCount = 0;
                 }
-                else if(c == NEXT_ARG)
+            break;
+
+            case DATA:
+                if(command == 'e' || command == 'w')
                 {
-                    state = WAIT_ARG;
-                }
-                else
-                {
-                    /* character is not valid, reset FSM */
+                    //write data
+                    *((u8*)&eData + offset + dataCount) = c;
+                    dataCount++;
+                    if(dataCount == nbData)
+                    {
+                        state = IDLE;
+                        if(command == 'e') SendToUsart((u8 *)&eData + offset, nbData);
+                    } 
+                }else{
                     state = IDLE;
                 }
-                break;
-            case END:
                 break;
             default:
                 ASSERT(0); // should never reach this point
         }// switch state
     }// while
 
-    if(state == END)
-    {
-        command.nbArgSet = argIndex;
-        command.nbArgGet = argIndex;
-        CommandDispatch();
-        state = 0;
-    }
-    indexRx = 0; 
-
     return;
 }
 
 /**
- * \fn static void SendToUsart(u8 *buffer, u8 len)
+ * \fn static void SendToUsart(u8 *buffer, u16 len)
  * \brief send buffer to usart
  *
  * \param u8 *buffer : pointer on the buffer to send 
- * \param u8 len : number of bytes to transmit starting from *buffer 
+ * \param u16 len : number of bytes to transmit starting from *buffer 
  * \return none
  */
-static void SendToUsart(u8 *buffer, u8 len)
+static void SendToUsart(const u8 *buffer, const u16 len)
 {
-    u8 i, start = 0, bufEmpty = 0;
-
-    if(indexTxWrite == indexTxRead) // nothing in buffer
-    {
-        start = indexTxWrite;
-        indexTxRead = start + 1;
-        bufEmpty = 1;
-    }
-    // copy buffer to send in circular buffer
-    for(i=0; i < len; i++)
-    {
-        bufTx[indexTxWrite++] = *(buffer+i);     
-    }
-    if(bufEmpty) putchr(bufTx[start]); 
+    ASSERT(len);
+    ASSERT(!isTx); // Collision !
+   
+    isTx = True; 
+    txCount = len;
+    txCur = 1;
+    bufTx = buffer;
+    putchr(*bufTx); // manually put 1st character 
     USART_TX_EN;
     return;
-}
-
-/**
- * \fn u8 GetArg(u8 *argIndex, u8 *indexRxRead)
- * \brief process receive buffer to extract arguments
- *
- * \param argIndex index of the current arg in the arg table, will be updated by the function
- * \param indexRxRead index of the current position in the RX buffer, will be updated by the function
- * \return LAST_ARG if the final character is CR, NEXT_ARG if there is still an arg to read, ERROR_ARG if conversion failed
- */
-static u8 GetArg(u8 *argIndex, u8 *indexRxRead)
-{
-    int8_t str[8];
-    int8_t c; 
-    u8 index = 0;
-
-    // Extract digit str
-    while((c = bufRx[*indexRxRead]))
-    {
-        if(c == '\r')
-        {
-            str[index++] = 0;
-            args[*argIndex] = atol((char*)str);
-            (*argIndex)++;
-            return LAST_ARG;
-        }
-        else if(c == ' ')
-        {
-            str[index++] = 0;
-            args[*argIndex] = atol((char*)str);
-            (*argIndex)++;
-            return NEXT_ARG;
-        }
-        else if(isdigit(c))
-        {
-            str[index++] = c;
-        }
-        else
-        {
-            return ERROR_ARG;
-        }
-        (*indexRxRead)++;
-    }
-    return ERROR_ARG;
-}
-
-/**
- * \fn u8 SetArg(u8 argIndex)
- * \brief write args to output buffer 
- *
- * \param argIndex index of the current arg in the arg table
- * \return OK in case of succes
- */
-static u8 SetArg(u8 argIndex)
-{
-    u8 str[16];
-    u8 *pstr = &str[0];
-
-    ultoa(args[argIndex], (char *)str, 10);
-
-    while(*pstr)
-    {
-        bufTx[indexTxWrite++] = *pstr++;
-    }
-    return OK;
 }

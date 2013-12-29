@@ -66,8 +66,10 @@ int main(void)
 
 	sei();
     StartTimer(TIMER_100MS);
-    printstr("demarrage");
+    //printstr("demarrage");
+    printstr("x");
     USART_RX_EN;
+    eData.timerLed = 50;
 
 	while(1)
 	{
@@ -76,6 +78,8 @@ int main(void)
             LED_PIN |= _BV(LED);
             StartTimer(TIMER_100MS);
             ADCProcessing();
+            gState.advance++;
+            gState.injPulseWidth++;
         }
         
         if(rReady)

@@ -82,12 +82,13 @@ extern Flags_t          Flags;
 extern eeprom_data_t    eData;
 extern Current_Data_t   gState;
 
-extern u8 bufTx[];
+extern u8 *bufTx;
 extern u8 bufRx[];
 extern u8 indexRx;
-extern u8 indexTxRead;
-extern u8 indexTxWrite;
 extern u8 rReady;
+extern u16 txCur;
+extern u16 txCount;
+extern u8 isTx;
 
 static volatile u16 adcValues[5];
 const u8 adcIndex[] = {7, 1, 2, 3, 6, 255};
@@ -120,8 +121,6 @@ void InitUart(void)
 	UCSR0B |= (1 << RXEN0) | (1 << TXEN0);
 	UCSR0C |= (1 << UCSZ00) | (1 << UCSZ01);
 	UCSR0B |= (1 << RXCIE0);
-	indexTxWrite = 0;
-	indexTxRead  = 0;
 	indexRx      = 0;
 	return;
 }
@@ -164,10 +163,12 @@ ISR(USART_RX_vect)
 
 ISR(USART_TX_vect)
 {
-    if(indexTxWrite != indexTxRead)
+    if(txCur != txCount)
     {
-        UDR0 = bufTx[indexTxRead++];
+        UDR0 = bufTx[txCur];
+        txCur++;
     }else{
+        isTx = False;
         USART_TX_DIS; 
     }
 }
@@ -438,16 +439,16 @@ void ADCProcessing(void)
     {
         case ADC_BATTERY:
             gState.battery = 150 * (u32)ADC / 1024 * eData.ratio[ADC_BATTERY] / 100;     
-            adcState = ADC_TEMP1;
+            adcState = ADC_TEMPMOTOR;
             break;
 
-        case ADC_TEMP1:
-            gState.temp1 = (u32)ADC * 500 / 1024 * eData.ratio[ADC_TEMP1] / 100;     
-            adcState = ADC_TEMP2;
+        case ADC_TEMPMOTOR:
+            gState.tempMotor = (u32)ADC * 500 / 1024 * eData.ratio[ADC_TEMPMOTOR] / 100;     
+            adcState = ADC_TEMPAIR;
             break;
 
-        case ADC_TEMP2:
-            gState.temp2 = (u32)ADC * 500 / 1024 * eData.ratio[ADC_TEMP2] / 100;     
+        case ADC_TEMPAIR:
+            gState.tempAir = (u32)ADC * 500 / 1024 * eData.ratio[ADC_TEMPAIR] / 100;     
             adcState = ADC_THROTTLE;
             break;
 
@@ -517,7 +518,7 @@ ISR(INT0_vect)
     // clear timer for next period
     TCNT1 = 0;
     // compute RPM : tick is 4us
-    gState.RPM = 60 * (250000 / period);
+    gState.rpm = 60 * (250000 / period);
     gState.engine = RUNNING;
 }
 
