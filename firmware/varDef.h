@@ -100,7 +100,7 @@ typedef struct {
  * Comments gives the format used for the tunerStudio configuration file
  * type, size, offset, unit, scaling factor, scaling offset
  */
-typedef struct {
+typedef struct  __attribute__ ((__packed__)){ // packed for alignment when used in simulation
    u8  battery;          /*!< = scalar,     U08,    0,   "v",    0.100,  0.0 */
    u8  tempMotor;        /*!< = scalar,     U08,    1,  "°C",    1.000,  0.0 */
    u8  tempAir;          /*!< = scalar,     U08,    2,  "°C",    1.000,  0.0 */
@@ -136,5 +136,4 @@ typedef struct {
    u16 debug3;           /*!< = scalar,     U16,   23,  "%",     1.000,  0.0 */
    u8 kpaix;             /*!< = scalar,     U08,   25,  "%",     1.000,  0.0 */
 }Current_Data_t;
-
 #endif

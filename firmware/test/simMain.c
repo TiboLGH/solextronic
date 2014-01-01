@@ -53,6 +53,7 @@
 #include "uart_pty.h"
 #include "pulse_input.h"
 #include "analog_input.h"
+#include "../varDef.h"
 
 const char *ptyName = "/tmp/simavr-uart0";
 #define RPM_QTY 5
@@ -103,6 +104,10 @@ analog_input_t analog;
 volatile uint8_t	display_pwm = 0;
 int fd = 0;	/* access to serial port */
 
+eeprom_data_t    eData;
+Current_Data_t   gState;
+
+
 /* Forward declaration */
 int TestVersion(void);
 int TestRPM(void);
@@ -121,29 +126,29 @@ Test_t testList[] = {
 };
 
 /********* Helpers ************/
-void RPMtoPeriod(const uint32_t rpm, uint32_t *tHigh, uint32_t *tLow)
+static void RPMtoPeriod(const uint32_t rpm, uint32_t *tHigh, uint32_t *tLow)
 {
     *tHigh = 100; /* set high duration to 100us */
     *tLow  = 1000000 / (rpm / 60) - *tHigh;
 }
 
-void SpeedtoPeriod(const uint32_t speed, uint32_t *tHigh, uint32_t *tLow)
+static void SpeedtoPeriod(const uint32_t speed, uint32_t *tHigh, uint32_t *tLow)
 {
     *tHigh = 1000; /* set high duration to 1ms */
     *tLow  = 1000000 / (speed / 3.6 / 1.82) - *tHigh;
 }
 
-float BatToVoltage(const float batterie)
+static float BatToVoltage(const float batterie)
 {
     return (batterie * 1 / 30.);
 }
 
-float TempToVoltage(const float degree) // for LM35 10mV/deg
+static float TempToVoltage(const float degree) // for LM35 10mV/deg
 {
     return (degree * 10 / 1000.);
 }
 
-float ThrToVoltage(const float throttle)
+static float ThrToVoltage(const float throttle)
 {
 	//TODO include min/max values
     return (throttle * 5 / 100.);
@@ -154,7 +159,17 @@ static void pwm_changed_hook(struct avr_irq_t * irq, uint32_t value, void * para
 	display_pwm = value;
 }
 
-int SerialOpen(void)
+static void PrintArray(u8* buffer, const int len)
+{
+    char str[1024];
+    sprintf(str, "Len : %d, 0x", len);
+    for(int i = 0; i < len; i++) sprintf(str, "%s %02X", str, *(buffer + i));
+    printf("%s\n", str);
+    return;
+}
+
+
+static int SerialOpen(void)
 {
 	// from http://www.tldp.org/HOWTO/Serial-Programming-HOWTO/x115.html
 	struct termios oldtio,newtio;
@@ -166,102 +181,90 @@ int SerialOpen(void)
     tcgetattr(fd_s, &oldtio); /* save current serial port settings */
     bzero(&newtio, sizeof(newtio)); /* clear struct for new port settings */
     newtio.c_cflag = B57600 | CS8 | CLOCAL | CREAD;
-    newtio.c_iflag = IGNPAR | ICRNL | IGNCR;
+    newtio.c_iflag = IGNPAR; // | ICRNL | IGNCR;
     newtio.c_oflag = 0;
-    newtio.c_lflag = ICANON;
+    newtio.c_lflag = 0; //ICANON;
+    newtio.c_cc[VTIME] = 0; /* inter-character timer unused */
+    newtio.c_cc[VMIN]  = 1; /* blocking read until 1 char received */
     tcflush(fd_s, TCIFLUSH);
     tcsetattr(fd_s,TCSANOW,&newtio);
     return fd_s;
 }
 
-static int SerialClose(int fd)
+static int SerialClose(int fd_s)
 {
-	close(fd);
+	close(fd_s);
     return OK;
 }
 /************** Tests definition *****************/
 /*********** Basic steps *************/
-int SleepMs(const int delayms)
+static int SleepMs(const int delayms)
 {
 	// TODO : use simavr timebase to get sleep time in AVR world
     usleep(delayms * 1000);
 	return OK;
 }
 
-int QueryCommand(char *command, char *answer)
+static int ReadFromSerial(const int nbToRead, u8 *dst)
 {
-	int res;
-	char buffer[256];
+	int res, nbRead = 0;
+	u8 buffer[256];
 	struct timeval timeout;
 	fd_set readfs;
 	
-	/* send command */
-	printf(">> %s\n", command);
-	write(fd, command, strlen(command));
-	/* wait for answer : timeout set to 0.5sec */
+    SleepMs(200);
 	timeout.tv_usec = 500000;
 	timeout.tv_sec  = 0;
 	FD_SET(fd, &readfs);
-	res = select(fd + 1, &readfs, NULL, NULL, &timeout);
-	if ((res == 0) || (!FD_ISSET(fd, &readfs))) /* number of file descriptors with input = 0, timeout occurred. */
-	{
-		RED("Serial link timeout !\n");
-        return FAIL;
-	}else{ /* read answer */
-		res = read(fd, buffer, 255);
-        buffer[res]=0;
-		printf("<< %s\n", buffer);
-		strncpy(answer, buffer, 256);
-	}
-	return OK;
-}
-
-int SetArgs(int *args, const int argNum, char *command)
-{
-    sprintf(command, "%c", args[0]);
-    for(int i = 1; i < argNum; i++)
+	while(nbRead < nbToRead)
     {
-        sprintf(command, "%s %d", command, args[i]);
-    }    
-    sprintf(command, "%s\r", command);
-	return OK;
-}
-
-int GetArgs(int *args, int *argNum, char *command)
-{
-    int8_t str[8];
-    int8_t c; 
-    uint8_t index = 0, indexRead = 0;
-    *argNum = 0;
-    // Extract digit str
-    while((c = command[indexRead]))
-    {
-        if(c == '\r')
+        res = select(fd + 1, &readfs, NULL, NULL, &timeout);
+        if ((res == 0) || (!FD_ISSET(fd, &readfs))) /* number of file descriptors with input = 0, timeout occurred. */
         {
-            str[index++] = 0;
-            args[*argNum] = atol((char*)str);
-            (*argNum)++;
-            return OK;
+            RED("Serial link timeout !\n");
+            return FAIL;
+        }else{ /* read answer */
+            res = read(fd, buffer + nbRead, 255);
+            nbRead += res;
+            printf("<< res, NbRead : %d, %d\n", res, nbRead);
         }
-        else if(c == ' ')
-        {
-            str[index++] = 0;
-            index = 0;
-            args[*argNum] = atol((char*)str);
-            (*argNum)++;
-        }
-        else if(isdigit(c))
-        {
-            str[index++] = c;
-        }
-        else
-        {
-            args[*argNum] = c;
-            (*argNum)++;
-            indexRead++;
-        }
-        indexRead++;
     }
+    // buffer fully read : copy to target
+    memcpy(dst, buffer, nbToRead);
+    HIGH("ReadFromSerial :\n");
+    PrintArray(buffer, nbToRead);
+    return OK;
+}
+
+static int QueryState(void)
+{
+	int res;
+	
+	/* send command */
+	printf(">> a\n");
+    SleepMs(500);
+	write(fd, "a", 1);
+    res = ReadFromSerial(sizeof(gState), (u8*)&gState);
+    if(res != OK) return FAIL;	
+    return OK;
+}
+
+static int QuerySignature(u8 *signature, u8 *revision)
+{
+	int res;
+	
+	/* send command */
+	printf(">> S\n");
+	write(fd, "S", 1);
+    res = ReadFromSerial(32, signature);
+    if(res != OK) return FAIL;
+
+	/* send command */
+	printf(">> Q\n");
+	write(fd, "Q", 1);
+    res = ReadFromSerial(20, revision);
+    if(res != OK) return FAIL;
+	
     return OK;
 }
 
@@ -278,30 +281,27 @@ int TestVersion(void)
 	/* This test aims to check serial link
 		by querying the version and check
 		it is correctly formated */
+	char signature[33];
+	char revision[21];
 
-	int args[1] = {'v'};
-	int rspArgs[10];
-	int rspArgNum;
-	char command[256], answer[256];
-	
-	SetArgs(args, 1, command);
-    QueryCommand(command, answer);
-	GetArgs(rspArgs, &rspArgNum, answer);
+    int result = QuerySignature((u8*)signature, (u8*)revision);
+    revision[20] = '\0';
+    signature[32] = '\0';
 
-	// criteria : 5 args in response,  1st is "v"
+    if(result != OK)
+    {
+	    RED("Erreur dans la lecture de la signature/revision \n");
+		return FAIL;
+    }
+
 	char message[256];
-	sprintf(message, "Version %d.%d, hw %d, hash %x\n", rspArgs[1], rspArgs[2], rspArgs[3], rspArgs[4]);
-    printf("%s", message); 
-	if((rspArgNum == 5) &&
-	    (rspArgs[0] == 'v') &&
-		(rspArgs[1] == 0) &&
-		(rspArgs[2] == 1) &&
-		(rspArgs[3] == 1))
+	sprintf(message, "Signature :%s\nRevision : %s\n", signature, revision);
+	if(strncmp(signature, "** Solextronic v0.2 **     ", 32))
 	{
-	    GREEN("Version %d.%d, hw %d, hash %x\n", rspArgs[1], rspArgs[2], rspArgs[3], rspArgs[4]);
+	    GREEN("%s\n", message);
 		return PASS;
 	}else{
-	    RED("Version %d.%d, hw %d, hash %x\n", rspArgs[1], rspArgs[2], rspArgs[3], rspArgs[4]);
+	    RED("%s\n", message);
 		return FAIL;
 	}
 	return FAIL;
@@ -312,15 +312,10 @@ int TestRPM(void)
 	/* This test aims to check RPM measurement 
 	it tries several RPM values and read serial
 	command to get measured RPM */
-
 	const float tolerance = 5; //%
-	int args[2] = {'g', 12};
-	int rspArgs[10];
-	int rspArgNum, subTestPassed = 0;
-	char command[256], answer[256];
+	int subTestPassed = 0;
 	int rpmTable[RPM_QTY] = {500, 2000, 4000, 6000, 10000};
 
-	SetArgs(args, 2, command);
 
 	for (int i = 0; i < RPM_QTY; i++)
 	{
@@ -331,23 +326,15 @@ int TestRPM(void)
 		pulse_input_config(&pulse_input_engine, high, low);
 		SleepMs(1000);
 		/* query result */
-		QueryCommand(command, answer);
-		GetArgs(rspArgs, &rspArgNum, answer);
+		QueryState();
 				
-		if(rspArgNum != 5)
-		{
-			RED("Erreur sur le nombre d'arguments : %d recus\n", rspArgNum);
-			continue;
-		}
-		/* criteria : arg #3 (RPM) value is correct */
-		int measRpm = rspArgs[3];
-		float error = 100 - (100. * measRpm / (float)rpmTable[i]);
+		float error = 100 - (100. * gState.rpm / (float)rpmTable[i]);
 		
 		if(error > tolerance || error < -tolerance)
 		{		
-            RED("RPM mesure a %d tr/min : %d, erreur %.1f %% \n", rpmTable[i], measRpm, error);
+            RED("RPM mesure a %d tr/min : %04X, erreur %.1f %% \n", rpmTable[i], gState.rpm, error);
 		}else{
-            GREEN("RPM mesure a %d tr/min : %d, erreur %.1f %% \n", rpmTable[i], measRpm, error);
+            GREEN("RPM mesure a %d tr/min : %d, erreur %.1f %% \n", rpmTable[i], gState.rpm, error);
 			subTestPassed++;
 		}
 	}
@@ -367,13 +354,8 @@ int TestSpeed(void)
 	command to get measured speed */
 
 	const float tolerance = 5; //%
-	int args[2] = {'g', 12};
-	int rspArgs[10];
-	int rspArgNum, subTestPassed = 0;
-	char command[256], answer[256];
+	int subTestPassed = 0;
 	int speedTable[SPEED_QTY] = {10, 20, 40, 60, 90};
-
-	SetArgs(args, 2, command);
 
 	for (int i = 0; i < SPEED_QTY; i++)
 	{
@@ -384,23 +366,15 @@ int TestSpeed(void)
 		pulse_input_config(&pulse_input_wheel, high, low);
 		SleepMs(5000);
 		/* query result */
-		QueryCommand(command, answer);
-		GetArgs(rspArgs, &rspArgNum, answer);
-				
-		if(rspArgNum != 5)
-		{
-			RED("Erreur sur le nombre d'arguments : %d recus\n", rspArgNum);
-			continue;
-		}
-		/* criteria : arg #4 (Speed) value is correct */
-		int measSpeed = rspArgs[4]; // in 1/10 km/h
-		float error = 100 - (100. * (measSpeed / 10.) / (float)speedTable[i]);
+		QueryState();
+		
+		float error = 100 - (100. * (gState.speed / 10.) / (float)speedTable[i]);
 		
 		if(error > tolerance || error < -tolerance)
 		{		
-            RED("Vitesse mesure a %d km/h : %.1f km/h, erreur %.1f %% \n", speedTable[i], measSpeed/10., error);
+            RED("Vitesse mesure a %d km/h : %.1f km/h, erreur %.1f %% \n", speedTable[i], gState.speed/10., error);
 		}else{
-            GREEN("Vitesse mesure a %d km/h : %.1f km/h, erreur %.1f %% \n", speedTable[i], measSpeed/10., error);
+            GREEN("Vitesse mesure a %d km/h : %.1f km/h, erreur %.1f %% \n", speedTable[i], gState.speed/10., error);
 			subTestPassed++;
 		}
 	}
@@ -420,25 +394,14 @@ int TestAnalog(void)
 	 * and batterie */
 
 	const float tolerance = 5; //%
-	int args[6] = {'g', 6, 100, 100, 100, 100};
-	int rspArgs[10];
-	int rspArgNum, subTestPassed = 0;
-	char command[256], answer[256], message[256];
+	int subTestPassed = 0;
 	float analogTable[ANALOG_QTY][4] = {{100, 20, 20, 0},
                                         {110, 100, 25, 50},
                                         {120, 120, 30, 90},
                                         {150, 180, 35, 100}}; // battery, tempMotor, tempAdm, throttle
-
-    // set conversion ratios to 100%
-	//SetArgs(args, 2, command);
-    //QueryCommand(command, answer);
+    // TODO : set conversion ratios to 100%
 
     // now the requests
-    args[0] = 'g';
-    args[1] = 13;
-	SetArgs(args, 2, command);
-
-    avr_vcd_start(&vcd_file);
 	for (int i = 0; i < ANALOG_QTY; i++)
 	{
 		/* set new inputs values */
@@ -451,22 +414,18 @@ int TestAnalog(void)
             analog_input_set_value(&analog, j, voltage[j]);
 		SleepMs(1000);
 		/* query result */
-		QueryCommand(command, answer);
-		GetArgs(rspArgs, &rspArgNum, answer);
+		QueryState();
 				
-		if(rspArgNum != 7)
-		{
-			RED("Erreur sur le nombre d'arguments : %d recus\n", rspArgNum);
-			continue;
-		}
 		/* criteria : values are correct */
-        printf("Expected values : %.0f %.0f %.0f %.0f\n", analogTable[i][0], analogTable[i][1], analogTable[i][2], analogTable[i][3]);
+        //printf("Expected values : %.0f %.0f %.0f %.0f\n", analogTable[i][0], analogTable[i][1], analogTable[i][2], analogTable[i][3]);
 		float maxError = 0.;
+        int analogResult[] = {gState.battery, gState.tempMotor, gState.tempAir, gState.throttle};
+        char message[256];
 		for(int j = 0; j < 4; j++)
 		{
-			float error = 100 - (100. * (rspArgs[j+2]) / analogTable[i][j]);
-			sprintf(message, "Erreur %d / %.0f %.1f %% \n", (rspArgs[j+2]), analogTable[i][j], error);
-            //printf("%s", message);
+			float error = 100 - (100. * (analogResult[j]) / analogTable[i][j]);
+			sprintf(message, "Erreur %d / %.0f = %.1f %% \n", analogResult[j], analogTable[i][j], error);
+            printf("%s", message);
 			if(error < 0) error = -error;
 			if(error > maxError) maxError = error;
 		}

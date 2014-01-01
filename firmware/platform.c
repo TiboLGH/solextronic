@@ -135,17 +135,17 @@ void printstr (char *string){
 	while(*string){
 		putchr(*string++);
 	}
-	putchr('\r');
-	putchr('\n');
 }
 
 
 void __assert__(char *expr, char *filename, int linenumber)
 {
     cli();
-	printstr("FATAL");
+	printstr("FATAL\n");
 	printstr(expr);
+    printstr("\n");
 	printstr(filename);
+    printstr(" line ");
     char str[8];
     itoa(linenumber, (char *)str, 10);
 	printstr(str);
