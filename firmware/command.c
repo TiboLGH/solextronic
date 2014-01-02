@@ -38,260 +38,28 @@
 #include "common.h"
 #include "platform.h"
 
+//const char revNum[20] =  {"Solextronic v0.2   "}; // TODO : Print HW/SW version from define 
+const char revNum[20] =  {"MSII Rev 2.90500    "};   
+const char signature[32] = {"** Solextronic v0.2 beta **     "};
+const char protocol[3] = {"001"};
 
 /*** Commands ***/
-
-#define Cmd_SetGeneral      1
-#define Cmd_SetIgnition     2
-#define Cmd_SetInjection    3
-#define Cmd_SetInjectionTable    4
-#define Cmd_SetIgnitionTable     5
-#define Cmd_SetRatio        6
-#define Cmd_SetPolarity     7
-#define Cmd_SetHT           8
-#define Cmd_SetLed          11
-#define Cmd_GetStatus       11
-#define Cmd_GetGeneral      12 
-#define Cmd_GetADC          13 
-#define Cmd_GetIgnition     14 
-#define Cmd_GetInjection    15 
-
-extern Flags_t          Flags;
 extern eeprom_data_t    eData;
-extern Current_Data_t   CurrentValues;
+extern Current_Data_t   gState;
+static Current_Data_t   outputChannel;
 
 
-volatile u8 bufTx[BUFSIZE];
+volatile u8 *bufTx;
 volatile u8 bufRx[BUFSIZE];
 volatile u8 indexRx;
-volatile u8 indexTxRead;
-volatile u8 indexTxWrite;
-
-static int32_t 	args[MAXARGS];
-static commandType_t command;
+volatile u16 txCur = 0;
+volatile u16 txCount = 0;
+volatile u8 isTx = False;
 
 u8 dbg[16];
 
 
-static u8 GetArg(u8 *argIndex, u8 *indexRxRead);
-static u8 SetArg(u8 argIndex);
-static void SendToUsart(u8 result, u8 nbArg, u8 type);
-
-/****
-*
-* CommandDispatch
-*
-* Parameters:
-*       none
-*
-* Description:
-*		This function implements answer to remote commands
-*
-* Returns:
-*		OK if no error, else error
-*
-*/
-static u8 CommandDispatch(void)
-{
-    u8 result = OK;
-
-    /* Process the command type */
-    switch(command.cmdType)
-    {
-        case Cmd_Reset:
-            // Hara Kiri !!
-            // TODO : implement a clean reset not interfering with bootloader
-            break;
-
-        case Cmd_Version:
-            args[0] = VERSION_SOFT_MAJOR;
-            args[1] = VERSION_SOFT_MINOR;
-            args[2] = VERSION_HARD;
-            args[3] = VERSION_GIT;
-            SendToUsart(OK, 4, command.cmdType);
-            return result;
-            break;
-
-        case Cmd_Set:
-        case Cmd_Debug:
-            // Check that command exists and the number of args 
-            switch(args[0])
-            {
-                case Cmd_SetGeneral:
-                    eData.wheelSize = args[1];
-                    eData.PMHOffset = args[2];
-                    eData.maxRPM    = args[3];
-                    eData.maxTemp   = args[4];
-                    eData.minBat    = args[5];
-                    SendToUsart(OK, 1, command.cmdType);
-                    break;
-                case Cmd_SetIgnition:
-                    eData.igniDuration = args[1];
-                    eData.starterAdv   = args[2];
-                    eData.igniOverheat = args[3];
-                    eData.noSparkAtDec = args[4];
-                    SendToUsart(OK, 1, command.cmdType);
-                    break;
-                case Cmd_SetInjection:
-                    eData.injOpen      = args[1];
-                    eData.injRate      = args[2];
-                    eData.injAdv       = args[3];
-                    eData.starterInj   = args[4];
-                    eData.injOverheat  = args[5];
-                    eData.injFullOpen  = args[6];
-                    eData.noInjAtDec   = args[7];
-                    eData.injStart     = args[8];
-                    eData.holdPWM      = args[9];
-                    SendToUsart(OK, 1, command.cmdType);
-                    break;
-                case Cmd_SetPolarity:
-                    eData.igniPolarity = args[1];
-                    eData.injPolarity  = args[2];
-                    eData.pmhPolarity  = args[3];
-                    eData.pumpPolarity = args[4];
-                    SendToUsart(OK, 1, command.cmdType);
-                    break;
-                case Cmd_SetInjectionTable:
-                    if((args[1] > 12) || (args[2] > 12))
-                    {
-                        SendToUsart(BAD_PARAMETER, 1, command.cmdType);
-                    }else{
-                        eData.injTable[args[1]][args[2]]  = args[3];
-                        SendToUsart(OK, 1, command.cmdType);
-                    }
-                    break;
-                case Cmd_SetIgnitionTable:
-                    if((args[1] > 12) || (args[2] > 12))
-                    {
-                        SendToUsart(BAD_PARAMETER, 1, command.cmdType);
-                    }else{
-                        eData.igniTable[args[1]][args[2]]  = args[3];
-                        SendToUsart(OK, 1, command.cmdType);
-                    }
-                    break;
-                case Cmd_SetHT:
-                    eData.HVstep = args[1];
-                    eData.HVmanual = args[2];
-                    if(eData.HVstep == 0)   WritePWMValue(eData.HVmanual);
-                    SendToUsart(OK, 1, command.cmdType);
-                    break;
-                case Cmd_SetLed:
-                    eData.timerLed = args[1];
-                    SendToUsart(OK, 1, command.cmdType);
-                    break;
-                case Cmd_SetRatio:
-                    eData.ratio[0] = args[1];
-                    eData.ratio[1] = eData.ratio[2] = args[2];
-                    eData.ratio[3] = args[3];
-                    eData.ratio[4] = args[4];
-                    SendToUsart(OK, 1, command.cmdType);
-                    break;
-                default:
-                    SendToUsart(BAD_COMMAND, 1, Cmd_Error);
-            }
-            break;
-        
-        case Cmd_Get:
-            // Check that command exists and the number of args 
-            switch(args[0])
-            {
-                case Cmd_SetGeneral:
-                    args[1] = eData.wheelSize;
-                    args[2] = eData.PMHOffset;
-                    args[3] = eData.maxRPM;
-                    args[4] = eData.maxTemp;
-                    args[5] = eData.minBat;
-                    SendToUsart(OK, 6, command.cmdType);
-                    break;
-                case Cmd_SetIgnition:
-                    args[1] = eData.igniDuration;
-                    args[2] = eData.starterAdv;
-                    args[3] = eData.igniOverheat;
-                    args[4] = eData.noSparkAtDec;
-                    SendToUsart(OK, 5, command.cmdType);
-                    break;
-                case Cmd_SetInjection:
-                    args[1] = eData.injOpen;
-                    args[2] = eData.injRate;
-                    args[3] = eData.injAdv;
-                    args[4] = eData.starterInj;
-                    args[5] = eData.injOverheat;
-                    args[6] = eData.injFullOpen;
-                    args[7] = eData.noInjAtDec;
-                    args[8] = eData.injStart;
-                    args[9] = eData.holdPWM;
-                    SendToUsart(OK, 10, command.cmdType);
-                    break;
-                case Cmd_SetPolarity:
-                    args[1] = eData.igniPolarity;
-                    args[2] = eData.injPolarity;
-                    args[3] = eData.pmhPolarity;
-                    args[4] = eData.pumpPolarity;
-                    SendToUsart(OK, 5, command.cmdType);
-                    break;
-                case Cmd_SetInjectionTable:
-                    if((args[1] > 12) || (args[2] > 12))
-                    {
-                        SendToUsart(BAD_PARAMETER, 1, command.cmdType);
-                    }else{
-                        args[3] = eData.injTable[args[1]][args[2]];
-                        SendToUsart(OK, 2, command.cmdType);
-                    }
-                    break;
-                case Cmd_SetIgnitionTable:
-                    if((args[1] > 12) || (args[2] > 12))
-                    {
-                        SendToUsart(BAD_PARAMETER, 1, command.cmdType);
-                    }else{
-                        args[3] = eData.igniTable[args[1]][args[2]];
-                        SendToUsart(OK, 2, command.cmdType);
-                    }
-                    break;
-                case Cmd_SetHT:
-                    args[1] = eData.HVstep;
-                    args[2] = eData.HVmanual;
-                    args[3] = CurrentValues.HVvalue;
-                    SendToUsart(OK, 4, command.cmdType);
-                    break;
-                case Cmd_SetRatio:
-                    args[1]= eData.ratio[0];
-                    args[2]= eData.ratio[1];
-                    args[3]= eData.ratio[3];
-                    args[4]= eData.ratio[4];
-                    SendToUsart(OK, 5, command.cmdType);
-                    break;
-                case Cmd_GetGeneral:
-                    args[1] = CurrentValues.state;
-                    args[2] = CurrentValues.RPM;
-                    args[3] = CurrentValues.speed;
-                    SendToUsart(OK, 4, command.cmdType);
-                    break;
-                case Cmd_GetADC:
-                    args[1] = CurrentValues.battery;
-                    args[2] = CurrentValues.temp1;
-                    args[3] = CurrentValues.temp2;
-                    args[4] = CurrentValues.throttle;
-                    args[5] = CurrentValues.pressure;
-                    SendToUsart(OK, 6, command.cmdType);
-                    break;
-                case Cmd_SetLed:
-                    args[1] = eData.timerLed;
-                    SendToUsart(OK, 2, command.cmdType);
-                    break;
-                default:
-                    SendToUsart(BAD_COMMAND, 1, Cmd_Error);
-            }
-            break;
-
-        default:
-            args[0] = command.cmdType;
-            SendToUsart(BAD_COMMAND, 1, Cmd_Error);
-            result = BAD_COMMAND;
-            return result;
-    }
-
-    return result;
-}
+static void SendToUsart(const u8 *buffer, const u16 len);
 
 /**
 *
@@ -309,10 +77,14 @@ static u8 CommandDispatch(void)
 */
 void ProcessCommand(void)
 {
-    state_e state = IDLE;
-    u8 indexRxRead = 0;
-    u8 argIndex = 0;
+    static state_e state = IDLE;
+    static u8  indexRxRead = 0;
+    static u8  command   = 0;
+    static u16 offset    = 0;
+    static u16 nbData    = 0;
+    static u16 dataCount = 0;
     u8 c;
+    u16 curTime; 
 
     /* read reception buffer until last received char */
     while(indexRxRead != indexRx)
@@ -322,163 +94,124 @@ void ProcessCommand(void)
 
         switch(state)
         {
-            /* wait first valid character : r,v,s,g,d characters */
+            /* wait first valid character : A,S,Q,b,c,w,r,t characters */
             case IDLE:
-                if(c == 'r' || c == 'v')
-                { 
-                    state = WAIT_CR; // wait for CR
-                }
-                else if(c == 's' || c == 'g' || c == 'd')
+                switch(c)
                 {
-                    state = WAIT_ARG; // wait for args
+                    case 'a':
+                    case 'A': // send back the internal state stored in gState
+                        outputChannel = gState; // copy in outputChannel to avoid change during transfert
+                        SendToUsart((u8 *)&outputChannel, sizeof(gState));
+                        break;
+
+                    case 'S': // send back the signature string
+                        SendToUsart((u8 *)signature, 32);
+                        break;
+
+                    case 'Q': // send back the revision string
+                        SendToUsart((u8 *)revNum, 20);
+                        break;
+
+                    case 'F': // send back the protocol
+                        SendToUsart((u8 *)protocol, 3);
+                        break;
+
+                    case 'c': // send back the second counter
+                        GetTime(&curTime);
+                        SendToUsart((u8*) &curTime, 2);
+                        break;
+                    
+                    case 'b': // burn parameters from RAM to EEPROM : faked, done in background
+                        break;
+
+                    case 't': // TODO update a table
+                        offset = 0;
+                        nbData = 0;
+                        state = DATA;
+                        break;
+
+                    case 'y': // check writing in flash => always successful
+                        SendToUsart((u8 *)"0", 1);
+                        break;
+
+                    case 'r': // read a particular parameter 
+                    case 'e': // update a table
+                    case 'w': // new parameter to write
+                        state = OFFSET_L; // wait for args
+                        break;
                 }
-                command.cmdType = c;
+                command = c;
                 break;
 
-            /* wait CR */
-            case WAIT_CR:
-                if(c == '\r')
-                {
-                    state = END;
-                }else{ /* character is not valid, reset FSM */
-                    state = IDLE;	
-                }
-                break;
+            case OFFSET_L:
+                offset = c;
+                state = OFFSET_H;
+            break;
 
-            /* wait for arguments */
-            case WAIT_ARG:
-                c = GetArg(&argIndex, &indexRxRead);
-                if(c == LAST_ARG)
+            case OFFSET_H:
+                offset += ((u16)c) << 8;
+                state = NUM_L;
+            break;
+
+            case NUM_L:
+                nbData = c;
+                state = NUM_H;
+            break;
+
+            case NUM_H:
+                nbData += ((u16)c) << 8;
+                if(command == 'r')
                 {
-                    state = END;
+                    ASSERT(nbData + offset <= sizeof(eData)); 
+                    SendToUsart((u8 *)&eData + offset, nbData);
+                    state = IDLE;
+                }else{
+                    state = DATA;
+                    dataCount = 0;
                 }
-                else if(c == NEXT_ARG)
+            break;
+
+            case DATA:
+                if(command == 'e' || command == 'w')
                 {
-                    state = WAIT_ARG;
-                }
-                else
-                {
-                    /* character is not valid, reset FSM */
+                    //write data
+                    *((u8*)&eData + offset + dataCount) = c;
+                    dataCount++;
+                    if(dataCount == nbData)
+                    {
+                        state = IDLE;
+                        if(command == 'e') SendToUsart((u8 *)&eData + offset, nbData);
+                    } 
+                }else{
                     state = IDLE;
                 }
                 break;
-            case END:
-                break;
+            default:
+                ASSERT(0); // should never reach this point
         }// switch state
     }// while
 
-    if(state == END)
-    {
-        command.nbArgSet = argIndex;
-        command.nbArgGet = argIndex;
-        CommandDispatch();
-        state = 0;
-    }
-    indexRx = 0; 
-    USART_RX_EN; // re-enable Rx interrupt
-
     return;
 }
 
 /**
- * \fn void SendToUsart(u8 result, u8 nbArg, u8 type)
+ * \fn static void SendToUsart(u8 *buffer, u16 len)
  * \brief send buffer to usart
  *
- * \param none
+ * \param u8 *buffer : pointer on the buffer to send 
+ * \param u16 len : number of bytes to transmit starting from *buffer 
  * \return none
  */
-static void SendToUsart(u8 result, u8 nbArg, u8 type)
+static void SendToUsart(const u8 *buffer, const u16 len)
 {
-    u8 i, start = 0, bufEmpty = 0;
-
-    if(indexTxWrite == indexTxRead) // nothing in buffer
-    {
-        start = indexTxWrite;
-        indexTxRead = start + 1;
-        bufEmpty = 1;
-    }
-    // write command type
-    bufTx[indexTxWrite++] = type;     
-    bufTx[indexTxWrite++] = ' ';     
-    // write args
-    for(i=0; i<nbArg; i++)
-    {
-        SetArg(i);
-        bufTx[indexTxWrite++] = ' ';     
-    }
-    // result if requested
-    if(result)
-    {
-        bufTx[indexTxWrite++] = command.result;     
-    }
-    bufTx[indexTxWrite++] = '\r';     
-    bufTx[indexTxWrite++] = '\n';    
-    if(bufEmpty) putchr(bufTx[start]); 
+    ASSERT(len);
+    ASSERT(!isTx); // Collision !
+   
+    isTx = True; 
+    txCount = len;
+    txCur = 1;
+    bufTx = buffer;
+    putchr(*bufTx); // manually put 1st character 
     USART_TX_EN;
     return;
-}
-
-/**
- * \fn u8 GetArg(u8 *argIndex, u8 *indexRxRead)
- * \brief process receive buffer to extract arguments
- *
- * \param argIndex index of the current arg in the arg table, will be updated by the function
- * \param indexRxRead index of the current position in the RX buffer, will be updated by the function
- * \return LAST_ARG if the final character is CR, NEXT_ARG if there is still an arg to read, ERROR_ARG if conversion failed
- */
-static u8 GetArg(u8 *argIndex, u8 *indexRxRead)
-{
-    int8_t str[8];
-    int8_t c; 
-    u8 index = 0;
-
-    // Extract digit str
-    while((c = bufRx[*indexRxRead]))
-    {
-        if(c == '\r')
-        {
-            str[index++] = 0;
-            args[*argIndex] = atol((char*)str);
-            (*argIndex)++;
-            return LAST_ARG;
-        }
-        else if(c == ' ')
-        {
-            str[index++] = 0;
-            args[*argIndex] = atol((char*)str);
-            (*argIndex)++;
-            return NEXT_ARG;
-        }
-        else if(isdigit(c))
-        {
-            str[index++] = c;
-        }
-        else
-        {
-            return ERROR_ARG;
-        }
-        (*indexRxRead)++;
-    }
-    return ERROR_ARG;
-}
-
-/**
- * \fn u8 SetArg(u8 argIndex)
- * \brief write args to output buffer 
- *
- * \param argIndex index of the current arg in the arg table
- * \return OK in case of succes
- */
-static u8 SetArg(u8 argIndex)
-{
-    u8 str[16];
-    u8 *pstr = &str[0];
-
-    ultoa(args[argIndex], (char *)str, 10);
-
-    while(*pstr)
-    {
-        bufTx[indexTxWrite++] = *pstr++;
-    }
-    return OK;
 }

@@ -38,7 +38,6 @@
 #include "common.h"
 
 #define BUFSIZE      256
-#define MAXARGS    	 10
 
 /* macro to manage buffer pointer */
 #define INCPTR(X) ((X)==(BUFSIZE-1) ? ((X)=0) : (X)++)
@@ -58,27 +57,14 @@ enum
 typedef enum
 {
     IDLE = 0,
-    WAIT_CR,
     WAIT_ARG,
-    END
+    OFFSET_H,
+    OFFSET_L,
+    NUM_H,
+    NUM_L,
+    DATA
 } state_e;
 
-/*** Command Types ***/
-#define Cmd_Reset          'r'
-#define Cmd_Version	       'v'
-#define Cmd_Set            's'
-#define Cmd_Get            'g'
-#define Cmd_Debug          'd'
-#define Cmd_Error          'e'
-
-typedef struct
-{
-	u8		cmdType;
-	u8		cmdId;
-	int8_t		nbArgSet;
-	int8_t		nbArgGet;
-	int8_t		result;
-} commandType_t;
 
 void ProcessCommand(void);
 

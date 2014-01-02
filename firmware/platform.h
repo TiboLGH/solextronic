@@ -49,8 +49,8 @@ enum
 enum
 {
     ADC_BATTERY = 0, /*!< ADC7 */
-    ADC_TEMP1,       /*!< ADC1 */
-    ADC_TEMP2,       /*!< ADC2 */
+    ADC_TEMPMOTOR,   /*!< ADC1 */
+    ADC_TEMPAIR,     /*!< ADC2 */
     ADC_THROTTLE,    /*!< ADC3 */
     ADC_PRESSURE,    /*!< ADC6 */
     ADC_IDLE
@@ -78,7 +78,8 @@ void updateEeprom(void);
 void InitTimer(void);
 void StartTimer(u8 timerHandle);
 u32 GetTimer(const u8 timerHandle);
-u8 EndTimer(const u8 timerHandle, const u32 duration); 
+u8 EndTimer(const u8 timerHandle, const u32 duration);
+void GetTime(u16 *dst);
 
 /* ADC related functions */
 void ADCInit(void);

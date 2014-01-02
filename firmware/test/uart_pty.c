@@ -162,7 +162,10 @@ uart_pty_thread(
 				ssize_t r = read(p->port[ti].s, p->port[ti].buffer, sizeof(p->port[ti].buffer)-1);
 				p->port[ti].buffer_len = r;
 				p->port[ti].buffer_done = 0;
-				TRACE(hdump("pty recv", p->port[ti].buffer, r);)
+				//TRACE(hdump("pty recv", p->port[ti].buffer, r);)
+				//hdump("pty recv", p->port[ti].buffer, r);
+                //for(int i=0; i <r; i++) printf("%02X", p->port[ti].buffer[i]);
+                //printf("\t%s len %d\n", p->port[ti].buffer, r);
 			}
 			if (p->port[ti].buffer_done < p->port[ti].buffer_len) {
 				// write them in fifo
@@ -179,8 +182,12 @@ uart_pty_thread(
 						dst < (buffer + sizeof(buffer)))
 					*dst++ = uart_pty_fifo_read(&p->port[ti].in);
 				size_t len = dst - buffer;
-				TRACE(size_t r =) write(p->port[ti].s, buffer, len);
-				TRACE(hdump("pty send", buffer, r);)
+				//TRACE(size_t r =) write(p->port[ti].s, buffer, len);
+				size_t r = write(p->port[ti].s, buffer, len);
+				//hdump("pty send", buffer, r);
+                //printf("\t");
+                //for(int i=0; i <r; i++) printf("%02X", buffer[i]);
+                //printf("\t\t%s len %d\n", buffer, r);
 			}
 		}
 		uart_pty_flush_incoming(p);

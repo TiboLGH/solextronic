@@ -10,13 +10,14 @@ PGMERISP	= -c avrispv2 -P /dev/ttyUSB0
 DUDE		= /usr/bin/avrdude -V -p $(MCU)
 GIT_VER		:=VERSION_GIT=0x$(shell git rev-parse --short HEAD)
 
-C_SRCS		= $(wilcard *.c)
+DEPS		= $(wildcard *.h)
+C_SRCS		= $(wildcard *.c)
 OBJ_FILES	= main.o platform.o command.o
 OBJ_FILES2	= $(C_SRCS:.c=.o)
 
 all:	$(TARGET).hex
 
-%.o: %.c
+%.o: %.c $(DEPS)
 	@$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 	@echo CC $<
 

@@ -33,8 +33,8 @@
  *
  */
 
-#include <assert.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/eeprom.h>
@@ -80,14 +80,15 @@ const PROGMEM eeprom_data_t eeInit = {
 
 extern Flags_t          Flags;
 extern eeprom_data_t    eData;
-extern Current_Data_t   CurrentValues;
+extern Current_Data_t   gState;
 
-extern u8 bufTx[];
+extern u8 *bufTx;
 extern u8 bufRx[];
 extern u8 indexRx;
-extern u8 indexTxRead;
-extern u8 indexTxWrite;
 extern u8 rReady;
+extern u16 txCur;
+extern u16 txCount;
+extern u8 isTx;
 
 static volatile u16 adcValues[5];
 const u8 adcIndex[] = {7, 1, 2, 3, 6, 255};
@@ -120,8 +121,6 @@ void InitUart(void)
 	UCSR0B |= (1 << RXEN0) | (1 << TXEN0);
 	UCSR0C |= (1 << UCSZ00) | (1 << UCSZ01);
 	UCSR0B |= (1 << RXCIE0);
-	indexTxWrite = 0;
-	indexTxRead  = 0;
 	indexRx      = 0;
 	return;
 }
@@ -136,34 +135,40 @@ void printstr (char *string){
 	while(*string){
 		putchr(*string++);
 	}
-	putchr('\r');
-	putchr('\n');
+}
+
+
+void __assert__(char *expr, char *filename, int linenumber)
+{
+    cli();
+	printstr("FATAL\n");
+	printstr(expr);
+    printstr("\n");
+	printstr(filename);
+    printstr(" line ");
+    char str[8];
+    itoa(linenumber, (char *)str, 10);
+	printstr(str);
+    abort();
 }
 
 ISR(USART_RX_vect)
 {
-	char c;
-	c = UDR0;
 	if(bit_is_clear(UCSR0A, FE0))
 	{
-		if(c != '\r')
-		{
-            bufRx[indexRx++] = c;
-		}else{
-            bufRx[indexRx++] = c; // let the CR
-            bufRx[indexRx++] = 0; 
-			rReady = 1;
-			USART_RX_DIS;
-		}
+        bufRx[indexRx++] = UDR0;
+        rReady = 1;
 	}
 }
 
 ISR(USART_TX_vect)
 {
-    if(indexTxWrite != indexTxRead)
+    if(txCur != txCount)
     {
-        UDR0 = bufTx[indexTxRead++];
+        UDR0 = bufTx[txCur];
+        txCur++;
     }else{
+        isTx = False;
         USART_TX_DIS; 
     }
 }
@@ -257,13 +262,13 @@ ISR(TIMER2_COMPA_vect)
         {
             if(HTINPUT == 0)
             {
-                CurrentValues.HVvalue += eData.HVstep;
+                gState.HVvalue += eData.HVstep;
             }else{
-                CurrentValues.HVvalue -= eData.HVstep;
+                gState.HVvalue -= eData.HVstep;
             }
-            if(CurrentValues.HVvalue > 100) CurrentValues.HVvalue = 100;
-            else if((signed)CurrentValues.HVvalue < 0) CurrentValues.HVvalue = 0;
-            WritePWMValue(CurrentValues.HVvalue);
+            if(gState.HVvalue > 100) gState.HVvalue = 100;
+            else if((signed)gState.HVvalue < 0) gState.HVvalue = 0;
+            WritePWMValue(gState.HVvalue);
         } 
 
     }
@@ -278,7 +283,7 @@ ISR(TIMER2_COMPA_vect)
  */
 ISR(TIMER1_OVF_vect)
 {
-    CurrentValues.state = STALLED;
+    gState.engine = STALLED;
 }
 
 /**
@@ -313,7 +318,6 @@ void InitTimer(void)
 
 /**
  * \fn void StartTimer(u8 timerHandle)
-
  * \brief start a software timer
  *
  * \param timerHandle handle on the timer to start
@@ -323,14 +327,14 @@ void InitTimer(void)
  */
 void StartTimer(u8 timerHandle)
 {
-   timerTable[timerHandle] = masterClk;
-   return;
+    ASSERT(timerHandle < TIMER_QTY);
+    timerTable[timerHandle] = masterClk;
+    return;
 }
 
 
 /**
  * \fn unsigned long GetTimer_ms(const u8 timerHandle)
-
  * \brief return number of milliseconds of timer defined by timerHandle
  *
  * \param timerHandle handle on the timer to get
@@ -339,15 +343,14 @@ void StartTimer(u8 timerHandle)
  */
 unsigned long GetTimer(const u8 timerHandle)
 {
-   return masterClk - timerTable[timerHandle];
+    ASSERT(timerHandle < TIMER_QTY);
+    return masterClk - timerTable[timerHandle];
 }
 
 
 /**
  * \fn u8 EndTimer(const u8 timerHandle, const unsigned long duration)
-
  * \brief return if duration is over on timer defined by timerHandle
-
  *
  * \param timerHandle handle on the timer to get
  * \param duration wait time in msec
@@ -356,10 +359,25 @@ unsigned long GetTimer(const u8 timerHandle)
  */
 u8 EndTimer(const u8 timerHandle, const unsigned long duration)
 {
-   if(masterClk - timerTable[timerHandle] > duration)
-      return 1;
-   else
-      return 0;
+    ASSERT(timerHandle < TIMER_QTY);
+    if(masterClk - timerTable[timerHandle] > duration)
+        return 1;
+    else
+        return 0;
+}
+
+/**
+ * \fn void GetTime(u16 *dst)
+ * \brief return the current time in second since start
+ *
+ * \param dst variable to hold the result
+ * \return none
+ *
+ */
+void GetTime(u16 *dst)
+{
+    *dst = (u16)(masterClk / 1000); 
+    return;
 }
 
 /**
@@ -420,22 +438,22 @@ void ADCProcessing(void)
     switch(adcState)
     {
         case ADC_BATTERY:
-            CurrentValues.battery = 150 * (u32)ADC / 1024 * eData.ratio[ADC_BATTERY] / 100;     
-            adcState = ADC_TEMP1;
+            gState.battery = 150 * (u32)ADC / 1024 * eData.ratio[ADC_BATTERY] / 100;     
+            adcState = ADC_TEMPMOTOR;
             break;
 
-        case ADC_TEMP1:
-            CurrentValues.temp1 = (u32)ADC * 500 / 1024 * eData.ratio[ADC_TEMP1] / 100;     
-            adcState = ADC_TEMP2;
+        case ADC_TEMPMOTOR:
+            gState.tempMotor = (u32)ADC * 500 / 1024 * eData.ratio[ADC_TEMPMOTOR] / 100;     
+            adcState = ADC_TEMPAIR;
             break;
 
-        case ADC_TEMP2:
-            CurrentValues.temp2 = (u32)ADC * 500 / 1024 * eData.ratio[ADC_TEMP2] / 100;     
+        case ADC_TEMPAIR:
+            gState.tempAir = (u32)ADC * 500 / 1024 * eData.ratio[ADC_TEMPAIR] / 100;     
             adcState = ADC_THROTTLE;
             break;
 
         case ADC_THROTTLE:
-            CurrentValues.throttle = (eData.ratio[ADC_THROTTLE] * (u32)ADC) / 1024;     
+            gState.throttle = (eData.ratio[ADC_THROTTLE] * (u32)ADC) / 1024;     
             adcState = ADC_BATTERY;
             break;
         case ADC_IDLE:
@@ -470,7 +488,7 @@ void InitPWM(void)
              (0 << CS01)   | (1 << CS00); 
 
     OCR0B = 0; // off state
-    CurrentValues.HVvalue = 0;
+    gState.HVvalue = 0;
 }
 
 /**
@@ -500,8 +518,8 @@ ISR(INT0_vect)
     // clear timer for next period
     TCNT1 = 0;
     // compute RPM : tick is 4us
-    CurrentValues.RPM = 60 * (250000 / period);
-    CurrentValues.state = RUNNING;
+    gState.rpm = 60 * (250000 / period);
+    gState.engine = RUNNING;
 }
 
 /**
@@ -527,5 +545,5 @@ ISR(INT1_vect)
 
     // Compute speed in 1/10 of km/h
     //wh/period = cm/4us
-    CurrentValues.speed = ((u32)eData.wheelSize * 25 * 3600) / period;
+    gState.speed = ((u32)eData.wheelSize * 25 * 3600) / period;
 }

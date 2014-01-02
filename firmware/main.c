@@ -51,7 +51,7 @@ volatile unsigned char rReady = 0;
 
 Flags_t          Flags;
 eeprom_data_t    eData;
-Current_Data_t   CurrentValues;
+Current_Data_t   gState;
 
 
 int main(void)
@@ -66,8 +66,10 @@ int main(void)
 
 	sei();
     StartTimer(TIMER_100MS);
-    printstr("demarrage");
+    //printstr("demarrage");
+    printstr("x");
     USART_RX_EN;
+    eData.timerLed = 50;
 
 	while(1)
 	{
@@ -76,16 +78,14 @@ int main(void)
             LED_PIN |= _BV(LED);
             StartTimer(TIMER_100MS);
             ADCProcessing();
+            gState.advance++;
+            gState.injPulseWidth++;
         }
         
         if(rReady)
 		{
-			if(rReady == 1)
-			{
-                rReady = 0;
-                ProcessCommand();
-                USART_RX_EN;
-			}
+            rReady = 0;
+            ProcessCommand();
 		}
 
         // Process ADC Samples
