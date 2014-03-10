@@ -81,12 +81,12 @@ Configuration_t conf;
 /**** Helper ****/
 double DegreeToUs(const double degree, const int RPM)
 {
-	return 0;
+	return degree * 60000. / RPM; 
 }
 
 double UsToDegree(const double us, const int RPM)
 {
-	return 0;
+	return us * RPM / 60000.; 
 }
 
 /* Affichage de l'aide */
@@ -433,11 +433,56 @@ int main(int argc, char *argv[])
 
 	}else{
 
-		/* Calcul des timings d'allumage */
-		/*********************************/
+		/* Calcul des timings d'allumage
+		 * -----------------------------
+		 * Principe de calcul :
+		 * pour chaque point de la table d'avance a l'allumage,
+		 * on calcule le timing de declenchement de l'etincelle
+		 * (i.e. l'allumage lui-meme) et le timing de relachement de 
+		 * la commande (dead time utilise pour bien desamorcer le 
+		 * thyristor)
+		 * Ces timings sont le delai APRES le PMH */
+		double spark[TABLE_SIZE][TABLE_SIZE];
+		double deadTime[TABLE_SIZE][TABLE_SIZE];
+		for(int i = 0; i < TABLE_SIZE; i++)
+		{
+			for(int j = 0; j < TABLE_SIZE; j++)
+			{
+				spark[i][j] =  DegreeToUs(360. - ignTable[i][j], conf.rpmTable[i]); // en us
+				deadTime[i][j] = spark[i][j] + conf.ignDuration; // en us
+			}
+		}
+		HIGH("Table des avances (us) :");
+		Print2DTable((double *)spark, conf.loadTable, conf.rpmTable, TABLE_SIZE, TABLE_SIZE);
+		HIGH("Table des dead time (us) :");
+		Print2DTable((double *)deadTime, conf.loadTable, conf.rpmTable, TABLE_SIZE, TABLE_SIZE);
+		// TODO : ecrire les resultats dans un fichier
 
-		/* Calcul des timings d'injection */
-		/**********************************/
+		/* Calcul des timings d'injection
+		 * ------------------------------
+		 * Principe de calcul :
+		 * pour chaque point de la table de VE, on calcule 
+		 * la quantitee de carburant a injecter et donc le temps d'injection
+		 * A partir de la, on calcule le timing de debut d'injection pour etre 
+		 * centre sur le point d'avance a l'injection (= periode avec le meilleur
+		 * flux d'air d'admission)
+		 */
+		double duration[TABLE_SIZE][TABLE_SIZE];
+		double injAvance[TABLE_SIZE][TABLE_SIZE];
+		for(int i = 0; i < TABLE_SIZE; i++)
+		{
+			for(int j = 0; j < TABLE_SIZE; j++)
+			{
+				spark[i][j] =  DegreeToUs(360. - ignTable[i][j], conf.rpmTable[i]); // en us
+				deadTime[i][j] = spark[i][j] + conf.ignDuration; // en us
+			}
+		}
+		HIGH("Duree d'injection (us) :");
+		Print2DTable((double *)duration, conf.loadTable, conf.rpmTable, TABLE_SIZE, TABLE_SIZE);
+		HIGH("Avance d'injection (us) :");
+		Print2DTable((double *)injAvance, conf.loadTable, conf.rpmTable, TABLE_SIZE, TABLE_SIZE);
+		// TODO : ecrire les resultats dans un fichier
+
 	}
 
 }
