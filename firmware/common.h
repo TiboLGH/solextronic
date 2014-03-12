@@ -40,7 +40,6 @@
 #define VERSION_SOFT_MINOR       1
 #define VERSION_HARD             1
 
-#define LOG(msg)  if(Flags.debug) printf(msg)
 void __assert__(char *expr, char *filename, int linenumber); 
 #define ASSERT(_expr) do {if (!(_expr)) __assert__(#_expr, __FILE__, __LINE__);} while (0);
 
@@ -71,22 +70,6 @@ enum
     ERROR,
     STALLED
 };
-
-
-
-
-/**
- * \struct Flags_t
- * \brief Store current state of the system
- *
- * Flags stores variable of system state
- */
-typedef struct {
-   u8 newCmd;    	/*!< New command in uart buffer */
-   u8 debug;      /*!< debug printf enable */
-   u8 PMHEnable;  /*!< PMH enable */
-   STATE PMHState;   /*!< PMH current state : active/inactive */
-}Flags_t;
 
 
 /**

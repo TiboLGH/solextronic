@@ -40,16 +40,10 @@
 #include "platform.h"
 #include "command.h"
 
-#define LED_DDR		DDRB
-#define LED_PORT	PORTB
-#define LED			PB5
-#define LED_PIN		PINB
-
 #define MAXSTR 	10
 
 volatile unsigned char rReady = 0;
 
-Flags_t          Flags;
 eeprom_data_t    eData;
 Current_Data_t   gState;
 
@@ -78,8 +72,6 @@ int main(void)
             LED_PIN |= _BV(LED);
             StartTimer(TIMER_100MS);
             ADCProcessing();
-            gState.advance++;
-            gState.injPulseWidth++;
         }
         
         if(rReady)
@@ -87,6 +79,10 @@ int main(void)
             rReady = 0;
             ProcessCommand();
 		}
+
+        
+        SetInjectionTiming(OFF, 1000);
+        SetIgnitionTiming(OFF, 10);
 
         // Process ADC Samples
         //ADCProcessing();

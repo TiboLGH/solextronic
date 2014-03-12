@@ -48,6 +48,14 @@ enum
 
 enum
 {
+    OFF = 0,   /*!< OFF state */
+    ON,        /*!< ON state */
+    FORCEON,   /*!< force ON state : always on */
+    FORCEOFF,  /*!< force OFF state : always off */
+};
+
+enum
+{
     ADC_BATTERY = 0, /*!< ADC7 */
     ADC_TEMPMOTOR,   /*!< ADC1 */
     ADC_TEMPAIR,     /*!< ADC2 */
@@ -56,6 +64,52 @@ enum
     ADC_IDLE
 };
 
+/* Pinout Definition */
+// from AVR035: Efficient C Coding for AVR 
+
+#define SETBIT(ADDRESS,BIT) (ADDRESS |= (1<<BIT)) 
+#define CLEARBIT(ADDRESS,BIT) (ADDRESS &= ~(1<<BIT)) 
+#define FLIPBIT(ADDRESS,BIT) (ADDRESS ^= (1<<BIT)) 
+#define CHECKBIT(ADDRESS,BIT) (ADDRESS & (1<<BIT)) 
+
+#define SETBITMASK(x,y) (x |= (y)) 
+#define CLEARBITMASK(x,y) (x &= (~y)) 
+#define FLIPBITMASK(x,y) (x ^= (y)) 
+#define CHECKBITMASK(x,y) (x & (y)) 
+
+#define VARFROMCOMB(x, y) x 
+#define BITFROMCOMB(x, y) y 
+
+#define C_SETBIT(comb) SETBIT(VARFROMCOMB(comb), BITFROMCOMB(comb)) 
+#define C_CLEARBIT(comb) CLEARBIT(VARFROMCOMB(comb), BITFROMCOMB(comb)) 
+#define C_FLIPBIT(comb) FLIPBIT(VARFROMCOMB(comb), BITFROMCOMB(comb)) 
+#define C_CHECKBIT(comb) CHECKBIT(VARFROMCOMB(comb), BITFROMCOMB(comb)) 
+
+// Arduino Nano LED on PB5 (pin 17 on 32 pins parts)
+//#define LED_PIN  PORTB, 5 
+#define LED_DDR		DDRB
+#define LED_PORT	PORTB
+#define LED			PB5
+#define LED_PIN		PINB
+// Injector control on PB2/OC1B (pin 14 on 32 pins parts)
+#define INJECTOR_PIN  PORTB, 2 
+// Ignition control on PB1/OC1A (pin 13 on 32 pins parts)
+#define IGNITION_PIN  PORTB, 1 
+// Pump control on PD7 (pin 11 on 32 pins parts)
+#define PUMP_PIN  PORTD, 7 
+
+
+/**
+ * \struct wvf_t
+ * \brief waveform generator configuration
+ *
+ * Store the timing of ON and OFF states for injection and ignition
+ */
+typedef struct {
+    u8  state;
+    u16 start;
+    u16 stop;
+}wvf_t; 
 
 /* USART related functions */
 void InitUart(void);
@@ -88,5 +142,9 @@ void ADCProcessing(void);
 /* PWM related functions */
 void InitPWM(void);
 void WritePWMValue(u8 value);
+
+/* Injection and ignition timings settings */
+void SetInjectionTiming(u8 force, u16 duration);
+void SetIgnitionTiming(u8 force, u8 advance);
 
 #endif // PLATFORM_H

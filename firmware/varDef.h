@@ -53,7 +53,7 @@
 * Comments gives the format used for the tunerStudio configuration file
 * = class, type, offset, shape, units, scale, translate, lo, hi, digits ; comments
 */
-typedef struct {
+typedef struct __attribute__ ((__packed__)){ // packed for alignment when used in simulation
     u8         ratio[5];      /*!< = array,  U08,   0,  [5],  "%",    1.00000,   0.00000,   0,   200,  0 ;  ratios to adjust ADC/DAC conversion */
     u8         wheelImpulse;  /*!< = scalar, U08,   5,        " ",    1.00000,   0.00000,   0,     5,  0 ;  number of impulsion for a wheel rotation */
     u16        timerLed;      /*!< = scalar, U16,   6,       "ms",    1.00000,   0.00000,   0, 65535,  0 ;  internal timer */

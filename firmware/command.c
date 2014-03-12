@@ -59,7 +59,7 @@ volatile u8 isTx = False;
 u8 dbg[16];
 
 
-static void SendToUsart(const u8 *buffer, const u16 len);
+static void SendToUsart(u8 *buffer, const u16 len);
 
 /**
 *
@@ -166,6 +166,7 @@ void ProcessCommand(void)
                     SendToUsart((u8 *)&eData + offset, nbData);
                     state = IDLE;
                 }else{
+                    ASSERT(nbData + offset <= sizeof(eData)); 
                     state = DATA;
                     dataCount = 0;
                 }
@@ -176,9 +177,15 @@ void ProcessCommand(void)
                 {
                     //write data
                     *((u8*)&eData + offset + dataCount) = c;
+                    /*if(!dataCount)
+                    { 
+                        putchr(nbData);
+                    }
+                    putchr(dataCount);*/
                     dataCount++;
                     if(dataCount == nbData)
                     {
+                        //ASSERT(0);
                         state = IDLE;
                         if(command == 'e') SendToUsart((u8 *)&eData + offset, nbData);
                     } 
@@ -202,7 +209,7 @@ void ProcessCommand(void)
  * \param u16 len : number of bytes to transmit starting from *buffer 
  * \return none
  */
-static void SendToUsart(const u8 *buffer, const u16 len)
+static void SendToUsart(u8 *buffer, const u16 len)
 {
     ASSERT(len);
     ASSERT(!isTx); // Collision !

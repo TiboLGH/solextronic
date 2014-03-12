@@ -78,7 +78,6 @@ const PROGMEM eeprom_data_t eeInit = {
     //.igniTable[12][12];
 };
 
-extern Flags_t          Flags;
 extern eeprom_data_t    eData;
 extern Current_Data_t   gState;
 
@@ -97,8 +96,12 @@ static volatile u8 adcTrigger;
 static u32	timerTable[TIMER_QTY];
 static volatile u32 masterClk;
 static volatile u8 count10ms;
-static TimeStamp_t     prevTs, newTs; 
-
+static TimeStamp_t     prevTs, newTs;
+static volatile wvf_t curInjTiming = {.state = OFF, .start = 0, .stop = 0};
+static volatile wvf_t nextInjTiming = {.state = OFF, .start = 0, .stop = 0};
+static volatile wvf_t curIgnTiming = {.state = OFF, .start = 0, .stop = 0};
+static volatile wvf_t nextIgnTiming = {.state = OFF, .start = 0, .stop = 0};
+static volatile u16 RPMperiod; 
 
 
 /**
@@ -286,9 +289,54 @@ ISR(TIMER1_OVF_vect)
     gState.engine = STALLED;
 }
 
+
+/**
+ * \fn ISR(TIMER1_COMPA_vect)
+ * \brief Interrupt on compare of Timer1 channel A : ignition
+ *
+ * \param none
+ * \return none
+ */
+ISR(TIMER1_COMPA_vect)
+{
+    if(curIgnTiming.state == OFF)
+    {
+        // TODO : use polarity
+        C_SETBIT(IGNITION_PIN);
+        curIgnTiming.state = ON;
+        OCR1A = curIgnTiming.stop;
+    }else{
+        C_CLEARBIT(IGNITION_PIN);
+        curIgnTiming.state = OFF;
+        OCR1A = curIgnTiming.start;
+    }
+}
+
+/**
+ * \fn ISR(TIMER1_COMPB_vect)
+ * \brief Interrupt on compare of Timer1 channel B : injection
+ *
+ * \param none
+ * \return none
+ */
+ISR(TIMER1_COMPB_vect)
+{
+    if(curInjTiming.state == OFF)
+    {
+        // TODO : use polarity
+        C_SETBIT(INJECTOR_PIN);
+        curInjTiming.state = ON;
+        OCR1B = curInjTiming.stop;
+    }else{
+        C_CLEARBIT(INJECTOR_PIN);
+        curInjTiming.state = OFF;
+        OCR1B = curInjTiming.start;
+    }
+}
+
 /**
  * \fn void InitTimer(void)
- * \brief Init software timers
+ * \brief Init hardware and software timers
  *
  * \param none
  * \return none
@@ -513,13 +561,16 @@ void WritePWMValue(u8 value)
 ISR(INT0_vect)
 {
     // Save timer value
-    u16 period; 
-    period = TCNT1;
+    RPMperiod = TCNT1;
     // clear timer for next period
     TCNT1 = 0;
     // compute RPM : tick is 4us
-    gState.rpm = 60 * (250000 / period);
+    gState.rpm = 60 * (250000 / RPMperiod);
     gState.engine = RUNNING;
+
+    // update injection and ignition timings
+    curIgnTiming = nextIgnTiming;
+    curInjTiming = nextInjTiming;
 }
 
 /**
@@ -547,3 +598,68 @@ ISR(INT1_vect)
     //wh/period = cm/4us
     gState.speed = ((u32)eData.wheelSize * 25 * 3600) / period;
 }
+
+
+/**
+ * \fn void SetInjectionTiming(u8 *force, u16 *duration)
+ * \brief compute and set timing for injection
+ *
+ * \param u8 force : set to FORCEON or FORCEOFF to force output state
+ * \param u16 duration : injection duration in us 
+ * \return none
+*/
+void SetInjectionTiming(u8 force, u16 duration)
+{
+    if(force == FORCEON)
+    {
+        nextInjTiming.state = FORCEON;
+    }
+    else if(force == FORCEOFF)
+    {
+        nextInjTiming.state = FORCEOFF;
+    }
+    else
+    {
+        nextInjTiming.state = OFF;
+    }
+
+    // Convert angle to timer tick through RPM. Timer tick is 4us
+    // TODO : use PMHOffset setting
+    u16 angleTick = (u32)RPMperiod * eData.injAdv / 360;
+    nextInjTiming.start = angleTick - (duration >> 3);
+    nextInjTiming.stop  = angleTick + (duration >> 3);
+
+    return;
+}
+
+/**
+ * \fn void SetIgnitionTiming(u8 force, u8 advance);
+ * \brief compute and set timing for ignition
+ *
+ * \param u8 force : set to FORCEON or FORCEOFF to force output state
+ * \param u8 advance : angle before TDH to trigger spark 
+ * \return none
+*/
+void SetIgnitionTiming(u8 force, u8 advance)
+{
+    if(force == FORCEON)
+    {
+        nextIgnTiming.state = FORCEON;
+    }
+    else if(force == FORCEOFF)
+    {
+        nextIgnTiming.state = FORCEOFF;
+    }
+    else
+    {
+        nextIgnTiming.state = OFF;
+    }
+
+    // Convert angle to timer tick through RPM. Timer tick is 4us
+    // TODO : use PMHOffset setting
+    nextIgnTiming.start = (u32)RPMperiod * advance / 360;;
+    nextIgnTiming.stop  = nextIgnTiming.start + (eData.igniDuration >> 2);
+
+    return;
+}
+

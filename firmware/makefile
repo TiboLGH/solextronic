@@ -38,6 +38,9 @@ size: $(TARGET).elf
 sim: $(TARGET).hex
 	make -C test/
 
+test: $(TARGET).hex sim
+	
+
 
 .PHONY: tags clean sim
 
