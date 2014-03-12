@@ -46,6 +46,10 @@
 #define DEBUG(msg, ...) if(debugTrace) fprintf( stderr, "\033[1m" msg "\n\033[0m", ##__VA_ARGS__ )
 
 #define TABLE_SIZE	10
+const double R = 8.3144621;
+const double MMair = 28.965338; // g/mol
+const double P = 101325; // pression atm
+const double MVfuel = 0.750; // masse volumique essence en g/cm3
 
 bool debugTrace = false;
 bool chartOn = false;
@@ -69,6 +73,7 @@ typedef struct {
 	int loadTable[TABLE_SIZE];
 	int injectorMaxDutyCycle;
 	double targetAFR;
+	int CID;
 }Configuration_t;
 
 Configuration_t conf;
@@ -76,12 +81,12 @@ Configuration_t conf;
 /**** Helper ****/
 double DegreeToUs(const double degree, const int RPM)
 {
-	return 0;
+	return degree * 60000. / RPM; 
 }
 
 double UsToDegree(const double us, const int RPM)
 {
-	return 0;
+	return us * RPM / 60000.; 
 }
 
 /* Affichage de l'aide */
@@ -243,6 +248,8 @@ bool parseIniFile(char * iniName)
     conf.injectorMaxDutyCycle = var; 
     vard = iniparser_getdouble(ini, "Injection:TargetAFR", -1);
     conf.targetAFR = vard; 
+    var = iniparser_getint(ini, "Injection:CID", -1);
+    conf.CID = var; 
     
     /* Lecture attributs allumage */
     var = iniparser_getint(ini, "Ignition:PMHAdvance", -1);
@@ -269,6 +276,22 @@ bool parseIniFile(char * iniName)
     return true;
 }
 
+/* Affichage tables 2D */
+bool Print2DTable(double *table, int *xBins, int *yBins, int xSize, int ySize)
+{
+	char str[256];
+	sprintf(str,"\t");
+	for(int i=0; i<xSize; i++) sprintf(str,"%s%d\t", str, *(xBins + i));
+	printf("%s\n", str);
+	for(int j=0; j<ySize; j++)
+	{
+		sprintf(str,"%d\t", *(yBins + j));
+		for(int i=0; i<TABLE_SIZE; i++) sprintf(str,"%s%.1f\t", str, *(table + j*xSize + i));
+		printf("%s\n", str);
+	}
+	return true;
+}
+
 /* Affichage configuration */
 bool dumpConfiguration(void)
 {
@@ -278,11 +301,12 @@ bool dumpConfiguration(void)
     NORMAL("\tFichier d'avance    :      \t%s\n", conf.ignTableFile);
     NORMAL("\tFichier d'injection :      \t%s\n", conf.injTableFile);
     HIGH("Injection : ");
-    NORMAL("\tDebit d'injecteur :        \t%d\n", conf.injRate); 
+    NORMAL("\tDebit d'injecteur :        \t%d g/min\n", conf.injRate); 
     NORMAL("\tOuverture de l'injecteur : \t%d us\n", conf.injOpen); 
     NORMAL("\tAvance de l'injection :    \t%d deg\n", conf.injAdv); 
     NORMAL("\tRatio max de l'injecteur : \t%d %%\n", conf.injectorMaxDutyCycle); 
     NORMAL("\tAFR cible :                \t%.1f\n", conf.targetAFR); 
+    NORMAL("\tCylindree :                \t%d cm3\n", conf.CID); 
     HIGH("Allumage : ");
     NORMAL("\tAvance du PMH :            \t%d deg\n", conf.pmhAdv); 
     NORMAL("\tDuree de l'allumage :      \t%d us\n", conf.ignDuration); 
@@ -347,16 +371,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	HIGH("Table d'avance :");
-	char str[256];
-	sprintf(str,"\t");
-	for(int i=0; i<TABLE_SIZE; i++) sprintf(str,"%s%d\t", str, conf.loadTable[i]);
-	printf("%s\n", str);
-	for(int j=0; j<TABLE_SIZE; j++)
-	{
-		sprintf(str,"%d\t", conf.rpmTable[j]);
-		for(int i=0; i<TABLE_SIZE; i++) sprintf(str,"%s%.1f\t", str, ignTable[j][i]);
-		printf("%s\n", str);
-	}
+	Print2DTable((double *)ignTable, conf.loadTable, conf.rpmTable, TABLE_SIZE, TABLE_SIZE);
 	
 	if(!readCsvTable("Injection", conf.injTableFile, injTable, conf.rpmTable, conf.loadTable))
 	{
@@ -364,28 +379,110 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	HIGH("Table d'injection :");
-	sprintf(str,"\t");
-	for(int i=0; i<TABLE_SIZE; i++) sprintf(str,"%s%d\t", str, conf.loadTable[i]);
-	printf("%s\n", str);
-	for(int j=0; j<TABLE_SIZE; j++)
-	{
-		sprintf(str,"%d\t", conf.rpmTable[j]);
-		for(int i=0; i<TABLE_SIZE; i++) sprintf(str,"%s%.1f\t", str, injTable[j][i]);
-		printf("%s\n", str);
-	}
+	Print2DTable((double *)injTable, conf.loadTable, conf.rpmTable, TABLE_SIZE, TABLE_SIZE);
 
 	/* Calculs     */
 	/***************/
 	if(flowrateComputation) // calcul des debit min et max de l'injecteur
 	{
+		/* Principe de calcul :
+		 * Pour chaque point du tableau des RPMs/charge, on calcule
+		 * la quantite de carburant necessaire en considerant le
+		 * remplissage donne dans la table des VE(RPM, load) pour un 
+		 * ratio air/essence donne par TargetAFR.
+		 * A partir de cette quantitee d'essence, on calcule le debit 
+		 * de l'injecteur pour respecter les conditions suivantes :
+		 *  - temps d'injection max = 40% cycle (remontee piston)
+		 *  - temps mini > temps d'ouverture 
+		 */
+		
+		// Calcul de la quantite de carburant a injecter pour chaque cycle
+		double fuel[TABLE_SIZE][TABLE_SIZE];
+		for(int i = 0; i < TABLE_SIZE; i++)
+		{
+			for(int j = 0; j < TABLE_SIZE; j++)
+			{
+				/* PV = nRT
+				 * n = PV / (RT)
+				 * Mair = n * MMair
+				 * Mfuel = Mair / AFR
+				 * P : on considere la pression atmospherique 1015hPa
+				 * V : volume = cylindree * remplissage
+				 * T : temperatures min et max sont testees 
+				 */
+				double Mair = MMair * P * injTable[i][j]/100. * (conf.CID/1e6) / (R * (conf.tempMax + 273)); // en gramme
+				fuel[i][j] = Mair / conf.targetAFR;
+			}
+		}
+		/* calcul du debit en fct du temps d'injection et de la quantite de carburant
+		 * flowrate = fuel / Tinj;
+		 * Tinj = 40% * cycle
+		 */
+		double flowrate[TABLE_SIZE][TABLE_SIZE];
+		for(int i = 0; i < TABLE_SIZE; i++)
+		{
+			for(int j = 0; j < TABLE_SIZE; j++)
+			{
+				double Tinj = 0.4 * 60000. / (double)conf.rpmTable[i] - conf.injOpen/1000.; //en msec
+				flowrate[i][j] = fuel[i][j] / Tinj * 1000 * 60; // en g/min
+				//flowrate[i][j] /= MVfuel; // en cm3/min
+			}
+		}
+		HIGH("Table de debits (g/min) :");
+		Print2DTable((double *)flowrate, conf.loadTable, conf.rpmTable, TABLE_SIZE, TABLE_SIZE);
 
 	}else{
 
-		/* Calcul des timings d'allumage */
-		/*********************************/
+		/* Calcul des timings d'allumage
+		 * -----------------------------
+		 * Principe de calcul :
+		 * pour chaque point de la table d'avance a l'allumage,
+		 * on calcule le timing de declenchement de l'etincelle
+		 * (i.e. l'allumage lui-meme) et le timing de relachement de 
+		 * la commande (dead time utilise pour bien desamorcer le 
+		 * thyristor)
+		 * Ces timings sont le delai APRES le PMH */
+		double spark[TABLE_SIZE][TABLE_SIZE];
+		double deadTime[TABLE_SIZE][TABLE_SIZE];
+		for(int i = 0; i < TABLE_SIZE; i++)
+		{
+			for(int j = 0; j < TABLE_SIZE; j++)
+			{
+				spark[i][j] =  DegreeToUs(360. - ignTable[i][j], conf.rpmTable[i]); // en us
+				deadTime[i][j] = spark[i][j] + conf.ignDuration; // en us
+			}
+		}
+		HIGH("Table des avances (us) :");
+		Print2DTable((double *)spark, conf.loadTable, conf.rpmTable, TABLE_SIZE, TABLE_SIZE);
+		HIGH("Table des dead time (us) :");
+		Print2DTable((double *)deadTime, conf.loadTable, conf.rpmTable, TABLE_SIZE, TABLE_SIZE);
+		// TODO : ecrire les resultats dans un fichier
 
-		/* Calcul des timings d'injection */
-		/**********************************/
+		/* Calcul des timings d'injection
+		 * ------------------------------
+		 * Principe de calcul :
+		 * pour chaque point de la table de VE, on calcule 
+		 * la quantitee de carburant a injecter et donc le temps d'injection
+		 * A partir de la, on calcule le timing de debut d'injection pour etre 
+		 * centre sur le point d'avance a l'injection (= periode avec le meilleur
+		 * flux d'air d'admission)
+		 */
+		double duration[TABLE_SIZE][TABLE_SIZE];
+		double injAvance[TABLE_SIZE][TABLE_SIZE];
+		for(int i = 0; i < TABLE_SIZE; i++)
+		{
+			for(int j = 0; j < TABLE_SIZE; j++)
+			{
+				spark[i][j] =  DegreeToUs(360. - ignTable[i][j], conf.rpmTable[i]); // en us
+				deadTime[i][j] = spark[i][j] + conf.ignDuration; // en us
+			}
+		}
+		HIGH("Duree d'injection (us) :");
+		Print2DTable((double *)duration, conf.loadTable, conf.rpmTable, TABLE_SIZE, TABLE_SIZE);
+		HIGH("Avance d'injection (us) :");
+		Print2DTable((double *)injAvance, conf.loadTable, conf.rpmTable, TABLE_SIZE, TABLE_SIZE);
+		// TODO : ecrire les resultats dans un fichier
+
 	}
 
 }
