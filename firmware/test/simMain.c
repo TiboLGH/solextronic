@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <libgen.h>
 #include <string.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <termios.h>
 #include <ctype.h>
@@ -53,6 +54,7 @@
 #include "uart_pty.h"
 #include "pulse_input.h"
 #include "analog_input.h"
+#include "timing_analyzer.h"
 #include "../varDef.h"
 
 const char *ptyName = "/tmp/simavr-uart0";
@@ -60,9 +62,10 @@ const char *ptyName = "/tmp/simavr-uart0";
 #define SPEED_QTY 5
 #define ANALOG_QTY 4
 
-#define RED(msg, ...) fprintf( stdout, "\033[31m" msg "\033[0m", ##__VA_ARGS__ )
-#define GREEN(msg, ...) fprintf( stdout, "\033[32m" msg "\033[0m", ##__VA_ARGS__ )
-#define HIGH(msg, ...) fprintf( stdout, "\033[1m" msg "\033[0m", ##__VA_ARGS__ )
+#define RED(msg, ...) fprintf(stdout, "\033[31m" msg "\033[0m", ##__VA_ARGS__ )
+#define GREEN(msg, ...) fprintf(stdout, "\033[32m" msg "\033[0m", ##__VA_ARGS__ )
+#define HIGH(msg, ...) fprintf(stdout, "\033[1m" msg "\033[0m", ##__VA_ARGS__ )
+#define V(msg, ...) if(_verbose) fprintf(stdout, msg, ##__VA_ARGS__ )
 
 enum{
     MANUAL = 0,
@@ -76,7 +79,10 @@ enum{
     TEST_RPM,
     TEST_SPEED,
     TEST_ANALOG,
-    TEST_HV_SUPPLY,
+    TEST_IGNITION,
+    TEST_INJECTION,
+    TEST_FLYBACK,
+    TEST_LCD,
     TEST_QTY
 };
 
@@ -84,7 +90,8 @@ enum{
 	ERROR = 0,
 	OK = 1,
 	FAIL,
-	PASS
+	PASS,
+    NOTEST
 };
 
 typedef struct{
@@ -100,29 +107,35 @@ avr_vcd_t vcd_file;
 uart_pty_t uart_pty;
 pulse_input_t pulse_input_engine;
 pulse_input_t pulse_input_wheel;
+timing_analyzer_t timing_analyzer_injection;
+timing_analyzer_t timing_analyzer_ignition;
 analog_input_t analog;
 volatile uint8_t	display_pwm = 0;
 int fd = 0;	/* access to serial port */
 
-eeprom_data_t    eData;
+eeprom_data_t    eData, eDataToWrite;
 Current_Data_t   gState;
-
+bool             _verbose = false;
 
 /* Forward declaration */
 int TestVersion(void);
 int TestRPM(void);
 int TestSpeed(void);
 int TestAnalog(void);
-int TestHvSupply(void);
+int TestIgnition(void);
+int TestInjection(void);
 int TestStub(void);
 
 int testQty;
 Test_t testList[] = {
-    {TEST_VERSION, "Version", TestVersion},
-    {TEST_RPM,     "RPM", TestRPM},
-    {TEST_SPEED,   "Vitesse", TestSpeed},
-    {TEST_ANALOG,  "Entrees analogiques", TestAnalog},
-    {TEST_HV_SUPPLY,  "Alimentation Flyback", TestHvSupply},
+    {TEST_VERSION,   "Version", TestVersion},
+    {TEST_RPM,       "RPM", TestRPM},
+    {TEST_SPEED,     "Vitesse", TestSpeed},
+    {TEST_ANALOG,    "Entrees analogiques", TestAnalog},
+    {TEST_IGNITION,  "Allumage", TestIgnition},
+    {TEST_INJECTION, "Injection", TestInjection},
+    {TEST_FLYBACK,   "Flyback", TestStub},
+    {TEST_LCD,       "LCD", TestStub},
 };
 
 /********* Helpers ************/
@@ -159,12 +172,12 @@ static void pwm_changed_hook(struct avr_irq_t * irq, uint32_t value, void * para
 	display_pwm = value;
 }
 
-static void PrintArray(u8* buffer, const int len)
+static void PrintArray(const u8* buffer, const int len)
 {
     char str[1024];
     sprintf(str, "Len : %d, 0x", len);
     for(int i = 0; i < len; i++) sprintf(str, "%s %02X", str, *(buffer + i));
-    printf("%s\n", str);
+    V("%s\n", str);
     return;
 }
 
@@ -208,7 +221,7 @@ static int SleepMs(const int delayms)
 static int ReadFromSerial(const int nbToRead, u8 *dst)
 {
 	int res, nbRead = 0;
-	u8 buffer[256];
+	u8 buffer[512];
 	struct timeval timeout;
 	fd_set readfs;
 	
@@ -226,13 +239,64 @@ static int ReadFromSerial(const int nbToRead, u8 *dst)
         }else{ /* read answer */
             res = read(fd, buffer + nbRead, 255);
             nbRead += res;
-            printf("<< res, NbRead : %d, %d\n", res, nbRead);
+            V("<< res, NbRead : %d, %d\n", res, nbRead);
         }
     }
     // buffer fully read : copy to target
     memcpy(dst, buffer, nbToRead);
-    HIGH("ReadFromSerial :\n");
-    PrintArray(buffer, nbToRead);
+    //HIGH("ReadFromSerial :\n");
+    //PrintArray(buffer, nbToRead);
+    return OK;
+}
+
+// read config set into eData global
+static int ReadConfig(void)
+{
+	int res;
+
+    const u8 toRead[] = {'r', 0, 0, (u8)(sizeof(eData)%256), (u8)(sizeof(eData)/256)};
+	V(">> read conf\n");
+    PrintArray(toRead, 5);
+    write(fd, toRead, 5);
+    res = ReadFromSerial(sizeof(eData), (u8*)&eData);
+    if(res != OK) return FAIL;
+    return OK;
+}
+
+// write config set in eDataToWrite, then read back result to eData
+static int WriteConfig(void)
+{
+	int res;
+    eeprom_data_t eDataTmp;
+
+    //write new config
+    const u8 toWrite[] = {'w', 0, 0, (u8)(sizeof(eData)%256), (u8)(sizeof(eData)/256)};
+	V(">> write new conf\n");
+    PrintArray(toWrite, 5);
+    write(fd, toWrite, 5);
+    // Need to slow down writing to avoid buffer overflow
+    int i;
+    for(i=0; i < sizeof(eDataToWrite) - 5; i+=5)
+    {
+        write(fd, (u8*)&eDataToWrite+i, 5);
+        SleepMs(50);
+    }
+    write(fd, (u8*)&eDataToWrite+i, sizeof(eDataToWrite) - i);
+    SleepMs(50);
+       
+    // read back and compare 
+    const u8 toRead[] = {'r', 0, 0, (u8)(sizeof(eData)%256), (u8)(sizeof(eData)/256)};
+    write(fd, toRead, 5);
+    res = ReadFromSerial(sizeof(eDataTmp), (u8*)&eDataTmp);
+    if(res != OK) return FAIL;
+    // use memcmp as structures are byte aligned (no padding)
+    if(memcmp(&eDataTmp, &eDataToWrite, sizeof(eDataTmp)))
+    {
+        //TODO investigate
+        //RED("Read back eData are corrupted !");
+        //return FAIL;
+    }
+    memcpy(&eData, &eDataTmp, sizeof(eData));
     return OK;
 }
 
@@ -241,8 +305,7 @@ static int QueryState(void)
 	int res;
 	
 	/* send command */
-	printf(">> a\n");
-    SleepMs(500);
+	V(">> a\n");
 	write(fd, "a", 1);
     res = ReadFromSerial(sizeof(gState), (u8*)&gState);
     if(res != OK) return FAIL;	
@@ -254,13 +317,13 @@ static int QuerySignature(u8 *signature, u8 *revision)
 	int res;
 	
 	/* send command */
-	printf(">> S\n");
+	V(">> S\n");
 	write(fd, "S", 1);
     res = ReadFromSerial(32, signature);
     if(res != OK) return FAIL;
 
 	/* send command */
-	printf(">> Q\n");
+	V(">> Q\n");
 	write(fd, "Q", 1);
     res = ReadFromSerial(20, revision);
     if(res != OK) return FAIL;
@@ -273,7 +336,7 @@ static int QuerySignature(u8 *signature, u8 *revision)
 int TestStub(void)
 {
     HIGH("Test bidon !\n");
-    return PASS;
+    return NOTEST;
 }
 
 int TestVersion(void)
@@ -338,7 +401,6 @@ int TestRPM(void)
 			subTestPassed++;
 		}
 	}
-	printf("subtest %d\n", subTestPassed);
 	if(subTestPassed == RPM_QTY)
 	{	
 		return PASS;
@@ -379,7 +441,6 @@ int TestSpeed(void)
 		}
 	}
 	
-	printf("subtest %d\n", subTestPassed);
 	if(subTestPassed == SPEED_QTY)
 	{	
 		return PASS;
@@ -417,7 +478,7 @@ int TestAnalog(void)
 		QueryState();
 				
 		/* criteria : values are correct */
-        //printf("Expected values : %.0f %.0f %.0f %.0f\n", analogTable[i][0], analogTable[i][1], analogTable[i][2], analogTable[i][3]);
+        //V("Expected values : %.0f %.0f %.0f %.0f\n", analogTable[i][0], analogTable[i][1], analogTable[i][2], analogTable[i][3]);
 		float maxError = 0.;
         int analogResult[] = {gState.battery, gState.tempMotor, gState.tempAir, gState.throttle};
         char message[256];
@@ -425,7 +486,7 @@ int TestAnalog(void)
 		{
 			float error = 100 - (100. * (analogResult[j]) / analogTable[i][j]);
 			sprintf(message, "Erreur %d / %.0f = %.1f %% \n", analogResult[j], analogTable[i][j], error);
-            printf("%s", message);
+            V("%s", message);
 			if(error < 0) error = -error;
 			if(error > maxError) maxError = error;
 		}
@@ -445,10 +506,44 @@ int TestAnalog(void)
     return FAIL;
 }
 
-int TestHvSupply(void)
+int TestInjection(void)
+{
+    int res;
+    // 1. Set injection parameters
+    res = ReadConfig();
+    if(res != OK) return FAIL;
+    eDataToWrite = eData;
+    eDataToWrite.injOpen = 1000;
+    eDataToWrite.injRate = 100;
+    eDataToWrite.injAdv  = 140;
+    eDataToWrite.injStart = 1000;
+
+    res = WriteConfig();
+    if(res != OK) return FAIL;
+
+    // 2. Set RPM, temperature, pressure...
+    HIGH("Test injection a 5000 tr/min\n");
+    uint32_t high, low;
+    RPMtoPeriod(5000, &high, &low);
+    pulse_input_config(&pulse_input_engine, high, low);
+    SleepMs(100);
+    timing_analyzer_init(avr, &timing_analyzer_injection, "Analyzer Injection");
+
+    /* query result */
+    QueryState();
+
+    // 3. Measure injection signal timing
+
+
+
+    return PASS;
+}
+
+int TestIgnition(void)
 {
     return PASS;
 }
+
 /************** Core thread **********************/
 static void *avr_run_thread(void * oaram)
 {
@@ -456,7 +551,7 @@ static void *avr_run_thread(void * oaram)
 		int state = avr_run(avr);
 		if ( state == cpu_Done || state == cpu_Crashed)
         {
-            printf("fin du thread state = %d\n", state);
+            RED("fin du thread state = %d\n", state);
 			break;
         }
 	}
@@ -471,6 +566,7 @@ static void printHelp(FILE *stream, int exitMsg, const char* progName)
 	fprintf(stream,
 	"  -h\t\t affiche ce message\n"
 	"  -m\t\t mode manuel\n"
+	"  -v\t\t mode verbose\n"
 	"  -l\t\t liste des tests disponibles\n"
     "  -a\t\t lancement de tous les tests\n"
     "  -t <test>\t\t lancement du test <test>\n"
@@ -491,7 +587,7 @@ int main(int argc, char *argv[])
     {
         printHelp(stdout, EXIT_SUCCESS, argv[0]);
     }
-    while ((c = getopt (argc, argv, "hlmat:")) != -1)
+    while ((c = getopt (argc, argv, "hvlmat:")) != -1)
     {
         switch (c)
         {
@@ -504,6 +600,9 @@ int main(int argc, char *argv[])
                     printf("Test id %d : %s\n", testList[i].id, testList[i].name);
                 }
                 exit(EXIT_SUCCESS);
+                break;
+            case 'v': // verbose mode
+                _verbose = true;
                 break;
             case 'm': // manual mode
                 mode = MANUAL;
@@ -547,7 +646,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "%s: AVR '%s' not known\n", argv[0], f.mmcu);
 		exit(1);
 	}
-	printf("firmware %s f=%d mmcu=%s\n", fname, (int) f.frequency, f.mmcu);
+	V("firmware %s f=%d mmcu=%s\n", fname, (int) f.frequency, f.mmcu);
 
 	avr_init(avr);
 	avr_load_firmware(avr, &f);
@@ -658,7 +757,18 @@ int main(int argc, char *argv[])
 		{
 			HIGH("Lancement test %d : %s...\n", testList[i].id, testList[i].name);
 			int res = (testList[i].testFunction)();
-			if(res == PASS) testPassed++;
+			if(res == PASS)
+            {
+                testPassed++;
+                GREEN("Test %s PASS\n", testList[i].name);
+            }
+            else if(res == NOTEST)
+            {
+                testPassed++;
+                GREEN("Test %s SKIP\n", testList[i].name);
+            }else{
+                RED("Test %s FAIL\n", testList[i].name);
+            }
 		}
 		if(testPassed == TEST_QTY)
 		{
