@@ -1,4 +1,4 @@
-EESchema Schematic File Version 2  date dim. 20 avril 2014 19:41:46 CEST
+EESchema Schematic File Version 2  date dim. 20 avril 2014 20:11:15 CEST
 LIBS:power
 LIBS:device
 LIBS:transistors
@@ -30,7 +30,8 @@ LIBS:atmel
 LIBS:contrib
 LIBS:valves
 LIBS:solextronic
-EELAYER 43  0
+LIBS:DCDC-cache
+EELAYER 25  0
 EELAYER END
 $Descr A4 11700 8267
 encoding utf-8
