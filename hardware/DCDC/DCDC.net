@@ -1,0 +1,393 @@
+# EESchema Netlist Version 1.1 created  lun. 21 avril 2014 15:40:01 CEST
+(
+ ( /5353FAF3 C1  C8 100nF {Lib=C}
+  (    1 GND )
+  (    2 N-000020 )
+ )
+ ( /5353FAAB R3  R11 220 {Lib=R}
+  (    1 N-000020 )
+  (    2 /Trigger )
+ )
+ ( /5353FAA0 R3  R12 1k {Lib=R}
+  (    1 GND )
+  (    2 N-000020 )
+ )
+ ( /5353FA72 D5  D3 EF5400 {Lib=DIODESCH}
+  (    1 N-000021 )
+  (    2 GND )
+ )
+ ( /5353F7CE POT  RV1 10k {Lib=POT}
+  (    1 N-000022 )
+  (    2 /Feedback )
+  (    3 N-000003 )
+ )
+ ( /5353F79A R3  R10 6.8k {Lib=R}
+  (    1 GND )
+  (    2 N-000022 )
+ )
+ ( /5353F787 R3  R9 1M {Lib=R}
+  (    1 N-000003 )
+  (    2 N-000019 )
+ )
+ ( /5353F635 CP10  C9 1.5uF/400v {Lib=C}
+  (    1 N-000019 )
+  (    2 N-000021 )
+ )
+ ( /5353F4B9 1pin  P2 GND {Lib=CONNECTOR}
+  (    1 GND )
+ )
+ ( /5353F478 D5  D2 EF5400 {Lib=DIODESCH}
+  (    1 N-000013 )
+  (    2 N-000019 )
+ )
+ ( /5353F28C C1  C6 100nF {Lib=C}
+  (    1 N-000011 )
+  (    2 GND )
+ )
+ ( /5353F1DF C1  C3 100nF {Lib=C}
+  (    1 N-000004 )
+  (    2 GND )
+ )
+ ( /5353F1A8 R3  R3 22 {Lib=R}
+  (    1 N-000004 )
+  (    2 +12V )
+ )
+ ( /5353D76C C2V8  C1 100uF/25v {Lib=CP1}
+  (    1 +12V )
+  (    2 GND )
+ )
+ ( /5353D6BC D4  D1 SR360 {Lib=DIODESCH}
+  (    1 GND )
+  (    2 N-000002 )
+ )
+ ( /5353D6AE R6  R7 120/1W {Lib=R}
+  (    1 N-000002 )
+  (    2 +12V )
+ )
+ ( /5353D688 C1  C7 2.2nF {Lib=C}
+  (    1 +12V )
+  (    2 N-000002 )
+ )
+ ( /5353D458 C2V8  C5 100uF/25v {Lib=CP1}
+  (    1 +12V )
+  (    2 GND )
+ )
+ ( /5353D0E3 R3  R2 22k {Lib=R}
+  (    1 GND )
+  (    2 N-000016 )
+ )
+ ( /5353C660 R3  R1 2.2k {Lib=R}
+  (    1 N-000016 )
+  (    2 /Enable )
+ )
+ ( /5353C5F4 1pin  P3 TO_COIL {Lib=CONNECTOR}
+  (    1 N-000021 )
+ )
+ ( /5353C564 TIC106  T2 TIC106M {Lib=THYRISTOR}
+  (    A N-000019 )
+  (    G N-000020 )
+  (    K GND )
+ )
+ ( /5353C4C6 bornier4  P1 CONN_4 {Lib=CONN_4}
+  (    1 GND )
+  (    2 /Trigger )
+  (    3 /Enable )
+  (    4 +12V )
+ )
+ ( /5353A79A TO92  Q1 BC547 {Lib=NPN}
+  (    1 GND )
+  (    2 N-000016 )
+  (    3 N-000017 )
+ )
+ ( /5353A752 R3  R5 1k {Lib=R}
+  (    1 N-000008 )
+  (    2 N-000018 )
+ )
+ ( /5353A727 C1  C2 1nF {Lib=C}
+  (    1 N-000009 )
+  (    2 GND )
+ )
+ ( /5353A6A8 R3  R4 33k {Lib=R}
+  (    1 N-000009 )
+  (    2 N-000011 )
+ )
+ ( /5353A69B C2  C4 1nF {Lib=C}
+  (    1 N-000008 )
+  (    2 GND )
+ )
+ ( /5353A674 R3  R6 22 {Lib=R}
+  (    1 N-000010 )
+  (    2 N-000006 )
+ )
+ ( /5353A641 R6  R8 0.33/1W {Lib=R}
+  (    1 N-000018 )
+  (    2 GND )
+ )
+ ( /53539BA8 TO220_VERT_GDS  Q2 IRF540 {Lib=MOSFET_N}
+  (    D N-000012 )
+  (    G N-000006 )
+  (    S N-000018 )
+ )
+ ( /53539B62 DIP-8__300_ELL  U1 UC3845 {Lib=UC3845}
+  (    1 N-000017 )
+  (    2 /Feedback )
+  (    3 N-000008 )
+  (    4 N-000009 )
+  (    5 GND )
+  (    6 N-000010 )
+  (    7 N-000004 )
+  (    8 N-000011 )
+ )
+ ( /535397B1 TRANSFO  T1 2:50 {Lib=TRANSFO}
+  (    1 +12V )
+  (    2 N-000012 )
+  (    3 GND )
+  (    4 N-000013 )
+ )
+)
+*
+{ Allowed footprints by component:
+$component C8
+ SM*
+ C?
+ C1-1
+$endlist
+$component R11
+ R?
+ SM0603
+ SM0805
+ R?-*
+ SM1206
+$endlist
+$component R12
+ R?
+ SM0603
+ SM0805
+ R?-*
+ SM1206
+$endlist
+$component D3
+ D?
+ S*
+$endlist
+$component R10
+ R?
+ SM0603
+ SM0805
+ R?-*
+ SM1206
+$endlist
+$component R9
+ R?
+ SM0603
+ SM0805
+ R?-*
+ SM1206
+$endlist
+$component C9
+ SM*
+ C?
+ C1-1
+$endlist
+$component D2
+ D?
+ S*
+$endlist
+$component C6
+ SM*
+ C?
+ C1-1
+$endlist
+$component C3
+ SM*
+ C?
+ C1-1
+$endlist
+$component R3
+ R?
+ SM0603
+ SM0805
+ R?-*
+ SM1206
+$endlist
+$component C1
+ CP*
+ SM*
+$endlist
+$component D1
+ D?
+ S*
+$endlist
+$component R7
+ R?
+ SM0603
+ SM0805
+ R?-*
+ SM1206
+$endlist
+$component C7
+ SM*
+ C?
+ C1-1
+$endlist
+$component C5
+ CP*
+ SM*
+$endlist
+$component R2
+ R?
+ SM0603
+ SM0805
+ R?-*
+ SM1206
+$endlist
+$component R1
+ R?
+ SM0603
+ SM0805
+ R?-*
+ SM1206
+$endlist
+$component R5
+ R?
+ SM0603
+ SM0805
+ R?-*
+ SM1206
+$endlist
+$component C2
+ SM*
+ C?
+ C1-1
+$endlist
+$component R4
+ R?
+ SM0603
+ SM0805
+ R?-*
+ SM1206
+$endlist
+$component C4
+ SM*
+ C?
+ C1-1
+$endlist
+$component R6
+ R?
+ SM0603
+ SM0805
+ R?-*
+ SM1206
+$endlist
+$component R8
+ R?
+ SM0603
+ SM0805
+ R?-*
+ SM1206
+$endlist
+$endfootprintlist
+}
+{ Pin List by Nets
+Net 1 "GND" "GND"
+ C4 2
+ C2 2
+ Q1 1
+ P1 1
+ T2 K
+ T1 3
+ U1 5
+ R8 2
+ R10 1
+ D3 2
+ R12 1
+ C8 1
+ P2 1
+ R2 1
+ C5 2
+ D1 1
+ C1 2
+ C3 2
+ C6 2
+Net 2 "" ""
+ D1 2
+ R7 1
+ C7 2
+Net 3 "" ""
+ RV1 3
+ R9 1
+Net 4 "" ""
+ C3 1
+ R3 1
+ U1 7
+Net 5 "+12V" "+12V"
+ C5 1
+ C7 1
+ R7 2
+ T1 1
+ R3 2
+ P1 4
+ C1 1
+Net 6 "" ""
+ R6 2
+ Q2 G
+Net 7 "/Feedback" "Feedback"
+ U1 2
+ RV1 2
+Net 8 "" ""
+ U1 3
+ C4 1
+ R5 1
+Net 9 "" ""
+ U1 4
+ R4 1
+ C2 1
+Net 10 "" ""
+ R6 1
+ U1 6
+Net 11 "" ""
+ U1 8
+ R4 2
+ C6 1
+Net 12 "" ""
+ T1 2
+ Q2 D
+Net 13 "" ""
+ D2 1
+ T1 4
+Net 14 "/Enable" "Enable"
+ P1 3
+ R1 2
+Net 15 "/Trigger" "Trigger"
+ R11 2
+ P1 2
+Net 16 "" ""
+ R1 1
+ R2 2
+ Q1 2
+Net 17 "" ""
+ Q1 3
+ U1 1
+Net 18 "" ""
+ R5 2
+ R8 1
+ Q2 S
+Net 19 "" ""
+ R9 2
+ D2 2
+ T2 A
+ C9 1
+Net 20 "" ""
+ T2 G
+ C8 2
+ R11 1
+ R12 2
+Net 21 "" ""
+ P3 1
+ D3 1
+ C9 2
+Net 22 "" ""
+ R10 2
+ RV1 1
+}
+#End
