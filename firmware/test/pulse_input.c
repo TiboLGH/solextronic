@@ -44,13 +44,13 @@ switch_auto(
         void * param)
 {
 	pulse_input_t * b = (pulse_input_t *) param;
-	b->value = !b->value;
-	avr_raise_irq(b->irq + IRQ_PULSE_OUT, b->value);
+	if(b->high){
+        b->value = !b->value;
+        avr_raise_irq(b->irq + IRQ_PULSE_OUT, b->value);
+    }
     if(b->value){
-        //avr_raise_irq(b->irq + IRQ_PULSE_RISING, b->value);
         return when + avr_usec_to_cycles(avr, b->high);
     }else{
-        //avr_raise_irq(b->irq + IRQ_PULSE_FALLING, b->value);
         return when + avr_usec_to_cycles(avr, b->low);
     }
 }

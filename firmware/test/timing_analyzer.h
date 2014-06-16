@@ -44,10 +44,11 @@ enum {
 };
 
 typedef struct timing_analyzer_result_t {
-	uint32_t	rising_offset;		// irq list
-	uint32_t	falling_offset;	// value "on the pins"
-	uint32_t 	period;				// value shifted in
-	uint32_t 	high_duration;	// value shifted in
+	uint32_t	rising_offset;	// rising edge offset from REF rising edge
+	uint32_t	falling_offset;	// falling edge offset from REF rising edge
+	uint32_t 	period;			// period on rising edge
+	uint32_t 	high_duration;	// high state duration
+	uint32_t 	count;	        // count of cycle
 } timing_analyzer_result_t;
 
 typedef struct timing_analyzer_t {
@@ -69,6 +70,5 @@ int
 timing_analyzer_result(
 	timing_analyzer_t *p,
 	timing_analyzer_result_t* result);
-		
 		
 #endif
