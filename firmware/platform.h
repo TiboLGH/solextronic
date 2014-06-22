@@ -83,14 +83,14 @@ enum
 #define C_SETBIT(comb) SETBIT(VARFROMCOMB(comb), BITFROMCOMB(comb)) 
 #define C_CLEARBIT(comb) CLEARBIT(VARFROMCOMB(comb), BITFROMCOMB(comb)) 
 #define C_FLIPBIT(comb) FLIPBIT(VARFROMCOMB(comb), BITFROMCOMB(comb)) 
-#define C_CHECKBIT(comb) CHECKBIT(VARFROMCOMB(comb), BITFROMCOMB(comb)) 
+#define C_CHECKBIT(comb) CHECKBIT(VARFROMCOMB(comb), BITFROMCOMB(comb))
+#define sbi(a, b) (a) |= (1 << (b)) 
+#define cbi(a, b) (a) &= ~(1 << (b)) 
 
 // Arduino Nano LED on PB5 (pin 17 on 32 pins parts)
-//#define LED_PIN  PORTB, 5 
 #define LED_DDR		DDRB
 #define LED_PORT	PORTB
-#define LED			PB5
-#define LED_PIN		PINB
+#define LED_PIN  PORTB, 5 
 // Injector control on PB2/OC1B (pin 14 on 32 pins parts)
 #define INJECTOR_PIN  PORTB, 2 
 // Ignition control on PB1/OC1A (pin 13 on 32 pins parts)
@@ -98,6 +98,8 @@ enum
 // Pump control on PD7 (pin 11 on 32 pins parts)
 #define PUMP_PIN  PORTD, 7 
 
+#define DEBUG TWBR
+#define PARAM TWDR
 
 /**
  * \struct wvf_t
@@ -129,6 +131,10 @@ void updateEeprom(void);
 
 
 /* Software Timers related functions */
+#define INJ_INT_ENABLE  (TIMSK1 |= _BV(OCIE1B))
+#define INJ_INT_DISABLE (TIMSK1 &= ~_BV(OCIE1B))
+#define IGN_INT_ENABLE  (TIMSK1 |= _BV(OCIE1A))
+#define IGN_INT_DISABLE (TIMSK1 &= ~_BV(OCIE1A))
 void InitTimer(void);
 void StartTimer(u8 timerHandle);
 u32 GetTimer(const u8 timerHandle);
@@ -144,7 +150,9 @@ void InitPWM(void);
 void WritePWMValue(u8 value);
 
 /* Injection and ignition timings settings */
+#define INJ_TEST_ADV 100
 void SetInjectionTiming(u8 force, u16 duration);
 void SetIgnitionTiming(u8 force, u8 advance);
+void InjectorStartTest(void);
 
 #endif // PLATFORM_H

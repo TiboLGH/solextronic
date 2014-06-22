@@ -28,8 +28,8 @@
  *
  * This file includes definitions of data structures used through the firmware, the tuner
  * software configuration file and the simulation.
- * Warning ! this file wille be used on both the microcontroller and the simulation test
- * program : use only c99 code, nothing specific to a platform !
+ * Warning ! this file will be used on both the microcontroller and the simulation test
+ * program : use only c99 code, nothing specific to a platform and be careful about alignment !
  *
  */
 
@@ -131,9 +131,11 @@ typedef struct  __attribute__ ((__packed__)){ // packed for alignment when used 
    u16 injStart;         /*!< = scalar,     U16,   13, "deg",    1.000,  0.0. Injector start time before PMH */
    u8  advance;          /*!< = scalar,     U08,   15, "deg",    1.000,  0.0. Spark advance in deg before PMH */
    u16 second;           /*!< = scalar,     U16,   17, "sec",    1.000,  0.0. Current time in sec : will be set only when asked by UART command */
-   u16 debug1;           /*!< = scalar,     U16,   19,  "%",     1.000,  0.0 */
-   u16 debug2;           /*!< = scalar,     U16,   21,  "%",     1.000,  0.0 */
-   u16 debug3;           /*!< = scalar,     U16,   23,  "%",     1.000,  0.0 */
-   u8 kpaix;             /*!< = scalar,     U08,   25,  "%",     1.000,  0.0 */
+   u8  injTestMode;      /*!< = scalar,     U08,   19,   "",     1.000,  0.0 */
+   u16 injTestCycles;    /*!< = scalar,     U16,   19,   "",     1.000,  0.0 */
+   u16 debug1;           /*!< = scalar,     U16,   21,  "%",     1.000,  0.0 */
+   u16 debug2;           /*!< = scalar,     U16,   23,  "%",     1.000,  0.0 */
+   u16 debug3;           /*!< = scalar,     U16,   25,  "%",     1.000,  0.0 */
+   u8 kpaix;             /*!< = scalar,     U08,   27,  "%",     1.000,  0.0 */
 }Current_Data_t;
 #endif

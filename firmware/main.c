@@ -46,11 +46,14 @@ volatile unsigned char rReady = 0;
 
 eeprom_data_t    eData;
 Current_Data_t   gState;
+volatile u16 toto = 0;
 
 
 int main(void)
 {
-	LED_DDR |= _BV(LED);
+	LED_DDR |= _BV(5);
+	LED_DDR |= _BV(1);
+	LED_DDR |= _BV(2);
 	
     InitIOs();
     InitUart();
@@ -60,16 +63,19 @@ int main(void)
 
 	sei();
     StartTimer(TIMER_100MS);
-    //printstr("demarrage");
     printstr("x");
     USART_RX_EN;
     eData.timerLed = 50;
-
+    DEBUG = 0;
+ 
 	while(1)
 	{
+        toto = TCNT1;
+        toto = OCR1A;
+        toto = OCR1B;
         if(EndTimer(TIMER_100MS, eData.timerLed))
         {
-            LED_PIN |= _BV(LED);
+            C_FLIPBIT(LED_PIN);
             StartTimer(TIMER_100MS);
             ADCProcessing();
         }
@@ -80,10 +86,7 @@ int main(void)
             ProcessCommand();
 		}
 
-        
-        SetInjectionTiming(OFF, 1000);
-        SetIgnitionTiming(OFF, 10);
-
+       
         // Process ADC Samples
         //ADCProcessing();
 	}

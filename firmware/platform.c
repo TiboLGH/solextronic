@@ -43,7 +43,6 @@
 #include "platform.h"
 
 #define BAUD 	        57600
-#define HTINPUT 	    (PIND & (1 << PD6))
 
 u16 EEMEM magic = 0xCAFE;
 eeprom_data_t EEMEM eeprom;
@@ -252,6 +251,20 @@ ISR(TIMER2_COMPA_vect)
     if(count10ms >= 10)
     {
         count10ms = 0;
+        // Injector test mode : simulate a INT0 input each 10ms
+        if(gState.injTestMode)
+        {
+            if(!gState.injTestCycles) // end of test
+            {
+                INJ_INT_DISABLE;
+                gState.injTestMode = False;
+            }else{ // trigger cycle     
+                TCNT1 = 0;
+                OCR1B = curInjTiming.start;
+                INJ_INT_ENABLE;
+            }
+            gState.injTestCycles--;        
+        }
         // start ADC acquisition
         /*adcState = ADC_BATTERY;
         u8 mux = (1 << REFS0) | ((adcIndex[adcState]) & 0x0F);
@@ -259,21 +272,6 @@ ISR(TIMER2_COMPA_vect)
         PORTC = mux;
         ADCSRA |= (1 << ADSC);
         adcTrigger = True;*/
-
-        // run HV loop
-        if(eData.HVstep)
-        {
-            if(HTINPUT == 0)
-            {
-                gState.HVvalue += eData.HVstep;
-            }else{
-                gState.HVvalue -= eData.HVstep;
-            }
-            if(gState.HVvalue > 100) gState.HVvalue = 100;
-            else if((signed)gState.HVvalue < 0) gState.HVvalue = 0;
-            WritePWMValue(gState.HVvalue);
-        } 
-
     }
 }
 
@@ -302,11 +300,11 @@ ISR(TIMER1_COMPA_vect)
     if(curIgnTiming.state == OFF)
     {
         // TODO : use polarity
-        C_SETBIT(IGNITION_PIN);
+        //C_SETBIT(IGNITION_PIN);
         curIgnTiming.state = ON;
         OCR1A = curIgnTiming.stop;
     }else{
-        C_CLEARBIT(IGNITION_PIN);
+        //C_CLEARBIT(IGNITION_PIN);
         curIgnTiming.state = OFF;
         OCR1A = curIgnTiming.start;
     }
@@ -346,11 +344,11 @@ void InitTimer(void)
     // Enable the TIMER1, set normal mode, internal clock with 1/64 prescaler.
     // With 16MHz XTAL, tick is 4us
     // Overflow is 262 ms = 229 tr/min => considered as stall
-    TCCR1A = (1 << COM1A1) | (1 << COM1A0) | (1 << COM1B1) | (1 << COM1B0) | (0 << WGM11) | (0 << WGM10);
+    TCCR1A = (0 << COM1A1) | (0 << COM1A0) | (0 << COM1B1) | (0 << COM1B0) | (0 << WGM11) | (0 << WGM10);
     TCCR1B = (0 << ICNC1 ) | (1 << ICES1 ) | (0 << WGM13 ) | (0 << WGM12 ) | (0 << CS12 ) | (1 << CS11 ) | (1 << CS10);
     TCNT1H = 0;
     TCNT1L = 0;
-    TIMSK1 = (0 << ICIE1) | (0 << OCIE1B) | (0 << OCIE1A) | (1 << TOIE1);
+    TIMSK1 = (0 << ICIE1) | (0 << OCIE1B) | (1 << OCIE1A) | (1 << TOIE1);
     
     // Enable the TIMER2, set CTC mode, internal clock with 1/64 prescaler.
     // With 16MHz XTAL, tick is 4us
@@ -569,8 +567,14 @@ ISR(INT0_vect)
     gState.engine = RUNNING;
 
     // update injection and ignition timings
-    curIgnTiming = nextIgnTiming;
-    curInjTiming = nextInjTiming;
+    u16 duration = 1000;
+    u16 angleTick = (u32)RPMperiod * 50/*eData.injAdv*/ / 360;
+    //curInjTiming.start = angleTick - (duration >> 3);
+    //curInjTiming.stop  = angleTick + (duration >> 3);
+    //curInjTiming.state = OFF;
+    //OCR1B = curInjTiming.start;
+    curIgnTiming.start = (u32)RPMperiod * 20 / 360;
+    curIgnTiming.stop  = curIgnTiming.start + (eData.igniDuration >> 2);
 }
 
 /**
@@ -625,9 +629,10 @@ void SetInjectionTiming(u8 force, u16 duration)
 
     // Convert angle to timer tick through RPM. Timer tick is 4us
     // TODO : use PMHOffset setting
-    u16 angleTick = (u32)RPMperiod * eData.injAdv / 360;
+    u16 angleTick = (u32)RPMperiod * 50/*eData.injAdv*/ / 360;
     nextInjTiming.start = angleTick - (duration >> 3);
     nextInjTiming.stop  = angleTick + (duration >> 3);
+    OCR1B = 100;
 
     return;
 }
@@ -657,9 +662,25 @@ void SetIgnitionTiming(u8 force, u8 advance)
 
     // Convert angle to timer tick through RPM. Timer tick is 4us
     // TODO : use PMHOffset setting
-    nextIgnTiming.start = (u32)RPMperiod * advance / 360;;
+    nextIgnTiming.start = (u32)RPMperiod * advance / 360;
     nextIgnTiming.stop  = nextIgnTiming.start + (eData.igniDuration >> 2);
 
     return;
 }
 
+/**
+ * \fn void InjectorStartTest(void)
+ * \brief Start injector test mode
+ *
+ * \return none
+*/
+void InjectorStartTest(void)
+{
+    /* Configure waveform generator */
+    curInjTiming.state = OFF;
+    curInjTiming.start = INJ_TEST_ADV;
+    curInjTiming.stop  = INJ_TEST_ADV + (eData.injTestPW >> 2); // conversion from us to timer step (4us) 
+    IGN_INT_DISABLE;
+    gState.injTestMode = True;
+    return;
+}

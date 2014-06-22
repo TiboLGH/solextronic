@@ -56,10 +56,9 @@ volatile u16 txCur = 0;
 volatile u16 txCount = 0;
 volatile u8 isTx = False;
 
-u8 dbg[16];
-
 
 static void SendToUsart(u8 *buffer, const u16 len);
+static void PostWriteHook(void); 
 
 /**
 *
@@ -177,18 +176,13 @@ void ProcessCommand(void)
                 {
                     //write data
                     *((u8*)&eData + offset + dataCount) = c;
-                    /*if(!dataCount)
-                    { 
-                        putchr(nbData);
-                    }
-                    putchr(dataCount);*/
                     dataCount++;
                     if(dataCount == nbData)
                     {
-                        //ASSERT(0);
                         state = IDLE;
                         if(command == 'e') SendToUsart((u8 *)&eData + offset, nbData);
-                    } 
+                    }
+                    PostWriteHook(); 
                 }else{
                     state = IDLE;
                 }
@@ -220,5 +214,27 @@ static void SendToUsart(u8 *buffer, const u16 len)
     bufTx = buffer;
     putchr(*bufTx); // manually put 1st character 
     USART_TX_EN;
+    return;
+}
+
+
+/**
+ * \fn static void PostWriteHook(void)
+ * \brief Watch some change on write and execute specific actions
+ *
+ * \return none
+ */
+static void PostWriteHook(void)
+{
+    // 1. Check for injection test cycle
+    if(eData.injTestCycles)// && !gState.injTestCycles)
+    {
+        // start injection test 
+        gState.injTestCycles = eData.injTestCycles + 1;
+        eData.injTestCycles = 0;
+        InjectorStartTest();
+    }
+
+    // next hook
     return;
 }

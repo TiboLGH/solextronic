@@ -36,8 +36,8 @@
 #include "timing_analyzer.h"
 
 
-#define V(msg, ...) fprintf(stdout, msg, ##__VA_ARGS__ )
-//#define V(msg, ...) 
+//#define V(msg, ...) fprintf(stdout, msg, ##__VA_ARGS__ )
+#define V(msg, ...) 
 
 
 static const char * irq_names[IRQ_TIMING_ANALYZER_COUNT] = {
@@ -64,7 +64,7 @@ static void timing_analyzer_in_hook(struct avr_irq_t * irq, uint32_t value, void
 		    p->result.period 		+= avr_cycles_to_usec(p->avr, ts - last_in_rising_ts);
 		    p->result.rising_offset += avr_cycles_to_usec(p->avr, ts - last_ref_in_ts);
             p->result.count++;
-            V("Period %d, count %d\n", p->result.period /*avr_cycles_to_usec(p->avr, ts - last_in_rising_ts)*/, p->result.count);
+            V("Period %d, count %d\n", avr_cycles_to_usec(p->avr, ts - last_in_rising_ts), p->result.count);
         }
         last_in_rising_ts = ts;
 	}
@@ -73,7 +73,7 @@ static void timing_analyzer_in_hook(struct avr_irq_t * irq, uint32_t value, void
         {
             p->result.falling_offset += avr_cycles_to_usec(p->avr, ts - last_ref_in_ts);
             p->result.high_duration  += avr_cycles_to_usec(p->avr, ts - last_in_rising_ts);
-            V("Duration %d\n", p->result.high_duration/*avr_cycles_to_usec(p->avr, ts - last_in_rising_ts)*/);
+            V("Duration %d\n", avr_cycles_to_usec(p->avr, ts - last_in_rising_ts));
         }
 		last_in_falling_ts = ts;
 	}

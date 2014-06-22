@@ -516,35 +516,57 @@ int TestAnalog(void)
 */
 int TestInjectionTestMode(void)
 {
-    int res;
+    int res, verdict = PASS;
     const u16 injDuration = 1000;
     const u16 injCycles   = 20;
-    // 1. Set injection parameters
+    const float tolerance = 5; //%
+    // 1. Disable RPM generator
+    pulse_input_config(&pulse_input_engine, 0, 1000);
+    SleepMs(100);
+    // 2. Set injection parameters
+	timing_analyzer_result_t result;
+    timing_analyzer_result(&timing_analyzer_injection, &result); // reset stats
     res = ReadConfig();
     if(res != OK) return FAIL;
     eDataToWrite = eData;
     eDataToWrite.injTestPW     = injDuration;
     eDataToWrite.injTestCycles = injCycles;
-
     res = WriteConfig();
     if(res != OK) return FAIL;
-
-    // 2. Disable RPM generator
-    pulse_input_config(&pulse_input_engine, 0, 1000);
-    SleepMs(100);
-
-	timing_analyzer_result_t result;
-    timing_analyzer_result(&timing_analyzer_injection, &result); // reset stats
+   
     // 3. Measure injection signal timing
-    SleepMs(500 * injCycles);
+    SleepMs(200 * injCycles);
     timing_analyzer_result(&timing_analyzer_injection, &result); // read stats
-    V("result.rising_offset 	%d\n",result.rising_offset);
-	V("result.falling_offset 	%d\n",result.falling_offset);
 	V("result.period 			%d\n",result.period);
 	V("result.high_duration 	%d\n",result.high_duration);
 	V("result.count 			%d\n",result.count);
 
-    return NOTEST;
+    // 4. Compare to expected values
+    float error = 100 - (100. * result.period / 10000);
+    if(error > tolerance || error < -tolerance)
+    {       
+        RED("Periode mesuree : %d us, erreur %.1f %% \n", result.period, error);
+        verdict = FAIL;
+    }else{
+        GREEN("Periode mesuree : %d us, erreur %.1f %% \n", result.period, error);
+    }
+    error = 100 - (100. * result.high_duration / injDuration);
+    if(error > 2*tolerance || error < -2*tolerance)  // not a critical point
+    {       
+        RED("Temps d'injection mesure : %d us, erreur %.1f %% \n", result.high_duration, error);
+        verdict = FAIL;
+    }else{
+        GREEN("Temps d'injection mesure : %d us, erreur %.1f %% \n", result.high_duration, error);
+    }
+    if(result.count != injCycles)
+    {       
+        RED("Nombre d'injection mesure : %d /%d \n", result.count, injCycles);
+        verdict = FAIL;
+    }else{
+        GREEN("Nombre d'injection mesure : %d /%d \n", result.count, injCycles);
+    }
+    
+    return verdict;
 }
 
 int TestIgnitionAuto(void)
@@ -664,7 +686,7 @@ int main(int argc, char *argv[])
     uart_pty_connect(&uart_pty, '0');
     uint32_t tHigh, tLow;
     RPMtoPeriod(6000, &tHigh, &tLow);
-    pulse_input_init(avr, &pulse_input_engine, "Engine", tHigh, tLow);
+    pulse_input_init(avr, &pulse_input_engine, "Engine", 0/*tHigh*/, tLow);
     SpeedtoPeriod(40, &tHigh, &tLow);
     pulse_input_init(avr, &pulse_input_wheel, "Wheel", tHigh, tLow);
     avr_connect_irq(pulse_input_engine.irq + IRQ_PULSE_OUT, avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 2));
@@ -752,7 +774,9 @@ int main(int argc, char *argv[])
     avr_vcd_add_signal(&vcd_file,
             avr_iomem_getirq(avr, 0x84, "TCNT1L", 8), 8, "TCNT1L");
     avr_vcd_add_signal(&vcd_file,
-            avr_iomem_getirq(avr, 0x36, "TIFR1", 8), 8, "TIFR1");
+            avr_iomem_getirq(avr, 0xB8, "TWBR", 8), 8, "DEBUG");
+    avr_vcd_add_signal(&vcd_file,
+            avr_iomem_getirq(avr, 0xBB, "TWDR", 8), 8, "PARAM");
     avr_vcd_start(&vcd_file);
     
     pthread_t run;
