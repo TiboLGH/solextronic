@@ -79,6 +79,7 @@ const PROGMEM eeprom_data_t eeInit = {
 
 extern eeprom_data_t    eData;
 extern Current_Data_t   gState;
+extern intState_t       intState;
 
 extern u8 *bufTx;
 extern u8 bufRx[];
@@ -265,6 +266,13 @@ ISR(TIMER2_COMPA_vect)
             }
             gState.injTestCycles--;        
         }
+        
+        // Ignition test mode
+        if(intState.ignTestMode)
+        {
+            TCNT1 = 0;
+            OCR1B = curIgnTiming.start;
+        }
         // start ADC acquisition
         /*adcState = ADC_BATTERY;
         u8 mux = (1 << REFS0) | ((adcIndex[adcState]) & 0x0F);
@@ -300,11 +308,11 @@ ISR(TIMER1_COMPA_vect)
     if(curIgnTiming.state == OFF)
     {
         // TODO : use polarity
-        //C_SETBIT(IGNITION_PIN);
+        C_SETBIT(IGNITION_PIN);
         curIgnTiming.state = ON;
         OCR1A = curIgnTiming.stop;
     }else{
-        //C_CLEARBIT(IGNITION_PIN);
+        C_CLEARBIT(IGNITION_PIN);
         curIgnTiming.state = OFF;
         OCR1A = curIgnTiming.start;
     }
@@ -348,7 +356,7 @@ void InitTimer(void)
     TCCR1B = (0 << ICNC1 ) | (1 << ICES1 ) | (0 << WGM13 ) | (0 << WGM12 ) | (0 << CS12 ) | (1 << CS11 ) | (1 << CS10);
     TCNT1H = 0;
     TCNT1L = 0;
-    TIMSK1 = (0 << ICIE1) | (0 << OCIE1B) | (1 << OCIE1A) | (1 << TOIE1);
+    TIMSK1 = (0 << ICIE1) | (0 << OCIE1B) | (0 << OCIE1A) | (1 << TOIE1);
     
     // Enable the TIMER2, set CTC mode, internal clock with 1/64 prescaler.
     // With 16MHz XTAL, tick is 4us
@@ -682,5 +690,36 @@ void InjectorStartTest(void)
     curInjTiming.stop  = INJ_TEST_ADV + (eData.injTestPW >> 2); // conversion from us to timer step (4us) 
     IGN_INT_DISABLE;
     gState.injTestMode = True;
+    return;
+}
+
+/**
+ * \fn void IgnitionStartTest(void)
+ * \brief Start ignition test mode
+ *
+ * \return none
+*/
+void IgnitionStartTest(void)
+{
+    IGN_INT_DISABLE;
+    /* Configure waveform generator */
+    curIgnTiming.state = OFF;
+    curIgnTiming.start = IGN_TEST_ADV;
+    curIgnTiming.stop  = IGN_TEST_ADV + (eData.igniDuration >> 2); // conversion from us to timer step (4us) 
+    TCNT1 = curIgnTiming.stop + 1;
+    intState.ignTestMode = True;
+    IGN_INT_ENABLE;
+    return;
+}
+
+/**
+ * \fn void IgnitionStopTest(void)
+ * \brief Stop ignition test mode
+ *
+ * \return none
+*/
+void IgnitionStopTest(void)
+{
+    IGN_INT_DISABLE;
     return;
 }

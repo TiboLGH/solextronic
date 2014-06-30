@@ -46,6 +46,7 @@ volatile unsigned char rReady = 0;
 
 eeprom_data_t    eData;
 Current_Data_t   gState;
+intState_t       intState;
 volatile u16 toto = 0;
 
 

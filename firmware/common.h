@@ -84,4 +84,15 @@ typedef struct {
     u8  tick;
 }TimeStamp_t; 
 
+/**
+ * \struct intState_t
+ * \brief Internal state, not send on serial link
+ *
+ * Store internal state along with gState
+ * but not send on serial link
+ */
+typedef struct {
+    u8  ignTestMode;
+}intState_t; 
+
 #endif

@@ -523,9 +523,9 @@ int TestInjectionTestMode(void)
     // 1. Disable RPM generator
     pulse_input_config(&pulse_input_engine, 0, 1000);
     SleepMs(100);
-    // 2. Set injection parameters
 	timing_analyzer_result_t result;
     timing_analyzer_result(&timing_analyzer_injection, &result); // reset stats
+    // 2. Set injection parameters
     res = ReadConfig();
     if(res != OK) return FAIL;
     eDataToWrite = eData;
@@ -571,7 +571,48 @@ int TestInjectionTestMode(void)
 
 int TestIgnitionAuto(void)
 {
-    return NOTEST;
+    int res, verdict = PASS;
+    const u16 ignDuration = 1000;
+    const float tolerance = 5; //%
+    // 1. Disable RPM generator
+    pulse_input_config(&pulse_input_engine, 0, 1000);
+    SleepMs(100);
+	timing_analyzer_result_t result;
+    timing_analyzer_result(&timing_analyzer_ignition, &result); // reset stats
+    // 2. Set ignition test mode
+    res = ReadConfig();
+    if(res != OK) return FAIL;
+    eDataToWrite = eData;
+    eDataToWrite.ignTestMode = 1;
+    res = WriteConfig();
+    if(res != OK) return FAIL;
+   
+    // 3. Measure ignition signal timing
+    SleepMs(2000);
+    timing_analyzer_result(&timing_analyzer_ignition, &result); // read stats
+	V("result.period 			%d\n",result.period);
+	V("result.high_duration 	%d\n",result.high_duration);
+	V("result.count 			%d\n",result.count);
+
+    // 4. Compare to expected values
+    float error = 100 - (100. * result.period / 10000);
+    if(error > tolerance || error < -tolerance)
+    {       
+        RED("Periode mesuree : %d us, erreur %.1f %% \n", result.period, error);
+        verdict = FAIL;
+    }else{
+        GREEN("Periode mesuree : %d us, erreur %.1f %% \n", result.period, error);
+    }
+    error = 100 - (100. * result.high_duration / ignDuration);
+    if(error > 2*tolerance || error < -2*tolerance)  // not a critical point
+    {       
+        RED("Temps d'injection mesure : %d us, erreur %.1f %% \n", result.high_duration, error);
+        verdict = FAIL;
+    }else{
+        GREEN("Temps d'injection mesure : %d us, erreur %.1f %% \n", result.high_duration, error);
+    }
+    
+    return verdict;
 }
 
 /************** Core thread **********************/
@@ -700,8 +741,8 @@ int main(int argc, char *argv[])
     avr_connect_irq(avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 2), timing_analyzer_injection.irq + IRQ_TIMING_ANALYZER_REF_IN);
     avr_connect_irq(avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 2), timing_analyzer_injection.irq + IRQ_TIMING_ANALYZER_IN);
     timing_analyzer_init(avr, &timing_analyzer_ignition, "Ignition");
-    //avr_connect_irq(avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 2), timing_analyzer_ignition.irq + IRQ_TIMING_ANALYZER_REF_IN);
-    //avr_connect_irq(avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 1), timing_analyzer_ignition.irq + IRQ_TIMING_ANALYZER_IN);
+    avr_connect_irq(avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 2), timing_analyzer_ignition.irq + IRQ_TIMING_ANALYZER_REF_IN);
+    avr_connect_irq(avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 1), timing_analyzer_ignition.irq + IRQ_TIMING_ANALYZER_IN);
     
     
     /**** Manual mode ****/

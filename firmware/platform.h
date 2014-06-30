@@ -151,8 +151,11 @@ void WritePWMValue(u8 value);
 
 /* Injection and ignition timings settings */
 #define INJ_TEST_ADV 100
+#define IGN_TEST_ADV 100
 void SetInjectionTiming(u8 force, u16 duration);
 void SetIgnitionTiming(u8 force, u8 advance);
 void InjectorStartTest(void);
+void IgnitionStartTest(void);
+void IgnitionStopTest(void);
 
 #endif // PLATFORM_H

@@ -83,6 +83,7 @@ typedef struct __attribute__ ((__packed__)){ // packed for alignment when used i
     u8         pumpPolarity;  /*!< = bits,   U08,  40, "Active on low", "Active on high"                 ;  0 active at low state */
     u16        injTestPW;     /*!< = scalar, U16,  41,       "us",    1.00000,   0.00000,  200, 10000, 0 ;  pulse width of injector test mode */
     u16        injTestCycles; /*!< = scalar, U16,  43,         "",    1.00000,   0.00000,    0,  1000, 0 ;  number of cycle of injector test mode. 0 to stop */
+    u8         ignTestMode;   /*!< = bits,   U08,  43, "disable test mode", "Enable test mode"           ;  Enable/disable of ignition test mode */
     u16        rpmBins[10];   /*!< = array,  U16,  45, [10],"RPM",    1.00000,   0.00000,    0, 10000, 0 ;  table of RPM indexes */
     u8         loadBins[10];  /*!< = array,  U08,  65, [10],  "%",    1.00000,   0.00000,    0,   100, 0 ;  table of load/MAF indexes */
     u8         injTable[1][1];   /*!< = array,  U08,  75,[10x10],   "%",    1.00000,   0.00000,  10,   130,  0 ;  table for injection */

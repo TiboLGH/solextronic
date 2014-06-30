@@ -47,6 +47,7 @@ const char protocol[3] = {"001"};
 extern eeprom_data_t    eData;
 extern Current_Data_t   gState;
 static Current_Data_t   outputChannel;
+extern intState_t       intState;
 
 
 volatile u8 *bufTx;
@@ -235,6 +236,15 @@ static void PostWriteHook(void)
         InjectorStartTest();
     }
 
+    // 2. Ignition test mode : detect transitions
+    if(eData.ignTestMode && !intState.ignTestMode)
+    {
+        IgnitionStartTest();
+    }
+    else if(intState.ignTestMode && !eData.ignTestMode)
+    {
+        IgnitionStopTest();
+    }
     // next hook
     return;
 }
