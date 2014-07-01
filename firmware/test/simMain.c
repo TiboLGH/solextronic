@@ -641,6 +641,7 @@ static void printHelp(FILE *stream, int exitMsg, const char* progName)
             "  -l\t\t liste des tests disponibles\n"
             "  -a\t\t lancement de tous les tests\n"
             "  -t <test>\t\t lancement du test <test>\n"
+            "  -r <nbRetry>\t\t nombre de retry en cas de fail. 0 par defaut\n"
            );
     exit(exitMsg);
 }
@@ -652,13 +653,14 @@ int main(int argc, char *argv[])
     /* read command-line arguments */
     int c;
     int mode = LIST_TEST;
+    int retry = 0;
 
     opterr = 0;
     if(argc == 1)
     {
         printHelp(stdout, EXIT_SUCCESS, argv[0]);
     }
-    while ((c = getopt (argc, argv, "hvlmat:")) != -1)
+    while ((c = getopt (argc, argv, "hvlmar:t:")) != -1)
     {
         switch (c)
         {
@@ -684,6 +686,9 @@ int main(int argc, char *argv[])
             case 't': // run test <test>
                 mode = ONE_TEST;
                 strncpy(testName, optarg, 256);
+                break;
+            case 'r': // number of retry, 0 by default
+                retry = atoi(optarg);
                 break;
             case '?':
                 if (optopt == 't')
@@ -826,7 +831,7 @@ int main(int argc, char *argv[])
     // Connection to serial port
     fd = SerialOpen();
     
-    SleepMs(1000); 
+    SleepMs(1000);
     if(mode == ONE_TEST)
     {
         int testId = 0;
@@ -839,38 +844,48 @@ int main(int argc, char *argv[])
             }
         }   
         //run test
-        HIGH("Lancement test %d : %s...\n", testList[testId].id, testList[testId].name);
-        int res = (testList[testId].testFunction)();
-        if(res == PASS)
-        {
-            GREEN("Bravo : test OK !\n");
-        }
-        else if(res == FAIL)
-        {
-            RED("Test KO :-(\n");
-        }else{
-            HIGH("Not run\n");
-        }   
+        int retryCount = retry;
+        do{
+            HIGH("Lancement test %d : %s...\n", testList[testId].id, testList[testId].name);
+            int res = (testList[testId].testFunction)();
+            if(res == PASS)
+            {
+                GREEN("Bravo : test OK !\n");
+                break;
+            }
+            else if(res == FAIL)
+            {
+                RED("Test KO :-(\n");
+            }else{
+                HIGH("Not run\n");
+                break;
+            }  
+        }while((retryCount--) > 0) 
     }
     else if(mode == ALL_TEST)
     {
         int testPassed = 0;
         for(int i = 0; i < TEST_QTY; i++)
         {
-            HIGH("Lancement test %d : %s...\n", testList[i].id, testList[i].name);
-            int res = (testList[i].testFunction)();
-            if(res == PASS)
-            {
-                testPassed++;
-                GREEN(" Verdict %s PASS\n", testList[i].name);
-            }
-            else if(res == NOTEST)
-            {
-                testPassed++;
-                GREEN(" Verdict %s SKIP\n", testList[i].name);
-            }else{
-                RED(" Verdict %s FAIL\n", testList[i].name);
-            }
+            int retryCount = retry;
+            do{
+                HIGH("Lancement test %d : %s...\n", testList[i].id, testList[i].name);
+                int res = (testList[i].testFunction)();
+                if(res == PASS)
+                {
+                    testPassed++;
+                    GREEN(" Verdict %s PASS\n", testList[i].name);
+                    break;
+                }
+                else if(res == NOTEST)
+                {
+                    testPassed++;
+                    GREEN(" Verdict %s SKIP\n", testList[i].name);
+                    break;
+                }else{
+                    RED(" Verdict %s FAIL\n", testList[i].name);
+                }
+            }while((retryCount--) > 0) 
         }
         if(testPassed == TEST_QTY)
         {
