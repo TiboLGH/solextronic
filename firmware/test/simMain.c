@@ -860,7 +860,7 @@ int main(int argc, char *argv[])
                 HIGH("Not run\n");
                 break;
             }  
-        }while((retryCount--) > 0) 
+        }while((retryCount--) > 0);
     }
     else if(mode == ALL_TEST)
     {
@@ -885,7 +885,7 @@ int main(int argc, char *argv[])
                 }else{
                     RED(" Verdict %s FAIL\n", testList[i].name);
                 }
-            }while((retryCount--) > 0) 
+            }while((retryCount--) > 0); 
         }
         if(testPassed == TEST_QTY)
         {
