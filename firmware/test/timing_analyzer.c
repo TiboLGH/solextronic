@@ -36,8 +36,8 @@
 #include "timing_analyzer.h"
 
 
-//#define V(msg, ...) fprintf(stdout, msg, ##__VA_ARGS__ )
-#define V(msg, ...) 
+#define V(msg, ...) fprintf(stdout, msg, ##__VA_ARGS__ )
+//#define V(msg, ...) 
 
 
 static const char * irq_names[IRQ_TIMING_ANALYZER_COUNT] = {
@@ -45,9 +45,6 @@ static const char * irq_names[IRQ_TIMING_ANALYZER_COUNT] = {
 		[IRQ_TIMING_ANALYZER_REF_IN] = "1<timing_analyzer.ref_in",
 };
 
-static volatile uint32_t last_ref_in_ts; 
-static volatile uint32_t last_in_rising_ts; 
-static volatile uint32_t last_in_falling_ts; 
 
 /*
  * called when pin to analyze toggle
@@ -59,23 +56,31 @@ static void timing_analyzer_in_hook(struct avr_irq_t * irq, uint32_t value, void
     //V("IN at %u, value %d, irq->value %d\n", ts, value, irq->value);
 	// get timestamp and direction
 	if (!irq->value && value) {	// rising edge
-        if(last_in_rising_ts)
+        if(p->result.last_in_rising_ts)
         {
-		    p->result.period 		+= avr_cycles_to_usec(p->avr, ts - last_in_rising_ts);
-		    p->result.rising_offset += avr_cycles_to_usec(p->avr, ts - last_ref_in_ts);
-            p->result.count++;
-            V("Period %d, count %d\n", avr_cycles_to_usec(p->avr, ts - last_in_rising_ts), p->result.count);
+            if(p->result.discard)
+            {
+                p->result.discard--;
+            }else{
+                p->result.count++;
+                p->result.period += avr_cycles_to_usec(p->avr, ts - p->result.last_in_rising_ts);
+                if(p->result.last_ref_in_ts) p->result.rising_offset += avr_cycles_to_usec(p->avr, ts - p->result.last_ref_in_ts);
+            }
+            //V("Period %d, rising %d, count %d\n", avr_cycles_to_usec(p->avr, ts - p->result.last_in_rising_ts), avr_cycles_to_usec(p->avr, ts - p->result.last_ref_in_ts), p->result.count);
         }
-        last_in_rising_ts = ts;
+        p->result.last_in_rising_ts = ts;
 	}
 	else if(irq->value && !value) {	// falling edge
-        if(last_in_rising_ts)
+        if(p->result.last_in_rising_ts)
         {
-            p->result.falling_offset += avr_cycles_to_usec(p->avr, ts - last_ref_in_ts);
-            p->result.high_duration  += avr_cycles_to_usec(p->avr, ts - last_in_rising_ts);
-            V("Duration %d\n", avr_cycles_to_usec(p->avr, ts - last_in_rising_ts));
+            if(!(p->result.discard))
+            {
+                if(p->result.last_ref_in_ts) p->result.falling_offset += avr_cycles_to_usec(p->avr, ts - p->result.last_ref_in_ts);
+                p->result.high_duration  += avr_cycles_to_usec(p->avr, ts - p->result.last_in_rising_ts);
+            }
+            //V("Duration %d, falling %d\n", avr_cycles_to_usec(p->avr, ts - p->result.last_in_rising_ts), avr_cycles_to_usec(p->avr, ts - p->result.last_ref_in_ts));
         }
-		last_in_falling_ts = ts;
+		p->result.last_in_falling_ts = ts;
 	}
 }
 
@@ -86,11 +91,26 @@ static void timing_analyzer_ref_in_hook(struct avr_irq_t * irq, uint32_t value, 
 {
 	timing_analyzer_t * p = (timing_analyzer_t*)param;
 	uint32_t ts = p->avr->cycle; 
-    //V("REF at %u\n", ts);
+    //V("REF at %u irq->value %d value %d\n", ts, irq->value, value);
 	// get timestamp and direction
-	if (irq->value && value) {	// rising edge
-		last_ref_in_ts = ts;
+	if (!irq->value && value) {	// rising edge
+		p->result.last_ref_in_ts = ts;
+        //V("REF at %u\n", ts);
 	}
+}
+
+
+/*
+ * Reset statistics
+ * Discard first "discard" cycles from stats
+ */
+void 
+timing_analyzer_reset(
+        timing_analyzer_t *p, 
+        const int discard)
+{
+    memset(&(p->result), 0, sizeof(timing_analyzer_result_t));    
+	p->result.discard 			= discard;
 }
 
 void
@@ -105,21 +125,13 @@ timing_analyzer_init(
 	p->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_TIMING_ANALYZER_COUNT, irq_names);
 	avr_irq_register_notify(p->irq + IRQ_TIMING_ANALYZER_IN, timing_analyzer_in_hook, p);
 	avr_irq_register_notify(p->irq + IRQ_TIMING_ANALYZER_REF_IN, timing_analyzer_ref_in_hook, p);
-	
-	p->result.rising_offset 	= 0;
-	p->result.falling_offset 	= 0;
-	p->result.period 			= 0;
-	p->result.high_duration 	= 0;
-	p->result.count 			= 0;
-    last_ref_in_ts		        = 0; 
-    last_in_rising_ts		    = 0; 
-    last_in_falling_ts	    	= 0; 
+
+    memset(&(p->result), 0, sizeof(timing_analyzer_result_t));    
 }
 
 /*
  * Called by test bench to get results
  * return the number of cycle analyzed (note only the last one metrics are reported)
- * once function is called, number of analyzed cycles is reset
  */
 int
 timing_analyzer_result(
@@ -129,20 +141,12 @@ timing_analyzer_result(
 	uint32_t cycles = p->result.count;
     if(cycles)
     {
-	    p->result.rising_offset 	/= p->result.count + 1;
-	    p->result.falling_offset 	/= p->result.count + 1;
-	    p->result.period 			/= p->result.count + 1;
-	    p->result.high_duration 	/= p->result.count + 1;
+	    p->result.rising_offset 	/= p->result.count;
+	    p->result.falling_offset 	/= p->result.count;
+	    p->result.period 			/= p->result.count;
+	    p->result.high_duration 	/= p->result.count;
     }
 
 	memcpy(result, &(p->result), sizeof(timing_analyzer_result_t));
-	p->result.rising_offset 	= 0;
-	p->result.falling_offset 	= 0;
-	p->result.period 			= 0;
-	p->result.high_duration 	= 0;
-	p->result.count 			= 0;
-    last_ref_in_ts		        = 0; 
-    last_in_rising_ts		    = 0; 
-    last_in_falling_ts	    	= 0; 
 	return cycles;
 }

@@ -49,6 +49,10 @@ typedef struct timing_analyzer_result_t {
 	uint32_t 	period;			// period on rising edge
 	uint32_t 	high_duration;	// high state duration
 	uint32_t 	count;	        // count of cycle
+	uint32_t 	discard;	    // discard cycles
+    uint32_t    last_ref_in_ts;     // internal state
+    uint32_t    last_in_rising_ts;  // internal state
+    uint32_t    last_in_falling_ts; // internal state
 } timing_analyzer_result_t;
 
 typedef struct timing_analyzer_t {
@@ -65,6 +69,10 @@ timing_analyzer_init(
 		struct avr_t * avr,
 		timing_analyzer_t *p,
 		const char *name);
+
+void timing_analyzer_reset(
+	timing_analyzer_t *p,
+    const int discard);
 
 int
 timing_analyzer_result(

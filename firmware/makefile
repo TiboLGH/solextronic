@@ -12,7 +12,7 @@ GIT_VER		:=VERSION_GIT=0x$(shell git rev-parse --short HEAD)
 
 DEPS		= $(wildcard *.h)
 C_SRCS		= $(wildcard *.c)
-OBJ_FILES	= main.o platform.o command.o
+OBJ_FILES	= main.o platform.o command.o helper.o
 OBJ_FILES2	= $(C_SRCS:.c=.o)
 
 all:	$(TARGET).hex

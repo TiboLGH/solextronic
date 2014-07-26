@@ -3,9 +3,9 @@
  *   thibault.bouttevin@gmail.com                                          *
  *   www.legalethurlant.fr.st                                              *
  *                                                                         *
- *   This file is part of Solextronic                                      *
+ *   This file is part of SolexTronic                                      *
  *                                                                         *
- *   Solextronic is free software; you can redistribute it and/or modify   *
+ *   SolexTronic is free software; you can redistribute it and/or modify   *
  *   it under the terms of the GNU General Public License as published by  *
  *   the Free Software Foundation; either version 3 of the License, or     *
  *   any later version.                                                    *
@@ -20,82 +20,22 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
-/**
- * \file common.h
- * \brief Includes common declarations and definition of the project
+ /**
+ * \file helper.h
+ * \brief Helper functions for firmware and test bench
  * \author Thibault Bouttevin
- * \version 0.1
- * \date October 2012
+ * \date July 2014
  *
- * This file includes common declarations and definition of the project
+ * This file includes functions for conversion, interpolation,
+ * ... for both firmware and simulation.
+ * Warning ! this file will be used on both the microcontroller and the simulation test
+ * program : use only c99 code, nothing specific to a platform and be careful about alignment !
  *
  */
 
-#ifndef COMMON_H
-#define COMMON_H
-
-#include <varDef.h>
-
-#define VERSION_SOFT_MAJOR       0
-#define VERSION_SOFT_MINOR       1
-#define VERSION_HARD             1
-
-void __assert__(char *expr, char *filename, int linenumber); 
-#define ASSERT(_expr) do {if (!(_expr)) __assert__(#_expr, __FILE__, __LINE__);} while (0);
-
-#define True  (1)
-#define False (0)
-
-typedef enum
-{
-    LOW = 0,
-    HIGH
-}STATE;
-
-typedef enum
-{
-    POL_IGNITION = 0,
-    POL_INJECTION,
-	POL_PUMP,
-    POL_PMH,
-	POL_QTY
-}POL_SEL;
-
-enum
-{
-    STOP = 0,
-    CRANKING,
-    RUNNING,
-    ALARM,
-    ERROR,
-    STALLED
-};
+#include "varDef.h"
 
 
-/**
- * \struct TimeStamp_t
- * \brief Timestamp for accurate timing
- *
- * Store master clock timestamp + timer tick
- * there are 250 ticks of 4 us per masterclk period
- */
-typedef struct {
-    u32 clk;
-    u8  tick;
-}TimeStamp_t; 
+u16 Interp2D(u8 *table, u16 rpm, u8 load);
 
-/**
- * \struct intState_t
- * \brief Internal state, not send on serial link
- *
- * Store internal state along with gState
- * but not send on serial link
- */
-typedef struct {
-    u8  ignTestMode;
-    u8  newCycle;
-    u8  rReady;
-    u16 RPMperiod;
-}intState_t; 
 
-#endif

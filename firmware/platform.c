@@ -77,14 +77,13 @@ const PROGMEM eeprom_data_t eeInit = {
     //.igniTable[12][12];
 };
 
-extern eeprom_data_t    eData;
-extern Current_Data_t   gState;
-extern intState_t       intState;
+extern volatile eeprom_data_t    eData;
+extern volatile Current_Data_t   gState;
+extern volatile intState_t       intState;
 
 extern u8 *bufTx;
 extern u8 bufRx[];
 extern u8 indexRx;
-extern u8 rReady;
 extern u16 txCur;
 extern u16 txCount;
 extern u8 isTx;
@@ -97,11 +96,10 @@ static u32	timerTable[TIMER_QTY];
 static volatile u32 masterClk;
 static volatile u8 count10ms;
 static TimeStamp_t     prevTs, newTs;
-static volatile wvf_t curInjTiming = {.state = OFF, .start = 0, .stop = 0};
-static volatile wvf_t nextInjTiming = {.state = OFF, .start = 0, .stop = 0};
-static volatile wvf_t curIgnTiming = {.state = OFF, .start = 0, .stop = 0};
-static volatile wvf_t nextIgnTiming = {.state = OFF, .start = 0, .stop = 0};
-static volatile u16 RPMperiod; 
+static volatile wvf_t curInjTiming = {.state = OFF, .start = 0, .duration = 0};
+static volatile wvf_t nextInjTiming = {.state = OFF, .start = 0, .duration = 0};
+static volatile wvf_t curIgnTiming = {.state = OFF, .start = 0, .duration = 0};
+static volatile wvf_t nextIgnTiming = {.state = OFF, .start = 0, .duration = 0};
 
 
 /**
@@ -160,7 +158,7 @@ ISR(USART_RX_vect)
 	if(bit_is_clear(UCSR0A, FE0))
 	{
         bufRx[indexRx++] = UDR0;
-        rReady = 1;
+        intState.rReady = 1;
 	}
 }
 
@@ -270,8 +268,11 @@ ISR(TIMER2_COMPA_vect)
         // Ignition test mode
         if(intState.ignTestMode)
         {
-            TCNT1 = 0;
-            OCR1B = curIgnTiming.start;
+            IGN_INT_DISABLE;
+            curIgnTiming.start = TCNT1 + nextIgnTiming.start;
+            curIgnTiming.duration  = nextIgnTiming.duration;
+            if(curIgnTiming.state == OFF) OCR1A = curIgnTiming.start;
+            IGN_INT_ENABLE;
         }
         // start ADC acquisition
         /*adcState = ADC_BATTERY;
@@ -285,7 +286,7 @@ ISR(TIMER2_COMPA_vect)
 
 /**
  * \fn ISR(TIMER1_OVF_vect)
- * \brief Interrupt on overflow of Timer1 : engine is stalled
+ * \brief FIXME Interrupt on overflow of Timer1 : engine is stalled
  *
  * \param none
  * \return none
@@ -310,11 +311,13 @@ ISR(TIMER1_COMPA_vect)
         // TODO : use polarity
         C_SETBIT(IGNITION_PIN);
         curIgnTiming.state = ON;
-        OCR1A = curIgnTiming.stop;
+        OCR1A += curIgnTiming.duration;
+        DEBUG = 22;DEBUG = 0;
     }else{
         C_CLEARBIT(IGNITION_PIN);
         curIgnTiming.state = OFF;
         OCR1A = curIgnTiming.start;
+        DEBUG = 33;DEBUG = 0;
     }
 }
 
@@ -332,7 +335,7 @@ ISR(TIMER1_COMPB_vect)
         // TODO : use polarity
         C_SETBIT(INJECTOR_PIN);
         curInjTiming.state = ON;
-        OCR1B = curInjTiming.stop;
+        OCR1B = curInjTiming.duration;
     }else{
         C_CLEARBIT(INJECTOR_PIN);
         curInjTiming.state = OFF;
@@ -354,8 +357,7 @@ void InitTimer(void)
     // Overflow is 262 ms = 229 tr/min => considered as stall
     TCCR1A = (0 << COM1A1) | (0 << COM1A0) | (0 << COM1B1) | (0 << COM1B0) | (0 << WGM11) | (0 << WGM10);
     TCCR1B = (0 << ICNC1 ) | (1 << ICES1 ) | (0 << WGM13 ) | (0 << WGM12 ) | (0 << CS12 ) | (1 << CS11 ) | (1 << CS10);
-    TCNT1H = 0;
-    TCNT1L = 0;
+    TCNT1 = 0;
     TIMSK1 = (0 << ICIE1) | (0 << OCIE1B) | (0 << OCIE1A) | (1 << TOIE1);
     
     // Enable the TIMER2, set CTC mode, internal clock with 1/64 prescaler.
@@ -566,23 +568,35 @@ void WritePWMValue(u8 value)
 */
 ISR(INT0_vect)
 {
+    static u16 lastTick = 0;
     // Save timer value
-    RPMperiod = TCNT1;
-    // clear timer for next period
-    TCNT1 = 0;
+    u16 latchedTimer1 = TCNT1;
+    // Compute RPM period
+    if(latchedTimer1 < lastTick) // overflow of Timer1
+    {
+        intState.RPMperiod = 65535 - lastTick + latchedTimer1;
+    }else{
+        intState.RPMperiod = latchedTimer1 - lastTick;
+    } 
+    lastTick = latchedTimer1;
+
     // compute RPM : tick is 4us
-    gState.rpm = 60 * (250000 / RPMperiod);
+    gState.rpm = 60 * (250000 / intState.RPMperiod);
     gState.engine = RUNNING;
 
     // update injection and ignition timings
-    u16 duration = 1000;
-    u16 angleTick = (u32)RPMperiod * 50/*eData.injAdv*/ / 360;
     //curInjTiming.start = angleTick - (duration >> 3);
-    //curInjTiming.stop  = angleTick + (duration >> 3);
+    //curInjTiming.duration  = angleTick + (duration >> 3);
     //curInjTiming.state = OFF;
-    //OCR1B = curInjTiming.start;
-    curIgnTiming.start = (u32)RPMperiod * 20 / 360;
-    curIgnTiming.stop  = curIgnTiming.start + (eData.igniDuration >> 2);
+    IGN_INT_DISABLE;
+    DEBUG = 66;DEBUG = 0;
+    curIgnTiming.start = latchedTimer1 + nextIgnTiming.start;
+    curIgnTiming.duration  = nextIgnTiming.duration;
+    if(curIgnTiming.state == OFF) OCR1A = curIgnTiming.start;
+    IGN_INT_ENABLE;
+    
+    // Flag to compute a new cycle
+    intState.newCycle = 1;
 }
 
 /**
@@ -637,9 +651,9 @@ void SetInjectionTiming(u8 force, u16 duration)
 
     // Convert angle to timer tick through RPM. Timer tick is 4us
     // TODO : use PMHOffset setting
-    u16 angleTick = (u32)RPMperiod * 50/*eData.injAdv*/ / 360;
+    u16 angleTick = (u32)intState.RPMperiod * 50/*eData.injAdv*/ / 360;
     nextInjTiming.start = angleTick - (duration >> 3);
-    nextInjTiming.stop  = angleTick + (duration >> 3);
+    nextInjTiming.duration  = angleTick + (duration >> 3);
     OCR1B = 100;
 
     return;
@@ -655,23 +669,10 @@ void SetInjectionTiming(u8 force, u16 duration)
 */
 void SetIgnitionTiming(u8 force, u8 advance)
 {
-    if(force == FORCEON)
-    {
-        nextIgnTiming.state = FORCEON;
-    }
-    else if(force == FORCEOFF)
-    {
-        nextIgnTiming.state = FORCEOFF;
-    }
-    else
-    {
-        nextIgnTiming.state = OFF;
-    }
-
     // Convert angle to timer tick through RPM. Timer tick is 4us
     // TODO : use PMHOffset setting
-    nextIgnTiming.start = (u32)RPMperiod * advance / 360;
-    nextIgnTiming.stop  = nextIgnTiming.start + (eData.igniDuration >> 2);
+    nextIgnTiming.start = (u32)intState.RPMperiod * (360 - advance) / 360;
+    nextIgnTiming.duration  = eData.igniDuration >> 2;
 
     return;
 }
@@ -687,7 +688,7 @@ void InjectorStartTest(void)
     /* Configure waveform generator */
     curInjTiming.state = OFF;
     curInjTiming.start = INJ_TEST_ADV;
-    curInjTiming.stop  = INJ_TEST_ADV + (eData.injTestPW >> 2); // conversion from us to timer step (4us) 
+    curInjTiming.duration  = INJ_TEST_ADV + (eData.injTestPW >> 2); // conversion from us to timer step (4us) 
     IGN_INT_DISABLE;
     gState.injTestMode = True;
     return;
@@ -703,11 +704,10 @@ void IgnitionStartTest(void)
 {
     IGN_INT_DISABLE;
     /* Configure waveform generator */
-    curIgnTiming.state = OFF;
-    curIgnTiming.start = IGN_TEST_ADV;
-    curIgnTiming.stop  = IGN_TEST_ADV + (eData.igniDuration >> 2); // conversion from us to timer step (4us) 
-    TCNT1 = curIgnTiming.stop + 1;
+    nextIgnTiming.start = IGN_TEST_ADV;
+    nextIgnTiming.duration  = eData.igniDuration >> 2; // conversion from us to timer step (4us) 
     intState.ignTestMode = True;
+    DEBUG = 88; DEBUG = 0;
     IGN_INT_ENABLE;
     return;
 }

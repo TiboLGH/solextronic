@@ -45,6 +45,8 @@
 #define s16     int16_t
 #define s32     int32_t
 
+#define TABSIZE 10
+
 /**
 * \struct eeprom_data_t
 * \brief Map of EEPROM memory
@@ -84,10 +86,10 @@ typedef struct __attribute__ ((__packed__)){ // packed for alignment when used i
     u16        injTestPW;     /*!< = scalar, U16,  41,       "us",    1.00000,   0.00000,  200, 10000, 0 ;  pulse width of injector test mode */
     u16        injTestCycles; /*!< = scalar, U16,  43,         "",    1.00000,   0.00000,    0,  1000, 0 ;  number of cycle of injector test mode. 0 to stop */
     u8         ignTestMode;   /*!< = bits,   U08,  43, "disable test mode", "Enable test mode"           ;  Enable/disable of ignition test mode */
-    u16        rpmBins[10];   /*!< = array,  U16,  45, [10],"RPM",    1.00000,   0.00000,    0, 10000, 0 ;  table of RPM indexes */
-    u8         loadBins[10];  /*!< = array,  U08,  65, [10],  "%",    1.00000,   0.00000,    0,   100, 0 ;  table of load/MAF indexes */
-    u8         injTable[1][1];   /*!< = array,  U08,  75,[10x10],   "%",    1.00000,   0.00000,  10,   130,  0 ;  table for injection */
-    u8         igniTable[1][1];  /*!< = array,  U08, 175,[10x10], "deg",    1.00000,   0.00000,   0,   200,  0 ;  table for ignition */
+    u16        rpmBins[TABSIZE]; /*!< = array,  U16,  45, [10],"RPM",    1.00000,   0.00000,    0, 10000, 0 ;  table of RPM indexes */
+    u8         loadBins[TABSIZE]; /*!< = array,  U08,  65, [10],  "%",    1.00000,   0.00000,    0,   100, 0 ;  table of load/MAF indexes */
+    u8         injTable[TABSIZE][TABSIZE];   /*!< = array,  U08,  75,[10x10],   "%",    1.00000,   0.00000,  10,   130,  0 ;  table for injection */
+    u8         igniTable[TABSIZE][TABSIZE];  /*!< = array,  U08, 175,[10x10], "deg",    1.00000,   0.00000,   0,   200,  0 ;  table for ignition */
     u16        user1;         /*!< = scalar, U16, 275,         "",    1.00000,   0.00000,    0,  1000, 0 ;  for debug */
     u16        user2;         /*!< = scalar, U16, 277,         "",    1.00000,   0.00000,    0,  1000, 0 ;  for debug */
     u16        user3;         /*!< = scalar, U16, 279,         "",    1.00000,   0.00000,    0,  1000, 0 ;  for debug */
@@ -137,6 +139,6 @@ typedef struct  __attribute__ ((__packed__)){ // packed for alignment when used 
    u16 debug1;           /*!< = scalar,     U16,   21,  "%",     1.000,  0.0 */
    u16 debug2;           /*!< = scalar,     U16,   23,  "%",     1.000,  0.0 */
    u16 debug3;           /*!< = scalar,     U16,   25,  "%",     1.000,  0.0 */
-   u8 kpaix;             /*!< = scalar,     U08,   27,  "%",     1.000,  0.0 */
+   u8  load;             /*!< = scalar,     U08,   27,  "%",     1.000,  0.0 ; current load */
 }Current_Data_t;
 #endif

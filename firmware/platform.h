@@ -48,8 +48,9 @@ enum
 
 enum
 {
-    OFF = 0,   /*!< OFF state */
+    AUTO = 0,  /*!< mode auto */
     ON,        /*!< ON state */
+    OFF,       /*!< OFF state */
     FORCEON,   /*!< force ON state : always on */
     FORCEOFF,  /*!< force OFF state : always off */
 };
@@ -109,8 +110,8 @@ enum
  */
 typedef struct {
     u8  state;
-    u16 start;
-    u16 stop;
+    u16 start;      // absolute date to next ON period 
+    u16 duration;   // duration of on period
 }wvf_t; 
 
 /* USART related functions */

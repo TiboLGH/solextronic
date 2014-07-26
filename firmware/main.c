@@ -39,16 +39,32 @@
 #include "common.h"
 #include "platform.h"
 #include "command.h"
+#include "helper.h"
 
-#define MAXSTR 	10
-
-volatile unsigned char rReady = 0;
-
-eeprom_data_t    eData;
-Current_Data_t   gState;
-intState_t       intState;
+volatile eeprom_data_t    eData;
+volatile Current_Data_t   gState;
+volatile intState_t       intState;
 volatile u16 toto = 0;
 
+
+u8 ComputeIgnition(void)
+{
+    DEBUG = 44;
+    //TODO manage load based on throttle/pressure/whatever. Force to 50% for now
+    gState.load = 50; 
+    // compute advance from table
+    gState.advance = Interp2D(&(eData.igniTable[0][0]), gState.rpm, gState.load);
+
+    // TODO set adjustement for acceleration
+    
+    // TODO set limitation for overheating
+
+    // commit advance for next cycle
+    SetIgnitionTiming(AUTO, gState.advance);
+    DEBUG = 0;
+
+    return OK;
+}    
 
 int main(void)
 {
@@ -81,15 +97,22 @@ int main(void)
             ADCProcessing();
         }
         
-        if(rReady)
+        if(intState.rReady)
 		{
-            rReady = 0;
+            intState.rReady = 0;
             ProcessCommand();
 		}
 
        
         // Process ADC Samples
         //ADCProcessing();
+
+        // Compute ignition and injection
+        if(intState.newCycle) 
+        {
+            intState.newCycle = 0;
+            ComputeIgnition();
+        }
 	}
 
 	return(0);
