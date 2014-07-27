@@ -539,9 +539,6 @@ int TestAnalog(void)
 */
 int TestInjectionTestMode(void)
 {
-    //TODO : to fix
-    return NOTEST;
-
     int res, verdict = PASS;
     const u16 injDuration = 1000;
     const u16 injCycles   = 20;

@@ -258,8 +258,10 @@ ISR(TIMER2_COMPA_vect)
                 INJ_INT_DISABLE;
                 gState.injTestMode = False;
             }else{ // trigger cycle     
-                TCNT1 = 0;
-                OCR1B = curInjTiming.start;
+                INJ_INT_DISABLE;
+                curInjTiming.start = TCNT1 + nextInjTiming.start;
+                curInjTiming.duration  = nextInjTiming.duration;
+                if(curInjTiming.state == OFF) OCR1B = curInjTiming.start;
                 INJ_INT_ENABLE;
             }
             gState.injTestCycles--;        
@@ -312,12 +314,10 @@ ISR(TIMER1_COMPA_vect)
         C_SETBIT(IGNITION_PIN);
         curIgnTiming.state = ON;
         OCR1A += curIgnTiming.duration;
-        DEBUG = 22;DEBUG = 0;
     }else{
         C_CLEARBIT(IGNITION_PIN);
         curIgnTiming.state = OFF;
         OCR1A = curIgnTiming.start;
-        DEBUG = 33;DEBUG = 0;
     }
 }
 
@@ -335,7 +335,7 @@ ISR(TIMER1_COMPB_vect)
         // TODO : use polarity
         C_SETBIT(INJECTOR_PIN);
         curInjTiming.state = ON;
-        OCR1B = curInjTiming.duration;
+        OCR1B += curInjTiming.duration;
     }else{
         C_CLEARBIT(INJECTOR_PIN);
         curInjTiming.state = OFF;
@@ -585,11 +585,13 @@ ISR(INT0_vect)
     gState.engine = RUNNING;
 
     // update injection and ignition timings
-    //curInjTiming.start = angleTick - (duration >> 3);
-    //curInjTiming.duration  = angleTick + (duration >> 3);
-    //curInjTiming.state = OFF;
+    INJ_INT_DISABLE;
+    curInjTiming.start = latchedTimer1 + nextInjTiming.start;
+    curInjTiming.duration  = nextInjTiming.duration;
+    if(curInjTiming.state == OFF) OCR1B = curInjTiming.start;
+    INJ_INT_ENABLE;
+
     IGN_INT_DISABLE;
-    DEBUG = 66;DEBUG = 0;
     curIgnTiming.start = latchedTimer1 + nextIgnTiming.start;
     curIgnTiming.duration  = nextIgnTiming.duration;
     if(curIgnTiming.state == OFF) OCR1A = curIgnTiming.start;
@@ -636,26 +638,12 @@ ISR(INT1_vect)
 */
 void SetInjectionTiming(u8 force, u16 duration)
 {
-    if(force == FORCEON)
-    {
-        nextInjTiming.state = FORCEON;
-    }
-    else if(force == FORCEOFF)
-    {
-        nextInjTiming.state = FORCEOFF;
-    }
-    else
-    {
-        nextInjTiming.state = OFF;
-    }
-
     // Convert angle to timer tick through RPM. Timer tick is 4us
     // TODO : use PMHOffset setting
-    u16 angleTick = (u32)intState.RPMperiod * 50/*eData.injAdv*/ / 360;
+    u16 angleTick = (u32)intState.RPMperiod * (360 - eData.injAdv) / 360;
     nextInjTiming.start = angleTick - (duration >> 3);
-    nextInjTiming.duration  = angleTick + (duration >> 3);
-    OCR1B = 100;
-
+    nextInjTiming.duration  = duration >> 2;
+    
     return;
 }
 
@@ -686,10 +674,12 @@ void SetIgnitionTiming(u8 force, u8 advance)
 void InjectorStartTest(void)
 {
     /* Configure waveform generator */
-    curInjTiming.state = OFF;
-    curInjTiming.start = INJ_TEST_ADV;
-    curInjTiming.duration  = INJ_TEST_ADV + (eData.injTestPW >> 2); // conversion from us to timer step (4us) 
-    IGN_INT_DISABLE;
+    INJ_INT_DISABLE;
+    /* Configure waveform generator */
+    nextInjTiming.start = INJ_TEST_ADV;
+    nextInjTiming.duration  = eData.injTestPW >> 2; // conversion from us to timer step (4us) 
+    intState.ignTestMode = True;
+    INJ_INT_ENABLE;
     gState.injTestMode = True;
     return;
 }
@@ -707,7 +697,6 @@ void IgnitionStartTest(void)
     nextIgnTiming.start = IGN_TEST_ADV;
     nextIgnTiming.duration  = eData.igniDuration >> 2; // conversion from us to timer step (4us) 
     intState.ignTestMode = True;
-    DEBUG = 88; DEBUG = 0;
     IGN_INT_ENABLE;
     return;
 }
