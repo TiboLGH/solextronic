@@ -1,0 +1,283 @@
+Cmp-Mod V01 Created by CvPcb (22-Jun-2014 BZR 4027)-stable date = mar. 09 sept. 2014 11:07:58 CEST
+
+BeginCmp
+TimeStamp = /529913D3;
+Reference = C1;
+ValeurCmp = 100nF;
+IdModule  = C1;
+EndCmp
+
+BeginCmp
+TimeStamp = /53E7DCDD;
+Reference = C2;
+ValeurCmp = 100nF;
+IdModule  = C1;
+EndCmp
+
+BeginCmp
+TimeStamp = /53E7E7D1;
+Reference = C3;
+ValeurCmp = 100nF;
+IdModule  = C1;
+EndCmp
+
+BeginCmp
+TimeStamp = /53E7E9FE;
+Reference = C4;
+ValeurCmp = 100nF;
+IdModule  = C1;
+EndCmp
+
+BeginCmp
+TimeStamp = /53E7EE77;
+Reference = C5;
+ValeurCmp = 100nF;
+IdModule  = C1;
+EndCmp
+
+BeginCmp
+TimeStamp = /53E7F24A;
+Reference = C6;
+ValeurCmp = 100nF;
+IdModule  = C1;
+EndCmp
+
+BeginCmp
+TimeStamp = /529CF242;
+Reference = C7;
+ValeurCmp = 100nF;
+IdModule  = C1;
+EndCmp
+
+BeginCmp
+TimeStamp = /5291D0C5;
+Reference = C8;
+ValeurCmp = 22u/16v;
+IdModule  = C1V7;
+EndCmp
+
+BeginCmp
+TimeStamp = /53E7E20D;
+Reference = D1;
+ValeurCmp = BAT54S;
+IdModule  = ST23AK#1;
+EndCmp
+
+BeginCmp
+TimeStamp = /53E7E7E7;
+Reference = D2;
+ValeurCmp = BAT54S;
+IdModule  = ST23AK#1;
+EndCmp
+
+BeginCmp
+TimeStamp = /53E7EA14;
+Reference = D3;
+ValeurCmp = BAT54S;
+IdModule  = ST23AK#1;
+EndCmp
+
+BeginCmp
+TimeStamp = /53E7EE8D;
+Reference = D4;
+ValeurCmp = BAT54S;
+IdModule  = ST23AK#1;
+EndCmp
+
+BeginCmp
+TimeStamp = /5291D007;
+Reference = D5;
+ValeurCmp = 1N4007;
+IdModule  = D4;
+EndCmp
+
+BeginCmp
+TimeStamp = /529D0A6B;
+Reference = D6;
+ValeurCmp = 1N4007;
+IdModule  = D4;
+EndCmp
+
+BeginCmp
+TimeStamp = /53260121;
+Reference = J1;
+ValeurCmp = DB25;
+IdModule  = DB25FC;
+EndCmp
+
+BeginCmp
+TimeStamp = /53540BF8;
+Reference = P1;
+ValeurCmp = CONN_4;
+IdModule  = bornier4;
+EndCmp
+
+BeginCmp
+TimeStamp = /540EC03B;
+Reference = P2;
+ValeurCmp = CONN_4;
+IdModule  = SIL-4;
+EndCmp
+
+BeginCmp
+TimeStamp = /5291CFCF;
+Reference = P3;
+ValeurCmp = CONN_2;
+IdModule  = bornier2;
+EndCmp
+
+BeginCmp
+TimeStamp = /52990FD3;
+Reference = Q1;
+ValeurCmp = IRL540;
+IdModule  = TO220_VERT_GDS;
+EndCmp
+
+BeginCmp
+TimeStamp = /529D094B;
+Reference = Q2;
+ValeurCmp = BC237;
+IdModule  = TO92-EBC;
+EndCmp
+
+BeginCmp
+TimeStamp = /53E7DCEC;
+Reference = R1;
+ValeurCmp = 56k;
+IdModule  = R3;
+EndCmp
+
+BeginCmp
+TimeStamp = /53E7E7D7;
+Reference = R2;
+ValeurCmp = 56k;
+IdModule  = R3;
+EndCmp
+
+BeginCmp
+TimeStamp = /53E7EA04;
+Reference = R3;
+ValeurCmp = 56k;
+IdModule  = R3;
+EndCmp
+
+BeginCmp
+TimeStamp = /53E7EE7D;
+Reference = R4;
+ValeurCmp = 5.6k;
+IdModule  = R3;
+EndCmp
+
+BeginCmp
+TimeStamp = /529CE6B4;
+Reference = R5;
+ValeurCmp = 470;
+IdModule  = R3;
+EndCmp
+
+BeginCmp
+TimeStamp = /529CE653;
+Reference = R6;
+ValeurCmp = 470;
+IdModule  = R3;
+EndCmp
+
+BeginCmp
+TimeStamp = /529BAF69;
+Reference = R7;
+ValeurCmp = 10k;
+IdModule  = R3;
+EndCmp
+
+BeginCmp
+TimeStamp = /529BB00C;
+Reference = R8;
+ValeurCmp = 10k;
+IdModule  = R3;
+EndCmp
+
+BeginCmp
+TimeStamp = /52990FEC;
+Reference = R9;
+ValeurCmp = 2.2;
+IdModule  = R3;
+EndCmp
+
+BeginCmp
+TimeStamp = /529CF9BB;
+Reference = R10;
+ValeurCmp = 100k;
+IdModule  = R3;
+EndCmp
+
+BeginCmp
+TimeStamp = /540CBB97;
+Reference = R11;
+ValeurCmp = 10k;
+IdModule  = R3;
+EndCmp
+
+BeginCmp
+TimeStamp = /5291D0E2;
+Reference = R12;
+ValeurCmp = 22k;
+IdModule  = R3;
+EndCmp
+
+BeginCmp
+TimeStamp = /5291D0EB;
+Reference = R13;
+ValeurCmp = 10k;
+IdModule  = R3;
+EndCmp
+
+BeginCmp
+TimeStamp = /529D0969;
+Reference = R14;
+ValeurCmp = 2.2k;
+IdModule  = R3;
+EndCmp
+
+BeginCmp
+TimeStamp = /52991384;
+Reference = U1;
+ValeurCmp = 25LC256;
+IdModule  = DIP-8__300;
+EndCmp
+
+BeginCmp
+TimeStamp = /53E74002;
+Reference = U2;
+ValeurCmp = LM324;
+IdModule  = DIP-14__300;
+EndCmp
+
+BeginCmp
+TimeStamp = /529BA355;
+Reference = U3;
+ValeurCmp = 4N25;
+IdModule  = DIP-6__300;
+EndCmp
+
+BeginCmp
+TimeStamp = /529BA37E;
+Reference = U4;
+ValeurCmp = 4N25;
+IdModule  = DIP-6__300;
+EndCmp
+
+BeginCmp
+TimeStamp = /529CEFE0;
+Reference = U5;
+ValeurCmp = 74HC00;
+IdModule  = DIP-14__300;
+EndCmp
+
+BeginCmp
+TimeStamp = /528E7B58;
+Reference = U6;
+ValeurCmp = ARDUINO_NANO;
+IdModule  = arduino_nano;
+EndCmp
+
+EndListe
