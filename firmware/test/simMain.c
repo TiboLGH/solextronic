@@ -355,6 +355,28 @@ static int QuerySignature(u8 *signature, u8 *revision)
     return OK;
 }
 
+// Read/Write retry, simulation is not 100% reliable
+static int WriteConfigRetry()
+{
+    int retry;
+    for(retry=0; retry < 3;retry++)
+    {
+        res = WriteConfig();
+        if(res == OK) return OK;
+    }
+    if(retry == 3) return FAIL;
+}
+
+static int ReadConfigRetry()
+{
+    int retry;
+    for(retry=0; retry < 3;retry++)
+    {
+        res = ReadConfig();
+        if(res == OK) return OK;
+    }
+    if(retry == 3) return FAIL;
+}
 
 /****** Tests Cases *******/
 int TestStub(void)
@@ -549,13 +571,11 @@ int TestInjectionTestMode(void)
 	timing_analyzer_result_t result;
     timing_analyzer_result(&timing_analyzer_injection, &result); // reset stats
     // 2. Set injection parameters
-    res = ReadConfig();
-    if(res != OK) return FAIL;
+    if(ReadConfigRetry() != OK) return FAIL;
     eDataToWrite = eData;
     eDataToWrite.injTestPW     = injDuration;
     eDataToWrite.injTestCycles = injCycles;
-    res = WriteConfig();
-    if(res != OK) return FAIL;
+    if(WriteConfigRetry() != OK) return FAIL;
    
     // 3. Measure injection signal timing
     SleepMs(200 * injCycles);
@@ -603,15 +623,13 @@ int TestIgnitionAuto(void)
 	timing_analyzer_result_t result;
     timing_analyzer_reset(&timing_analyzer_ignition, 5); //reset stats, discard 5 1st cycles
     // 2. Set ignition test mode
-    res = ReadConfig();
-    //if(res != OK) return FAIL;
+    if(ReadConfigRetry() != OK) return FAIL;
     eDataToWrite = eData;
     eDataToWrite.PMHOffset      = 0;
     eDataToWrite.igniDuration   = ignDuration;
     eDataToWrite.ignTestMode    = 1;
     SleepMs(100);
-    res = WriteConfig();
-    if(res != OK) return FAIL;
+    if(WriteConfigRetry() != OK) return FAIL;
    
     // 3. Measure ignition signal timing
     SleepMs(2000);
@@ -639,7 +657,7 @@ int TestIgnitionAuto(void)
     }
     eDataToWrite = eData;
     eDataToWrite.ignTestMode    = 0;
-    res = WriteConfig();
+    if(WriteConfigRetry() != OK) return FAIL;
     
     return verdict;
 }
@@ -656,8 +674,7 @@ int TestIgnition(void)
 	timing_analyzer_result_t result;
     
     // 1. Set ignition parameters and advance table
-    res = ReadConfig();
-    if(res != OK) return FAIL;
+    if(ReadConfigRetry() != OK) return FAIL;
     eDataToWrite = eData;
     eDataToWrite.ignTestMode    = 0;
     eDataToWrite.PMHOffset      = 0;
@@ -672,13 +689,7 @@ int TestIgnition(void)
             eDataToWrite.igniTable[i][j] = 4*i+j;
         }
     }
-    int retry;
-    for(retry=0; retry < 3;retry++)
-    {
-        res = WriteConfig();
-        if(res == OK) break;
-    }
-    if(retry == 3) return FAIL;
+    if(WriteConfigRetry() != OK) return FAIL;
 
     for (int i = 0; i < RPM_QTY; i++)
     {
