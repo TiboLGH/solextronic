@@ -50,5 +50,5 @@ tags:
 	ctags -R -a /home/tibo/Projets/simavr/simavr/sim/
 
 clean: 
-	rm -f $(TARGET).elf *.o *.hex
+	rm -f $(TARGET).elf *.o *.hex *.d
 	make -C test clean
