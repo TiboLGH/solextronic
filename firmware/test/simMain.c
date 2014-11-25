@@ -358,24 +358,24 @@ static int QuerySignature(u8 *signature, u8 *revision)
 // Read/Write retry, simulation is not 100% reliable
 static int WriteConfigRetry()
 {
-    int retry;
+    int retry, res;
     for(retry=0; retry < 3;retry++)
     {
         res = WriteConfig();
         if(res == OK) return OK;
     }
-    if(retry == 3) return FAIL;
+    return FAIL;
 }
 
 static int ReadConfigRetry()
 {
-    int retry;
+    int retry, res;
     for(retry=0; retry < 3;retry++)
     {
         res = ReadConfig();
         if(res == OK) return OK;
     }
-    if(retry == 3) return FAIL;
+    return FAIL;
 }
 
 /****** Tests Cases *******/
@@ -561,7 +561,7 @@ int TestAnalog(void)
 */
 int TestInjectionTestMode(void)
 {
-    int res, verdict = PASS;
+    int verdict = PASS;
     const u16 injDuration = 1000;
     const u16 injCycles   = 20;
     const float tolerance = 5; //%
@@ -614,7 +614,7 @@ int TestInjectionTestMode(void)
 
 int TestIgnitionAuto(void)
 {
-    int res, verdict = PASS;
+    int verdict = PASS;
     const u16 ignDuration = 1000;
     const float tolerance = 5; //%
     // 1. Disable RPM generator
@@ -669,7 +669,7 @@ int TestIgnition(void)
     const float tolerance = 5; //%
     const u16 ignDuration = 1000;
     const u8 load = 50; // TODO manage load
-    int res, verdict = PASS;
+    int verdict = PASS;
     int rpmTable[RPM_QTY] = {500, 2000, 4000, 6000, 10000};
 	timing_analyzer_result_t result;
     
