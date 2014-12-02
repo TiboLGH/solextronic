@@ -37,7 +37,7 @@ $Descr A4 11693 8268
 encoding utf-8
 Sheet 1 1
 Title "Solextronic"
-Date "13 sep 2014"
+Date "2 dec 2014"
 Rev "1.0"
 Comp "Le Galet Hurlant"
 Comment1 ""
@@ -276,7 +276,7 @@ F 3 "" H 8850 4900 60  0001 C CNN
 	1    0    0    -1  
 $EndComp
 Text Label 9400 1200 0    60   ~ 0
-Throttle
+TPS
 Text Label 9400 2400 0    60   ~ 0
 Ignition
 $Comp
@@ -293,13 +293,13 @@ $EndComp
 Text Label 8800 1500 2    60   ~ 0
 Injection
 Text Label 5450 5250 0    60   ~ 0
-ThrottleAdc
+TPSAdc
 Text Label 5450 5350 0    60   ~ 0
-TmotorAdc
+CLTAdc
 Text Label 5450 5650 0    60   ~ 0
-TairAdc
+IATdc
 Text Label 5450 5750 0    60   ~ 0
-PressureAdc
+MAPAdc
 Text Label 10800 6100 2    60   ~ 0
 PUMP
 $Comp
@@ -364,11 +364,11 @@ $EndComp
 Text Label 7700 5800 2    60   ~ 0
 Wheel
 Text Label 7700 5900 2    60   ~ 0
-PMH
+Motor
 Text Label 4800 7250 2    60   ~ 0
 Wheel
 Text Label 4900 5950 2    60   ~ 0
-PMH
+Motor
 Text Label 7750 4850 2    60   ~ 0
 Ignition
 $Comp
@@ -571,7 +571,7 @@ F 3 "" H 4400 7550 60  0001 C CNN
 	1    0    0    -1  
 $EndComp
 Text Label 2350 5750 0    60   ~ 0
-TopPMH
+TopMotor
 $Comp
 L GND #PWR012
 U 1 1 529BAB66
@@ -758,17 +758,17 @@ $EndComp
 Text Label 9400 3400 0    60   ~ 0
 Injection
 Text Label 9400 1800 0    60   ~ 0
-Pressure
+MAP
 Text Label 9400 3000 0    60   ~ 0
-TopPMH
+TopMotor
 Text Label 9400 1000 0    60   ~ 0
 PUMP
 Text Label 9400 3200 0    60   ~ 0
 TopWheel
 Text Label 9400 1400 0    60   ~ 0
-Tmotor
+CLT
 Text Label 9400 1600 0    60   ~ 0
-Tair
+IAT
 $Comp
 L +5V #PWR020
 U 1 1 5292156D
@@ -1003,11 +1003,11 @@ $EndComp
 Wire Wire Line
 	2100 700  2100 650 
 Text Label 3250 1100 2    60   ~ 0
-TmotorAdc
+CLTAdc
 Wire Wire Line
 	2700 1100 3250 1100
 Text Label 550  1000 0    60   ~ 0
-Tmotor
+CLT
 $Comp
 L C C2
 U 1 1 53E7DCDD
@@ -1121,11 +1121,11 @@ $EndComp
 Wire Wire Line
 	2100 1900 2100 1850
 Text Label 3250 2300 2    60   ~ 0
-TairAdc
+IATAdc
 Wire Wire Line
 	2700 2300 3250 2300
 Text Label 550  2200 0    60   ~ 0
-Tair
+IAT
 $Comp
 L C C3
 U 1 1 53E7E7D1
@@ -1239,11 +1239,11 @@ $EndComp
 Wire Wire Line
 	2100 3100 2100 3050
 Text Label 3250 3500 2    60   ~ 0
-PressureAdc
+MAPAdc
 Wire Wire Line
 	2700 3500 3250 3500
 Text Label 550  3400 0    60   ~ 0
-Pressure
+MAP
 $Comp
 L C C4
 U 1 1 53E7E9FE
@@ -1355,11 +1355,11 @@ $EndComp
 Wire Wire Line
 	2100 4300 2100 4250
 Text Label 3250 4700 2    60   ~ 0
-ThrottleAdc
+TPSAdc
 Wire Wire Line
 	2700 4700 3250 4700
 Text Label 550  4600 0    60   ~ 0
-Throttle
+TPS
 $Comp
 L C C5
 U 1 1 53E7EE77
