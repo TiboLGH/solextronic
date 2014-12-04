@@ -167,10 +167,10 @@ static float TempToVoltage(const float degree) // for LM35 10mV/deg
     return (degree * 10 / 1000.);
 }
 
-static float ThrToVoltage(const float throttle)
+static float ThrToVoltage(const float TPS)
 {
     //TODO include min/max values
-    return (throttle * 5 / 100.);
+    return (TPS * 5 / 100.);
 }
 
 static void pwm_changed_hook(struct avr_irq_t * irq, uint32_t value, void * param)
@@ -500,7 +500,7 @@ int TestAnalog(void)
     //TODO : to fix
     return NOTEST;
     /* This test check the analog inputs
-     * conversions for temperature, throttle
+     * conversions for temperature, TPS
      * and batterie */
 
     const float tolerance = 5; //%
@@ -508,7 +508,7 @@ int TestAnalog(void)
     float analogTable[ANALOG_QTY][4] = {{100, 20, 20, 0},
         {110, 100, 25, 50},
         {120, 120, 30, 90},
-        {150, 180, 35, 100}}; // battery, tempMotor, tempAdm, throttle
+        {150, 180, 35, 100}}; // battery, CLT, tempAdm, TPS
     // TODO : set conversion ratios to 100%
 
     // now the requests
@@ -529,7 +529,7 @@ int TestAnalog(void)
         /* criteria : values are correct */
         //V("Expected values : %.0f %.0f %.0f %.0f\n", analogTable[i][0], analogTable[i][1], analogTable[i][2], analogTable[i][3]);
         float maxError = 0.;
-        int analogResult[] = {gState.battery, gState.tempMotor, gState.tempAir, gState.throttle};
+        int analogResult[] = {gState.battery, gState.CLT, gState.IAT, gState.TPS};
         char message[256];
         for(int j = 0; j < 4; j++)
         {

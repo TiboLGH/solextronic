@@ -58,10 +58,10 @@ enum
 enum
 {
     ADC_BATTERY = 0, /*!< ADC7 */
-    ADC_TEMPMOTOR,   /*!< ADC1 */
-    ADC_TEMPAIR,     /*!< ADC2 */
-    ADC_THROTTLE,    /*!< ADC3 */
-    ADC_PRESSURE,    /*!< ADC6 */
+    ADC_CLT,   /*!< ADC1 */
+    ADC_IAT,     /*!< ADC2 */
+    ADC_TPS,    /*!< ADC3 */
+    ADC_MAP,    /*!< ADC6 */
     ADC_IDLE
 };
 

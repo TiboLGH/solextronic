@@ -495,21 +495,21 @@ void ADCProcessing(void)
     {
         case ADC_BATTERY:
             gState.battery = 150 * (u32)ADC / 1024 * eData.ratio[ADC_BATTERY] / 100;     
-            adcState = ADC_TEMPMOTOR;
+            adcState = ADC_CLT;
             break;
 
-        case ADC_TEMPMOTOR:
-            gState.tempMotor = (u32)ADC * 500 / 1024 * eData.ratio[ADC_TEMPMOTOR] / 100;     
-            adcState = ADC_TEMPAIR;
+        case ADC_CLT:
+            gState.CLT = (u32)ADC * 500 / 1024 * eData.ratio[ADC_CLT] / 100;     
+            adcState = ADC_IAT;
             break;
 
-        case ADC_TEMPAIR:
-            gState.tempAir = (u32)ADC * 500 / 1024 * eData.ratio[ADC_TEMPAIR] / 100;     
-            adcState = ADC_THROTTLE;
+        case ADC_IAT:
+            gState.IAT = (u32)ADC * 500 / 1024 * eData.ratio[ADC_IAT] / 100;     
+            adcState = ADC_TPS;
             break;
 
-        case ADC_THROTTLE:
-            gState.throttle = (eData.ratio[ADC_THROTTLE] * (u32)ADC) / 1024;     
+        case ADC_TPS:
+            gState.TPS = (eData.ratio[ADC_TPS] * (u32)ADC) / 1024;     
             adcState = ADC_BATTERY;
             break;
         case ADC_IDLE:

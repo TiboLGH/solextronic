@@ -75,7 +75,7 @@ typedef struct __attribute__ ((__packed__)){ // packed for alignment when used i
     u8         injAdv;        /*!< = scalar, U08,  26,      "deg",    1.00000,   0.00000,    0,   255, 0 ;  mean injection advance */
     u16        starterInj;    /*!< = scalar, U16,  27,       "us",    1.00000,   0.00000,  200,  5000, 0 ;  injection duration during crancking */
     u8         injOverheat;   /*!< = scalar, U08,  29,        "%",    1.00000,   0.00000,    0,    50, 0 ;  injection increase in case of overheating */
-    u16        injFullOpen;   /*!< = scalar, U16,  31,       "us",    1.00000,   0.00000,  500,  5000, 0 ;  injection duration at full throttle */
+    u16        injFullOpen;   /*!< = scalar, U16,  31,       "us",    1.00000,   0.00000,  500,  5000, 0 ;  injection duration at full TPS */
     u8         noInjAtDec;    /*!< = bits,   U08,  33,  [0:0], "inj at dec", "no inj at dec"             ;  1 to stop injection when deceleration */
     u16        injStart;      /*!< = scalar, U16,  34,       "us",    1.00000,   0.00000,  200,  2000, 0 ;  injector opening duration */
     u8         holdPWM;       /*!< = scalar, U08,  36,        "%",    1.00000,   0.00000,   10,   100, 0 ;  PWM ratio during hold time */
@@ -105,10 +105,10 @@ typedef struct __attribute__ ((__packed__)){ // packed for alignment when used i
  */
 typedef struct  __attribute__ ((__packed__)){ // packed for alignment when used in simulation
    u8  battery;          /*!< = scalar,     U08,    0,   "v",    0.100,  0.0 */
-   u8  tempMotor;        /*!< = scalar,     U08,    1,  "°C",    1.000,  0.0 */
-   u8  tempAir;          /*!< = scalar,     U08,    2,  "°C",    1.000,  0.0 */
-   u8  throttle;         /*!< = scalar,     U08,    3,   "%",    1.000,  0.0 */
-   u16 pressure;         /*!< = scalar,     U16,    4, "kPa",    1.000,  0.0 */
+   u8  CLT;        /*!< = scalar,     U08,    1,  "°C",    1.000,  0.0 */
+   u8  IAT;          /*!< = scalar,     U08,    2,  "°C",    1.000,  0.0 */
+   u8  TPS;         /*!< = scalar,     U08,    3,   "%",    1.000,  0.0 */
+   u16 MAP;         /*!< = scalar,     U16,    4, "kPa",    1.000,  0.0 */
    u8  HVvalue;          /*!< = scalar,     U08,    6,   "%",    1.000,  0.0. PWM duty cycle for High voltage supply */
    u16 rpm;              /*!< = scalar,     U16,    7, "RPM",    1.000,  0.0 */
    u16 speed;            /*!< = scalar,     U16,    9,"km/h",    1.000,  0.0 */
