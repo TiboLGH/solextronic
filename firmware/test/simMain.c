@@ -236,8 +236,16 @@ static int SerialClose(int fd_s)
 /*********** Basic steps *************/
 static int SleepMs(const int delayms)
 {
-    // TODO : use simavr timebase to get sleep time in AVR world
-    usleep(delayms * 1000);
+    // use simavr timebase to get sleep time in AVR world
+    if(!avr)
+	return FAIL;
+    
+    u32 end = avr->cycle + avr_usec_to_cycles(avr, 1000*delayms);
+    //wait for end
+    while(avr->cycle < end)
+    {
+	usleep(10*1000);
+    }
     return OK;
 }
 
