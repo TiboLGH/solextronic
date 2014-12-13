@@ -449,7 +449,7 @@ int TestRPM(void)
 
         if(error > tolerance || error < -tolerance)
         {       
-            RED("RPM mesure a %d tr/min : %04X, erreur %.1f %% \n", rpmTable[i], gState.rpm, error);
+            RED("RPM mesure a %d tr/min : %d, erreur %.1f %% \n", rpmTable[i], gState.rpm, error);
         }else{
             GREEN("RPM mesure a %d tr/min : %d, erreur %.1f %% \n", rpmTable[i], gState.rpm, error);
             subTestPassed++;
@@ -949,14 +949,15 @@ int main(int argc, char *argv[])
     avr_vcd_add_signal(&vcd_file,
             avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 1),
             1, "IGN");
-    avr_vcd_add_signal(&vcd_file,
+    avr_vcd_add_signal(&vcd_file, pulse_input_wheel.irq  + IRQ_PULSE_OUT, 1, "Pulse_Wheel");
+    /*avr_vcd_add_signal(&vcd_file,
             avr_iomem_getirq(avr, 0x89, "OCR1AH", 8), 8, "OCR1AH");
     avr_vcd_add_signal(&vcd_file,
             avr_iomem_getirq(avr, 0x88, "OCR1AL", 8), 8, "OCR1AL");
     avr_vcd_add_signal(&vcd_file,
             avr_iomem_getirq(avr, 0x8B, "OCR1BH", 8), 8, "OCR1BH");
     avr_vcd_add_signal(&vcd_file,
-            avr_iomem_getirq(avr, 0x8A, "OCR1BL", 8), 8, "OCR1BL");
+            avr_iomem_getirq(avr, 0x8A, "OCR1BL", 8), 8, "OCR1BL");*/
     avr_vcd_add_signal(&vcd_file,
             avr_iomem_getirq(avr, 0x85, "TCNT1H", 8), 8, "TCNT1H");
     avr_vcd_add_signal(&vcd_file,
