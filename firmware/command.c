@@ -38,9 +38,8 @@
 #include "common.h"
 #include "platform.h"
 
-//const char revNum[20] =  {"Solextronic v0.2   "}; // TODO : Print HW/SW version from define 
-const char revNum[20] =  {"MSII Rev 2.90500    "};   
-const char signature[32] = {"** Solextronic v0.2 beta **     "};
+const char revNum[20] =  {"MSII Rev 2.90500    "};   // for tunerstudio compatibility
+const char signature[32] = {"Solextronic v" SW_VER }; // SW_VER is defined in compilation flag. It shall be limited to 19 chars
 const char protocol[3] = {"001"};
 
 /*** Commands ***/

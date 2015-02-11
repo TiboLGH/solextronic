@@ -3,12 +3,13 @@ TARGET_ARCH	= -mmcu=$(MCU)
 TARGET		= solextronic
 CC		= avr-gcc
 CPPFLAGS	= -mmcu=$(MCU)
-CFLAGS		= -Os -g -Wall -I. -DF_CPU=16000000 -D$(GIT_VER) -std=c99
+CFLAGS		= -Os -g -Wall -I. -DF_CPU=16000000 -D$(GIT_VER) -D $(VERSION) -std=c99
 LDFLAGS		= -g -mmcu=$(MCU) -lm -Wl,--gc-sections -Os
 PGMER		= -c arduino -b 57600 -P /dev/ttyUSB0
 PGMERISP	= -c avrispv2 -P /dev/ttyUSB0
 DUDE		= /usr/bin/avrdude -V -p $(MCU)
 GIT_VER		:=VERSION_GIT=0x$(shell git rev-parse --short HEAD)
+VERSION	    :=SW_VER="$(shell cat ../version)"
 
 DEPS		= $(wildcard *.h)
 C_SRCS		= $(wildcard *.c)
