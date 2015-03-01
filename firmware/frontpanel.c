@@ -53,15 +53,18 @@ extern intState_t       intState;
 typedef enum{
     M_INIT,
     M_DEBUG, // force msg display
-    M_NORMAL,
-    M_AUTODIAG
-    M_INJ_OFFSET,
-    M_IGN_OFFSET,
     M_ASSERT,
+    M_NORMAL, // default view
+    M_INPUT,
+    M_IGN_OFFSET,
+    M_INJ_OFFSET,
+    M_INJ_START_OFFSET,
+    M_AUTODIAG,
+	M_CHRONO,
     M_QTY
 static menu_e           menuState;
 
-static char             LCDBuffer[32];
+static char             lcdBuffer[32]; 	// 2 lines, 16 chars
 
 /*** Internal functions ***/
 static void MenuInit(void);
@@ -69,16 +72,11 @@ static menu_e MenuUpdate(u8 btn);
 
 static void LCDInit(void);
 static void LCDUpdate(void);
-
-static void IOExpanderInit(void);
-static u8 i2cStart(u8 address);
-static void i2cStop(void);
-static u8 i2cWrite(u8 data);
-static u8 i2cReadAck(void);
-static u8 i2cReadNack(void);
-
 static u8 BtnRead(void);
 
+static void IOExpanderInit(void);
+static void IOExpanderWriteLCDPin(u8 val);
+static u8 IOExpanderReadBtn(void);
 
 /**
 *
@@ -99,6 +97,7 @@ void FPInit(const u8 type)
     ASSERT(type == 0); // only Adafruit I2C supported for now
 
     /* Init I2C bus and MCP23017 IO expander */
+	IOExpanderInit();
 
     /* Init LCD */
     LCDInit();
@@ -180,7 +179,8 @@ void FPDebugMsg(char *msg)
     }
 
     menuState = M_DEBUG;
-    strncpy(LCDBuffer, msg, 32);
+    u8 len = strncpy(lcdBuffer, msg, 32);
+	memset(lcdBuffer+len, " ",32-len); // clear the remaining chars
     /* Force LCD update */
     LCDUpdate();
 
@@ -191,7 +191,7 @@ void FPDebugMsg(char *msg)
 static void MenuInit(void)
 {
     menuState = M_INIT;
-    memset(LCDBuffer, 0, 32);
+    memset(lcdBuffer, 0, 32);
 
     /* Display version */
     return;
@@ -200,6 +200,58 @@ static void MenuInit(void)
 
 
 /********************** LCD MANAGEMENT ***************************/
+
+static void Send(u8 value, u8 mode) 
+{
+	// Pinout LCD : port B (8->15) 
+	// RS pin 15
+	// RW pin 14 (not used)
+	// EN pin 13
+	// D4 pin 12
+	// D5 pin 11
+	// D6 pin 10
+	// D7 pin 9
+	// 
+    u8 out = 0;
+
+    // speed up for i2c since its sluggish
+    for (int i = 0; i < 4; i++) {
+      out &= ~(1 << _data_pins[i]);
+      out |= ((value >> i) & 0x1) << _data_pins[i];
+    }
+
+    // make sure enable is low
+    out &= ~(1 << _enable_pin);
+
+    _i2c.writeGPIOAB(out);
+
+    // pulse enable
+    delayMicroseconds(1);
+    out |= (1 << _enable_pin);
+    _i2c.writeGPIOAB(out);
+    delayMicroseconds(1);
+    out &= ~(1 << _enable_pin);
+    _i2c.writeGPIOAB(out);   
+    delayMicroseconds(100);
+
+}
+
+static void LCDInit(void)
+{
+	memset(LCDBuffer, 0, 32);
+
+
+}
+
+static void LCDUpdate(void)
+{
+
+}
+
+static u8 BtnRead(void)
+{
+	
+}
 
 
 
@@ -289,9 +341,70 @@ static u8 i2cReadNack(void)
     return TWDR;
 }
 
+
+static void IOExpanderRegWrite(u8 reg, u8 val)
+{
+	if( reg > 22) return;
+
+	i2cStart(MCP23017_ADDRESS);
+	i2cWrite(reg);
+	i2cWrite(val);
+	i2cStop();
+}
+
+static u8 IOExpanderRegRead(u8 reg)
+{
+	if( reg > 22) return;
+
+	i2cStart(MCP23017_ADDRESS);
+	i2cWrite(reg);
+	i2cReadNAck();
+	i2cStop();
+}
+
+static void IOExpanderWriteLCDPin(u8 val)
+{
+	IOExpanderRegWrite(MCP23027_GPIOB, val);
+}
+
+static void IOExpanderWriteBackLightPins(u8 val)
+{
+	// shared between ports A & B :-(
+}
+
+static u8 IOExpanderReadBtn(void)
+{
+	return (0x1F & IOExpanderRegRead(MCP23027_GPIOA));
+}
+
 static void IOExpanderInit(void)
 {
+	// I2C controller initialisation
     TWSR = 0;
     TWBR = ((F_CPU/SCL_CLOCK)-16)/2;
+
+	// Initialize the IO Expander
+	// Pinout : A port (0->7), B port (8->15) 
+	// RS pin 15
+	// RW pin 14 (not used)
+	// EN pin 13
+	// D4 pin 12
+	// D5 pin 11
+	// D6 pin 10
+	// D7 pin 9
+	// LED 2 pin 8
+	// LED 1 pin 7
+	// LED 0 pin 6
+	// BTN 4 pin 4
+	// BTN 3 pin 3
+	// BTN 2 pin 2
+	// BTN 1 pin 1
+	// BTN 0 pin 0
+	
+    // IO direction and pull up on buttons
+	IOExpanderRegWrite(MCP23017_IODIRA, 0x1F); 
+	IOExpanderRegWrite(MCP23017_IODIRB, 0x00); 
+	IOExpanderRegWrite(MCP23017_GPPUA, 0x1F); 
+	IOExpanderRegWrite(MCP23017_GPPUB, 0x00); 
 }
 
