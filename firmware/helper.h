@@ -33,9 +33,13 @@
  *
  */
 
+#ifndef HELPER_H
+#define HELPER_H
+
 #include "varDef.h"
 
+u16 Interp2D(volatile u8 *table, u16 rpm, u8 load);
+u8  Interp1D(volatile u8 table[TABSIZE][2], u8 adcVal);
 
-u16 Interp2D(u8 *table, u16 rpm, u8 load);
 
-
+#endif

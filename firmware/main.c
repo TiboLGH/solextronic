@@ -103,9 +103,11 @@ int main(void)
             ProcessCommand();
 		}
 
-       
         // Process ADC Samples
-        //ADCProcessing();
+        if(intState.adcDone) 
+        {
+            ADCProcessing();
+        }
 
         // Compute ignition and injection
         if(intState.newCycle) 

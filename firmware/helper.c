@@ -41,7 +41,7 @@
 extern eeprom_data_t    eData;
 //#define V(msg, ...) fprintf(stdout, msg, ##__VA_ARGS__ )
 
-u16 Interp2D(u8 *table, u16 rpm, u8 load)
+u16 Interp2D(volatile u8 *table, u16 rpm, u8 load)
 {
     u8 rpmIdx, loadIdx;
   
@@ -124,3 +124,25 @@ u16 Interp2D(u8 *table, u16 rpm, u8 load)
 }
 
 
+u8  Interp1D(volatile u8 table[TABSIZE][2], u8 adcVal)
+{
+    u8 i = 0;
+    // Check for limit
+    if(adcVal > table[TABSIZE-1][0])
+    {
+        // force to max value, no extrapolation 
+        return table[TABSIZE-1][1];
+    }
+    else if(adcVal < table[0][0])
+    {
+        return table[0][1];
+    }
+    else // in the table
+    {
+        for(i=0; i<TABSIZE-1; ++i)
+        {
+            if (adcVal > table[i][0]) break;
+        }
+    }
+    return table[i-1][1];
+}

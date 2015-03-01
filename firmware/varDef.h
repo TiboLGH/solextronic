@@ -56,43 +56,43 @@
 * = class, type, offset, shape, units, scale, translate, lo, hi, digits ; comments
 */
 typedef struct __attribute__ ((__packed__)){ // packed for alignment when used in simulation
-    u8         ratio[5];      /*!< = array,  U08,   0,  [5],  "%",    1.00000,   0.00000,   0,   200,  0 ;  ratios to adjust ADC/DAC conversion */
-    u8         wheelImpulse;  /*!< = scalar, U08,   5,        " ",    1.00000,   0.00000,   0,     5,  0 ;  number of impulsion for a wheel rotation */
-    u16        timerLed;      /*!< = scalar, U16,   6,       "ms",    1.00000,   0.00000,   0, 65535,  0 ;  internal timer */
-    u8         HVstep;        /*!< = scalar, U08,   8,     "step",    1.00000,   0.00000,   0,    50,  0 ;  step of high voltage loop in %. 0 set manual mode */
-    u8         HVmanual;      /*!< = scalar, U08,   9,        "%",    1.00000,   0.00000,   0,   200,  0 ;  HT duty cycle in manual mode in % */
-    u8         wheelSize;     /*!< = scalar, U08,  10,        "m",    0.01000,   0.00000, 1.0,  2.55,  2 ;  distance run in one wheel rotation */
-    u8         PMHOffset;     /*!< = scalar, U08,  11,      "deg",    1.00000,   0.00000,   0,   255,  0 ;  PMH offset in deg */
-    u16        maxRPM;        /*!< = scalar, U16,  12,      "RPM",    1.00000,   0.00000,   0, 16000,  0 ;  RPM limitation, 0 if no limit */
-    u16        maxTemp;       /*!< = scalar, U16,  14,     "degC",    1.00000,   0.00000,   0,   200,  0 ;  overheating threshold, 0 if no limit */
-    u8         minBat;        /*!< = scalar, U08,  16,        "v",    0.10000,   0.00000, 7.0,  12.0,  1 ;  alarm on low battery */
-    u16        igniDuration;  /*!< = scalar, U16,  17,       "us",    1.00000,   0.00000,   0,  1000,  0 ;  ignition duration */
-    u8         starterAdv;    /*!< = scalar, U08,  19,      "deg",    1.00000,   0.00000,   0,   255,  0 ;  advance during crancking */
-    u8         igniOverheat;  /*!< = scalar, U08,  20,      "deg",    1.00000,   0.00000,   0,    20,  0 ;  advance decrease in case of overheating */
-    u8         noSparkAtDec;  /*!< = bits,   U08,  21,  [0:0], "spark at dec", "no spark at dec"         ;  1 to stop ignition when deceleration */
-    u16        injOpen;       /*!< = scalar, U16,  22,       "us",    1.00000,   0.00000,  200,  2000, 0 ;  time to open injector */
-    u16        injRate;       /*!< = scalar, U16,  24,    "g/sec",    1.00000,   0.00000,   50,   500, 0 ;  flow rate of injector */
-    u8         injAdv;        /*!< = scalar, U08,  26,      "deg",    1.00000,   0.00000,    0,   255, 0 ;  mean injection advance */
-    u16        starterInj;    /*!< = scalar, U16,  27,       "us",    1.00000,   0.00000,  200,  5000, 0 ;  injection duration during crancking */
-    u8         injOverheat;   /*!< = scalar, U08,  29,        "%",    1.00000,   0.00000,    0,    50, 0 ;  injection increase in case of overheating */
-    u16        injFullOpen;   /*!< = scalar, U16,  31,       "us",    1.00000,   0.00000,  500,  5000, 0 ;  injection duration at full TPS */
-    u8         noInjAtDec;    /*!< = bits,   U08,  33,  [0:0], "inj at dec", "no inj at dec"             ;  1 to stop injection when deceleration */
-    u16        injStart;      /*!< = scalar, U16,  34,       "us",    1.00000,   0.00000,  200,  2000, 0 ;  injector opening duration */
-    u8         holdPWM;       /*!< = scalar, U08,  36,        "%",    1.00000,   0.00000,   10,   100, 0 ;  PWM ratio during hold time */
-    u8         igniPolarity;  /*!< = bits,   U08,  37, "Active on low", "Active on high"                 ;  0 active at low state */
-    u8         injPolarity;   /*!< = bits,   U08,  38, "Active on low", "Active on high"                 ;  0 active at low state */
-    u8         pmhPolarity;   /*!< = bits,   U08,  39, "Active on low", "Active on high"                 ;  0 active at low state */
-    u8         pumpPolarity;  /*!< = bits,   U08,  40, "Active on low", "Active on high"                 ;  0 active at low state */
-    u16        injTestPW;     /*!< = scalar, U16,  41,       "us",    1.00000,   0.00000,  200, 10000, 0 ;  pulse width of injector test mode */
-    u16        injTestCycles; /*!< = scalar, U16,  43,         "",    1.00000,   0.00000,    0,  1000, 0 ;  number of cycle of injector test mode. 0 to stop */
-    u8         ignTestMode;   /*!< = bits,   U08,  43, "disable test mode", "Enable test mode"           ;  Enable/disable of ignition test mode */
-    u16        rpmBins[TABSIZE]; /*!< = array,  U16,  45, [10],"RPM",    1.00000,   0.00000,    0, 10000, 0 ;  table of RPM indexes */
-    u8         loadBins[TABSIZE]; /*!< = array,  U08,  65, [10],  "%",    1.00000,   0.00000,    0,   100, 0 ;  table of load/MAF indexes */
-    u8         injTable[TABSIZE][TABSIZE];   /*!< = array,  U08,  75,[10x10],   "%",    1.00000,   0.00000,  10,   130,  0 ;  table for injection */
-    u8         igniTable[TABSIZE][TABSIZE];  /*!< = array,  U08, 175,[10x10], "deg",    1.00000,   0.00000,   0,   200,  0 ;  table for ignition */
-    u16        user1;         /*!< = scalar, U16, 275,         "",    1.00000,   0.00000,    0,  1000, 0 ;  for debug */
-    u16        user2;         /*!< = scalar, U16, 277,         "",    1.00000,   0.00000,    0,  1000, 0 ;  for debug */
-    u16        user3;         /*!< = scalar, U16, 279,         "",    1.00000,   0.00000,    0,  1000, 0 ;  for debug */
+    u8         wheelImpulse;  /*!< = scalar, U08,  xx,        " ",    1.00000,   0.00000,   0,     5,  0 ;  number of impulsion for a wheel rotation */
+    u16        timerLed;      /*!< = scalar, U16,  xx,       "ms",    1.00000,   0.00000,   0, 65535,  0 ;  internal timer */
+    u8         wheelSize;     /*!< = scalar, U08,  xx,        "m",    0.01000,   0.00000, 1.0,  2.55,  2 ;  distance run in one wheel rotation */
+    u8         PMHOffset;     /*!< = scalar, U08,  xx,      "deg",    1.00000,   0.00000,   0,   255,  0 ;  PMH offset in deg */
+    u16        maxRPM;        /*!< = scalar, U16,  xx,      "RPM",    1.00000,   0.00000,   0, 16000,  0 ;  RPM limitation, 0 if no limit */
+    u16        maxTemp;       /*!< = scalar, U16,  xx,     "degC",    1.00000,   0.00000,   0,   200,  0 ;  overheating threshold, 0 if no limit */
+    u8         minBat;        /*!< = scalar, U08,  xx,        "v",    0.10000,   0.00000, 7.0,  12.0,  1 ;  alarm on low battery */
+    u16        igniDuration;  /*!< = scalar, U16,  xx,       "us",    1.00000,   0.00000,   0,  1000,  0 ;  ignition duration */
+    u8         starterAdv;    /*!< = scalar, U08,  xx,      "deg",    1.00000,   0.00000,   0,   255,  0 ;  advance during crancking */
+    u8         igniOverheat;  /*!< = scalar, U08,  xx,      "deg",    1.00000,   0.00000,   0,    20,  0 ;  advance decrease in case of overheating */
+    u8         noSparkAtDec;  /*!< = bits,   U08,  xx,  [0:0], "spark at dec", "no spark at dec"         ;  1 to stop ignition when deceleration */
+    u16        injOpen;       /*!< = scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  2000, 0 ;  time to open injector */
+    u16        injRate;       /*!< = scalar, U16,  xx,    "g/sec",    1.00000,   0.00000,   50,   500, 0 ;  flow rate of injector */
+    u8         injAdv;        /*!< = scalar, U08,  xx,      "deg",    1.00000,   0.00000,    0,   255, 0 ;  mean injection advance */
+    u16        starterInj;    /*!< = scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  5000, 0 ;  injection duration during crancking */
+    u8         injOverheat;   /*!< = scalar, U08,  xx,        "%",    1.00000,   0.00000,    0,    50, 0 ;  injection increase in case of overheating */
+    u16        injFullOpen;   /*!< = scalar, U16,  xx,       "us",    1.00000,   0.00000,  500,  5000, 0 ;  injection duration at full TPS */
+    u8         noInjAtDec;    /*!< = bits,   U08,  xx,  [0:0], "inj at dec", "no inj at dec"             ;  1 to stop injection when deceleration */
+    u16        injStart;      /*!< = scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  2000, 0 ;  injector opening duration */
+    u8         holdPWM;       /*!< = scalar, U08,  xx,        "%",    1.00000,   0.00000,   10,   100, 0 ;  PWM ratio during hold time */
+    u8         igniPolarity;  /*!< = bits,   U08,  xx, "Active on low", "Active on high"                 ;  0 active at low state */
+    u8         injPolarity;   /*!< = bits,   U08,  xx, "Active on low", "Active on high"                 ;  0 active at low state */
+    u8         pmhPolarity;   /*!< = bits,   U08,  xx, "Active on low", "Active on high"                 ;  0 active at low state */
+    u8         pumpPolarity;  /*!< = bits,   U08,  xx, "Active on low", "Active on high"                 ;  0 active at low state */
+    u16        injTestPW;     /*!< = scalar, U16,  xx,       "us",    1.00000,   0.00000,  200, 10000, 0 ;  pulse width of injector test mode */
+    u16        injTestCycles; /*!< = scalar, U16,  xx,         "",    1.00000,   0.00000,    0,  1000, 0 ;  number of cycle of injector test mode. 0 to stop */
+    u8         ignTestMode;   /*!< = bits,   U08,  xx, "disable test mode", "Enable test mode"           ;  Enable/disable of ignition test mode */
+    u16        rpmBins[TABSIZE]; /*!< = array,  U16,  xx, [10],"RPM",    1.00000,   0.00000,    0, 10000, 0 ;  table of RPM indexes */
+    u8         loadBins[TABSIZE]; /*!< = array,  U08,  xx, [10],  "%",    1.00000,   0.00000,    0,   100, 0 ;  table of load/MAF indexes */
+    u8         injTable[TABSIZE][TABSIZE];   /*!< = array,  U08,  xx,[10x10],   "%",    1.00000,   0.00000,  10,   130,  0 ;  table for injection */
+    u8         igniTable[TABSIZE][TABSIZE];  /*!< = array,  U08,  xx,[10x10], "deg",    1.00000,   0.00000,   0,   200,  0 ;  table for ignition */
+    u8         iatCal[TABSIZE][2]; /*!< = array,  U08,   xx,  [10x2],  "deg",    1.00000,   0.00000,   0,   255,  0 ;  conversion table for IAT sensors */
+    u8         cltCal[TABSIZE][2]; /*!< = array,  U08,   xx,  [10x2],  "deg",    1.00000,   0.00000,   0,   255,  0 ;  conversion table for CLT sensors */
+    u8         mapCal[TABSIZE][2]; /*!< = array,  U08,   xx,  [10x2],  "kpa",    1.00000,   0.00000,   0,   255,  0 ;  conversion table for MAP sensor */
+    u16        user1;         /*!< = scalar, U16,  xx,         "",    1.00000,   0.00000,    0,  1000, 0 ;  for debug */
+    u16        user2;         /*!< = scalar, U16,  xx,         "",    1.00000,   0.00000,    0,  1000, 0 ;  for debug */
+    u16        user3;         /*!< = scalar, U16,  xx,         "",    1.00000,   0.00000,    0,  1000, 0 ;  for debug */
 }eeprom_data_t;
 
 /**
@@ -104,15 +104,16 @@ typedef struct __attribute__ ((__packed__)){ // packed for alignment when used i
  * type, size, offset, unit, scaling factor, scaling offset
  */
 typedef struct  __attribute__ ((__packed__)){ // packed for alignment when used in simulation
-   u8  battery;          /*!< = scalar,     U08,    0,   "v",    0.100,  0.0 */
-   u8  CLT;        /*!< = scalar,     U08,    1,  "°C",    1.000,  0.0 */
-   u8  IAT;          /*!< = scalar,     U08,    2,  "°C",    1.000,  0.0 */
-   u8  TPS;         /*!< = scalar,     U08,    3,   "%",    1.000,  0.0 */
-   u16 MAP;         /*!< = scalar,     U16,    4, "kPa",    1.000,  0.0 */
-   u8  HVvalue;          /*!< = scalar,     U08,    6,   "%",    1.000,  0.0. PWM duty cycle for High voltage supply */
-   u16 rpm;              /*!< = scalar,     U16,    7, "RPM",    1.000,  0.0 */
-   u16 speed;            /*!< = scalar,     U16,    9,"km/h",    1.000,  0.0 */
-   u8  engine;           /*!< = scalar,     U08,   10,"bits",    1.000,  0.0 */
+   u8  rawAdc[5];        /*!< = array,      U08,   x, [5],"",   1.000,  0.0;  raw result of conversion, for calibration */
+   u8  battery;          /*!< = scalar,     U08,   x,   "v",    0.100,  0.0 */
+   u8  CLT;              /*!< = scalar,     U08,   x,  "°C",    1.000,  0.0 */
+   u8  IAT;              /*!< = scalar,     U08,   x,  "°C",    1.000,  0.0 */
+   u8  TPS;              /*!< = scalar,     U08,   x,   "%",    1.000,  0.0 */
+   u8  MAP;              /*!< = scalar,     U08,   x, "kPa",    1.000,  0.0 */
+   s8  TPSVariation;     /*!< = scalar,     S08,   x, "%/10ms", 1.000,  0.0 */
+   u16 rpm;              /*!< = scalar,     U16,   x, "RPM",    1.000,  0.0 */
+   u16 speed;            /*!< = scalar,     U16,   x,"km/h",    1.000,  0.0 */
+   u8  engine;           /*!< = scalar,     U08,  xx,"bits",    1.000,  0.0 */
                          /*!< Engine status - bit field for engine */
                          /*!< ready:    bit 0 => 0 = engine not ready 1 = ready to run */
                          /*!< crank:    bit 1 => 0 = engine not cranking 1 = engine cranking */
@@ -122,23 +123,23 @@ typedef struct  __attribute__ ((__packed__)){ // packed for alignment when used 
                          /*!< tpsden:   bit 5 => 0 = not in deacceleration mode 1 = in deacceleration mode */
                          /*!< revlim:   bit 6 => 0 = not in rev limiter mode 1 = rev limiter mode*/
                          /*!< overheat: bit 7 => 0 = not in overheat mode 1 = overheat mode*/
-                         /*!< ready            = bits,   U08,   10, [0:0] */
-                         /*!< crank            = bits,   U08,   10, [1:1] */
-                         /*!< startw           = bits,   U08,   10, [2:2] */
-                         /*!< warmup           = bits,   U08,   10, [3:3] */
-                         /*!< tpsaen           = bits,   U08,   10, [4:4] */
-                         /*!< tpsden           = bits,   U08,   10, [5:5] */ 
-                         /*!< revlim           = bits,   U08,   10, [6:6] */
-                         /*!< overheat         = bits,   U08,   10, [7:7] */
-   u16 injPulseWidth;    /*!< = scalar,     U16,   11,  "us",    1.000,  0.0. Injector active time */
-   u16 injStart;         /*!< = scalar,     U16,   13, "deg",    1.000,  0.0. Injector start time before PMH */
-   u8  advance;          /*!< = scalar,     U08,   15, "deg",    1.000,  0.0. Spark advance in deg before PMH */
-   u16 second;           /*!< = scalar,     U16,   17, "sec",    1.000,  0.0. Current time in sec : will be set only when asked by UART command */
-   u8  injTestMode;      /*!< = scalar,     U08,   19,   "",     1.000,  0.0 */
-   u16 injTestCycles;    /*!< = scalar,     U16,   19,   "",     1.000,  0.0 */
-   u16 debug1;           /*!< = scalar,     U16,   21,  "%",     1.000,  0.0 */
-   u16 debug2;           /*!< = scalar,     U16,   23,  "%",     1.000,  0.0 */
-   u16 debug3;           /*!< = scalar,     U16,   25,  "%",     1.000,  0.0 */
-   u8  load;             /*!< = scalar,     U08,   27,  "%",     1.000,  0.0 ; current load */
+                         /*!< ready            = bits,   U08,  xx, [0:0] */
+                         /*!< crank            = bits,   U08,  xx, [1:1] */
+                         /*!< startw           = bits,   U08,  xx, [2:2] */
+                         /*!< warmup           = bits,   U08,  xx, [3:3] */
+                         /*!< tpsaen           = bits,   U08,  xx, [4:4] */
+                         /*!< tpsden           = bits,   U08,  xx, [5:5] */ 
+                         /*!< revlim           = bits,   U08,  xx, [6:6] */
+                         /*!< overheat         = bits,   U08,  xx, [7:7] */
+   u16 injPulseWidth;    /*!< = scalar,     U16,  xx,  "us",    1.000,  0.0. Injector active time */
+   u16 injStart;         /*!< = scalar,     U16,  xx, "deg",    1.000,  0.0. Injector start time before PMH */
+   u8  advance;          /*!< = scalar,     U08,  xx, "deg",    1.000,  0.0. Spark advance in deg before PMH */
+   u16 second;           /*!< = scalar,     U16,  xx, "sec",    1.000,  0.0. Current time in sec : will be set only when asked by UART command */
+   u8  injTestMode;      /*!< = scalar,     U08,  xx,   "",     1.000,  0.0 */
+   u16 injTestCycles;    /*!< = scalar,     U16,  xx,   "",     1.000,  0.0 */
+   u8  load;             /*!< = scalar,     U08,  xx,  "%",     1.000,  0.0 ; current load */
+   u16 debug1;           /*!< = scalar,     U16,  xx,  "%",     1.000,  0.0 */
+   u16 debug2;           /*!< = scalar,     U16,  xx,  "%",     1.000,  0.0 */
+   u16 debug3;           /*!< = scalar,     U16,  xx,  "%",     1.000,  0.0 */
 }Current_Data_t;
 #endif

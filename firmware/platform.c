@@ -41,16 +41,14 @@
 #include <avr/pgmspace.h>
 #include "common.h"
 #include "platform.h"
+#include "helper.h"
 
 #define BAUD 	        57600
 
 u16 EEMEM magic = 0xCAFE;
 eeprom_data_t EEMEM eeprom;
 const PROGMEM eeprom_data_t eeInit = {
-    .ratio          = {100, 100, 100, 100, 100},
     .timerLed       = 20,
-    .HVstep         = 5,
-    .HVmanual       = 50,
     .wheelSize      = 182,
     .PMHOffset      = 0,
     .maxRPM         = 0,
@@ -73,8 +71,6 @@ const PROGMEM eeprom_data_t eeInit = {
     .injPolarity    = 0,
     .pmhPolarity    = 0,
     .pumpPolarity   = 0,
-    //.injTable[12][12];  /* let it to 0 */
-    //.igniTable[12][12];
 };
 
 extern volatile eeprom_data_t    eData;
@@ -91,7 +87,6 @@ extern u8 isTx;
 static volatile u16 adcValues[5];
 const u8 adcIndex[] = {7, 1, 2, 3, 6, 255};
 static volatile u8 adcState;
-static volatile u8 adcTrigger;
 static u32	timerTable[TIMER_QTY];
 static volatile u32 masterClk;
 static volatile u8 count10ms;
@@ -276,13 +271,12 @@ ISR(TIMER2_COMPA_vect)
             if(curIgnTiming.state == OFF) OCR1A = curIgnTiming.start;
             IGN_INT_ENABLE;
         }
+
         // start ADC acquisition
-        /*adcState = ADC_BATTERY;
-        u8 mux = (1 << REFS0) | ((adcIndex[adcState]) & 0x0F);
-        ADMUX = mux;
-        PORTC = mux;
+        adcState = ADC_BATTERY;
+        ADMUX = (1 << REFS0) | (1 << ADLAR) | ((adcIndex[adcState]) & 0x0F);
         ADCSRA |= (1 << ADSC);
-        adcTrigger = True;*/
+        intState.adcDone = False;
     }
 }
 
@@ -445,20 +439,18 @@ void GetTime(u16 *dst)
 */
 ISR(ADC_vect)
 {
-    return;
-    u8 mux;
     // save results
     adcValues[adcState] = ADC;
     // Next channel
     adcState++;
-    // start ADC acquisition
+    // next ADC acquisition
     if(adcIndex[adcState] != ADC_IDLE)
     {
-        mux = (1 << REFS0) | ((adcIndex[adcState]) & 0x0F);
-        ADMUX = mux;
-        PORTC = mux;
+        ADMUX = (1 << REFS0) | (1 << ADLAR) | ((adcIndex[adcState]) & 0x0F);
         ADCSRA |= (1 << ADSC);
-    }
+    }else{
+        intState.adcDone = True;
+    } 
 }
 
 /**
@@ -473,56 +465,34 @@ void ADCInit(void)
     ADCSRA = (1 << ADEN)  |
              (0 << ADATE) |
              (0 << ADIE) | 
-             (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0); // prescaler 128
+             (1 << ADPS2) | (1 << ADPS1) | (0 << ADPS0); // prescaler 64 : 250kHz for 16MHz Xtal, 52us per conversion
     DIDR0 = 0x0E; // set ADC1..3 pin to ADC inputs
-    adcTrigger = False; 
+    ADMUX = (1 << REFS0) | (1 << ADLAR) | (adcIndex[ADC_BATTERY] & 0x0F);
+    intState.adcDone = False; 
     adcState = ADC_IDLE;
 }
 
 /**
  * \fn void ADCProcessing(void)
- * \brief run ADC state machine
+ * \brief convert ADC captures
  *
  * \param none
  * \return none
 */
 void ADCProcessing(void)
 {
+    u8 lastTps = 0;
 
-    u8 mux;
+    if(adcState != ADC_IDLE) return;
+
     // Conversion and filtering
-    switch(adcState)
-    {
-        case ADC_BATTERY:
-            gState.battery = 150 * (u32)ADC / 1024 * eData.ratio[ADC_BATTERY] / 100;     
-            adcState = ADC_CLT;
-            break;
-
-        case ADC_CLT:
-            gState.CLT = (u32)ADC * 500 / 1024 * eData.ratio[ADC_CLT] / 100;     
-            adcState = ADC_IAT;
-            break;
-
-        case ADC_IAT:
-            gState.IAT = (u32)ADC * 500 / 1024 * eData.ratio[ADC_IAT] / 100;     
-            adcState = ADC_TPS;
-            break;
-
-        case ADC_TPS:
-            gState.TPS = (eData.ratio[ADC_TPS] * (u32)ADC) / 1024;     
-            adcState = ADC_BATTERY;
-            break;
-        case ADC_IDLE:
-            adcState = ADC_BATTERY;
-
-        default:
-            //ASSERT(0);
-            adcState = ADC_BATTERY;
-    }
-    mux = (1 << REFS0) | (adcIndex[adcState] & 0x0F);
-    ADMUX = mux;
-    PORTC = mux;
-    ADCSRA |= (1 << ADSC);
+    gState.battery = 150 * (u16)adcValues[ADC_BATTERY] / 256;     
+    gState.CLT = Interp1D(eData.cltCal, ADCH);     
+    gState.IAT = Interp1D(eData.iatCal, ADCH);     
+    gState.TPS = 100 * (u16)ADC / 256;
+    gState.TPSVariation = lastTps - gState.TPS;
+    lastTps = gState.TPS;    
+    gState.MAP = Interp1D(eData.mapCal, ADCH);     
 }
 
 /**
@@ -544,7 +514,6 @@ void InitPWM(void)
              (0 << CS01)   | (1 << CS00); 
 
     OCR0B = 0; // off state
-    gState.HVvalue = 0;
 }
 
 /**
