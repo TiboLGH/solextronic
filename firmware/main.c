@@ -40,6 +40,7 @@
 #include "platform.h"
 #include "command.h"
 #include "helper.h"
+#include "frontpanel.h"
 
 volatile eeprom_data_t    eData;
 volatile Current_Data_t   gState;
@@ -77,6 +78,7 @@ int main(void)
     InitTimer();
     ADCInit();
     InitEeprom(1);
+    FPInit(0);
 
 	sei();
     StartTimer(TIMER_100MS);
@@ -93,8 +95,8 @@ int main(void)
         if(EndTimer(TIMER_100MS, eData.timerLed))
         {
             C_FLIPBIT(LED_PIN);
+            FPRun();
             StartTimer(TIMER_100MS);
-            ADCProcessing();
         }
         
         if(intState.rReady)

@@ -45,7 +45,7 @@
 
 typedef enum
 {
-    OFF = 0,
+    LED_OFF = 0,
     RED,
     GREEN,
     YELLOW,
