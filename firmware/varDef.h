@@ -107,17 +107,16 @@ typedef struct __attribute__ ((__packed__)){ // packed for alignment when used i
  * type, size, offset, unit, scaling factor, scaling offset
  */
 typedef struct  __attribute__ ((__packed__)){ // packed for alignment when used in simulation
-   u8  rawAdc[5];        /* array,      U08,   x, [5],"",   1.000,  0.0;  raw result of conversion, for calibration */
-   u8  battery;          /* scalar,     U08,   x,   "v",    0.100,  0.0 */
-   u8  CLT;              /* scalar,     U08,   x,  "°C",    1.000,  0.0 */
-   u8  IAT;              /* scalar,     U08,   x,  "°C",    1.000,  0.0 */
-   u8  TPS;              /* scalar,     U08,   x,   "%",    1.000,  0.0 */
-   u8  MAP;              /* scalar,     U08,   x, "kPa",    1.000,  0.0 */
-   s8  TPSVariation;     /* scalar,     S08,   x, "%/10ms", 1.000,  0.0 */
-   u16 rpm;              /* scalar,     U16,   x, "RPM",    1.000,  0.0 */
-   u16 speed;            /* scalar,     U16,   x,"km/h",    1.000,  0.0 */
-   u8  engine;           /* scalar,     U08,  xx,"bits",    1.000,  0.0 */
-                         /* Engine status - bit field for engine */
+   u8  rawAdc[5];        /* array,      U08,   xx, [5], " ",    1.000,  0.0 ; raw results of conversion, for calibration */
+   u8  battery;          /* scalar,     U08,   xx,      "v",    0.100,  0.0 ; battery voltage */
+   u8  CLT;              /* scalar,     U08,   xx,    "deg",    1.000,  0.0 ; motor temperature */
+   u8  IAT;              /* scalar,     U08,   xx,    "deg",    1.000,  0.0 ; air temperature */
+   u8  TPS;              /* scalar,     U08,   xx,      "%",    1.000,  0.0 ; throttle open ratio */
+   u8  MAP;              /* scalar,     U08,   xx,    "kPa",    1.000,  0.0 ; manifold pressure */
+   s8  TPSVariation;     /* scalar,     S08,   xx, "%/10ms",    1.000,  0.0 ; TPS variation speed */
+   u16 rpm;              /* scalar,     U16,   xx,    "RPM",    1.000,  0.0 ; engine speed */
+   u16 speed;            /* scalar,     U16,   xx,   "km/h",    1.000,  0.0 ; solex speed */
+   u8  engine;           /* scalar,     U08,   xx,   "bits",    1.000,  0.0 ; engine state bitmap */
                          /* ready:    bit 0 => 0 = engine not ready 1 = ready to run */
                          /* crank:    bit 1 => 0 = engine not cranking 1 = engine cranking */
                          /* startw:   bit 2 => 0 = not in startup warmup 1 = in warmup enrichment */
@@ -134,15 +133,15 @@ typedef struct  __attribute__ ((__packed__)){ // packed for alignment when used 
                          /* tpsden           = bits,   U08,  xx, [5:5] */ 
                          /* revlim           = bits,   U08,  xx, [6:6] */
                          /* overheat         = bits,   U08,  xx, [7:7] */
-   u16 injPulseWidth;    /* scalar,     U16,  xx,  "us",    1.000,  0.0. Injector active time */
-   u16 injStart;         /* scalar,     U16,  xx, "deg",    1.000,  0.0. Injector start time before PMH */
-   u8  advance;          /* scalar,     U08,  xx, "deg",    1.000,  0.0. Spark advance in deg before PMH */
-   u16 second;           /* scalar,     U16,  xx, "sec",    1.000,  0.0. Current time in sec : will be set only when asked by UART command */
-   u8  injTestMode;      /* scalar,     U08,  xx,   "",     1.000,  0.0 */
-   u16 injTestCycles;    /* scalar,     U16,  xx,   "",     1.000,  0.0 */
+   u16 injPulseWidth;    /* scalar,     U16,  xx,  "us",    1.000,  0.0 ; Injector active time */
+   u16 injStart;         /* scalar,     U16,  xx, "deg",    1.000,  0.0 ; Injector start time before PMH */
+   u8  advance;          /* scalar,     U08,  xx, "deg",    1.000,  0.0 ; Spark advance in deg before PMH */
+   u16 second;           /* scalar,     U16,  xx, "sec",    1.000,  0.0 ; Current time in sec : will be set only when asked by UART command */
+   u8  injTestMode;      /* scalar,     U08,  xx,   " ",    1.000,  0.0 ; current injector test mode */
+   u16 injTestCycles;    /* scalar,     U16,  xx,   " ",    1.000,  0.0 ; current injector test cycles */
    u8  load;             /* scalar,     U08,  xx,  "%",     1.000,  0.0 ; current load */
-   u16 debug1;           /* scalar,     U16,  xx,  "%",     1.000,  0.0 */
-   u16 debug2;           /* scalar,     U16,  xx,  "%",     1.000,  0.0 */
-   u16 debug3;           /* scalar,     U16,  xx,  "%",     1.000,  0.0 */
+   u16 debug1;           /* scalar,     U16,  xx,  "%",     1.000,  0.0 ; debug for user */
+   u16 debug2;           /* scalar,     U16,  xx,  "%",     1.000,  0.0 ; debug for user */
+   u16 debug3;           /* scalar,     U16,  xx,  "%",     1.000,  0.0 ; debug for user */
 }Current_Data_t;
 #endif

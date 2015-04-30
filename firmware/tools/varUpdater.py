@@ -492,15 +492,15 @@ class TunerFile(OutputFile):
     
     def addOutputChannelLine(self, lineContent):
         if (lineContent['class'] == 'scalar'):
-            self.eepromSection.append("\t%16s\t= %s,\t%s,\t%d,\t\t\"%s\",\t%.5f,\t%.5f,\t%.2f,\t%.2f,\t%d ;\t%s" % (lineContent['name'], lineContent['class'], lineContent['type'], self.eepromSize, lineContent['units'], lineContent['scale'], lineContent['translate'], lineContent['lo'], lineContent['hi'], lineContent['digits'], lineContent['comment']))
+            self.eepromSection.append("\t%16s\t= %s,\t%s,\t%d,\t\t\"%s\",\t%.5f,\t%.5f ;\t%s" % (lineContent['name'], lineContent['class'], lineContent['type'], self.eepromSize, lineContent['units'], lineContent['scale'], lineContent['translate'], lineContent['comment']))
 
         elif (lineContent['class'] == 'array'):
-            self.eepromSection.append("\t%16s\t= %s,\t%s,\t%d,\t[%s],\t\"%s\",\t%.5f,\t%.5f,\t%d,\t%d,\t%d ;\t%s" % (lineContent['name'], lineContent['class'], lineContent['type'], self.eepromSize, lineContent['shape'], lineContent['units'], lineContent['scale'], lineContent['translate'], lineContent['lo'], lineContent['hi'], lineContent['digits'], lineContent['comment']))
+            self.eepromSection.append("\t%16s\t= %s,\t%s,\t%d,\t[%s],\t\"%s\",\t%.5f,\t%.5f ;\t%s" % (lineContent['name'], lineContent['class'], lineContent['type'], self.eepromSize, lineContent['shape'], lineContent['units'], lineContent['scale'], lineContent['translate'], lineContent['comment']))
 
         elif (lineContent['class'] == 'bits'): # TODO : manage more than 1 bit
             self.eepromSection.append("\t%16s\t= %s,\t%s,\t%d, [%d:%d], \"%s\", \"%s\";\t%s" % (lineContent['name'], lineContent['class'], lineContent['type'], self.eepromSize, lineContent['start'], lineContent['stop'], lineContent['state0'], lineContent['state1'], lineContent['comment']))
         else:
-            FATAL("EEPROM class not supported %s" % lineContent)
+            FATAL("Output Channel class not supported %s" % lineContent)
 
         self.outputChannelSize += self.computeSize(lineContent)
 
@@ -697,7 +697,45 @@ class SourceFile:
                     outcBound['end'] = i
         # extract content line by line
         for line in self.content[outcBound['start']: outcBound['end']]:
-            pass
+            if "scalar" in line:
+                # sorry for this... easier debug on regex101.com
+                p = re.compile(ur"""(?P<ctype>[u|U|s|S][0-9]+)\s*(?P<name>.+);\s*(\/\*)\s*(?P<class>scalar),\s*(?P<type>[U|S][0-9]+),\s*(?P<offset>..),\s*"(?P<units>.*)",\s*(?P<scale>[0-9|\.]+),\s*(?P<translate>[0-9|\.]+)\s*;\s*(?P<comment>.*)\*\/""", re.VERBOSE)
+                mo = re.search(p, line)
+                if mo:
+                    # affect the values
+                    decodedLine = {'name' : mo.group("name"), 'class' : "scalar", 'type' : mo.group("type"), 'offset' : 0, 'shape' : "", 'units' : mo.group("units"), 'scale' : float(mo.group("scale")), 'translate' : float(mo.group("translate")), 'comment' :mo.group("comment")};
+                    self.outputChannelContent.append(decodedLine)
+                else:
+                    FATAL("Line not decodable %s" % line) 
+            
+            elif "array" in line: # only one dimension line
+                # sorry for this... easier debug on regex101.com
+                p = re.compile(ur"""(?P<ctype>[u|U|s|S][0-9]+)\s*(?P<name>.+)\[(?P<tabsize>[0-9]+)\];\s*(\/\*)\s*(?P<class>array),\s*(?P<type>[U|S][0-9]+),\s*(?P<offset>..),\s*\[(?P<shape>[0-9]+)\],\s*"(?P<units>.*)",\s*(?P<scale>[0-9|\.]+),\s*(?P<translate>[0-9|\.]+)\s*;\s*(?P<comment>.*)\*\/""", re.VERBOSE)
+                mo = re.search(p, line)
+                if mo:
+                    # affect the values
+                    decodedLine = {'name' : mo.group("name"), 'class' : "array", 'type' : mo.group("type"), 'offset' : 0, 'shape' : mo.group("shape"), 'units' : mo.group("units"), 'scale' : float(mo.group("scale")), 'translate' : float(mo.group("translate")), 'comment' :mo.group("comment")}
+                    self.outputChannelContent.append(decodedLine)
+                else:
+                    FATAL("Line not decodable %s" % line) 
+
+            elif "bits" in line:
+                # sorry for this... easier debug on regex101.com
+                # TODO : More than 1 bit bitfields are not yet managed
+                p = re.compile(ur"""\s*(\/\*)\s*(?P<name>.+)\s*(?P<class>bits),\s*(?P<type>[U|S][0-9]+),\s*(?P<offset>..),\s*\[(?P<start>[0-9]):(?P<stop>[0-9])\]\s*\*\/""", re.VERBOSE)
+                mo = re.search(p, line)
+                if mo:
+                    # affect the values
+                    decodedLine = {'name' : mo.group("name"), 'class' : "bits", 'type' : mo.group("type"), 'offset' : 0, 'start' : int(mo.group("start")), 'stop' : int(mo.group("stop"))}
+                    self.outputChannelContent.append(decodedLine)
+                else:
+                    FATAL("Line not decodable %s" % line) 
+
+            elif "bit" in line: # description : keep the full line, set class as 'bit' (without 's')
+                decodedLine = {'class' : "bit", 'comment' : str(line)}
+                self.outputChannelContent.append(decodedLine)
+            else:
+                FATAL("Line not decodable %s" % line) 
 
 
 
@@ -713,8 +751,6 @@ def main(argv):
     tunerFile = TunerFile("solextronic.ini")
     docFile = DocFile("commands.wiki")
 
-    #varDefFile.dbgPrint()
-    
     # Process EEPROM memory structure
     lineContent = {'name' : "toto", 'class' : "scalar", 'type' : "U08", 'offset' : 0, 'shape' : "", 'units' : "%", 'scale' : 1.0, 'translate' : 0.0, 'lo' : 0, 'hi' : 255, 'digits' : 0, 'comment' :"un super exemple"};
     for item in varDefFile.eepromContent:
