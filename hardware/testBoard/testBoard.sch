@@ -36,7 +36,7 @@ $Descr A4 11693 8268
 encoding utf-8
 Sheet 1 1
 Title "Carte de test pour Solextronic"
-Date "12 apr 2015"
+Date "8 may 2015"
 Rev "1"
 Comp "Le Galet Hurlant (https://code.google.com/p/solextronic/)"
 Comment1 ""
@@ -873,11 +873,11 @@ Wire Notes Line
 Text Notes 7650 800  0    118  ~ 24
 Main supply : 9v to 15v, input 18v
 $Comp
-L POT 1k1
+L POT POT1
 U 1 1 55055ADA
 P 9650 2650
-F 0 "1k1" H 9650 2550 50  0000 C CNN
-F 1 "POT" H 9650 2650 50  0000 C CNN
+F 0 "POT1" H 9650 2550 50  0000 C CNN
+F 1 "2.2k" H 9650 2650 50  0000 C CNN
 F 2 "~" H 9650 2650 60  0000 C CNN
 F 3 "~" H 9650 2650 60  0000 C CNN
 	1    9650 2650
@@ -888,7 +888,7 @@ L R R6
 U 1 1 55055AF3
 P 9900 1650
 F 0 "R6" V 9980 1650 40  0000 C CNN
-F 1 "220" V 9907 1651 40  0000 C CNN
+F 1 "470" V 9907 1651 40  0000 C CNN
 F 2 "~" V 9830 1650 30  0000 C CNN
 F 3 "~" H 9900 1650 30  0000 C CNN
 	1    9900 1650
@@ -899,17 +899,6 @@ Wire Wire Line
 Wire Wire Line
 	9750 1400 10600 1400
 Connection ~ 9900 1400
-$Comp
-L R R8
-U 1 1 550751FE
-P 9900 2150
-F 0 "R8" V 9980 2150 40  0000 C CNN
-F 1 "680" V 9907 2151 40  0000 C CNN
-F 2 "~" V 9830 2150 30  0000 C CNN
-F 3 "~" H 9900 2150 30  0000 C CNN
-	1    9900 2150
-	1    0    0    -1  
-$EndComp
 $Comp
 L R R7
 U 1 1 55075204
@@ -922,7 +911,7 @@ F 3 "~" H 9000 2650 30  0000 C CNN
 	0    -1   -1   0   
 $EndComp
 Wire Wire Line
-	9900 2400 9900 2650
+	9900 1900 9900 2650
 Wire Wire Line
 	9650 2500 9900 2500
 Connection ~ 9900 2500

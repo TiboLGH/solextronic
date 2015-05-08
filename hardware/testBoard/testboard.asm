@@ -1,7 +1,7 @@
 ;***************************************************************************
-; *   Copyright (C) 2012 by Thibault Bouttevin                              *
+; *   Copyright (C) 2015 by Thibault Bouttevin                              *
 ; *   thibault.bouttevin@gmail.com                                          *
-; *   www.legalethurlant.fr.st                                              *
+; *   https://github.com/TiboLGH/solextronic                                *
 ; *                                                                         *
 ; *   This file is part of Solextronic                                      *
 ; *                                                                         *
@@ -135,17 +135,26 @@ timer0int
 wheelFSM
     btfsc   state, WHEEL_ON ; check if wheel signal is enable
     goto    wheelRun        ; yes => generate signal
-    bcf     GPIO, WHEEL_OUT ; no => for to low
+    bcf     GPIO, WHEEL_OUT ; no => force to low
     goto    motorFSM
 wheelRun
-    movlw   wheelCur        ; decrement current counter
-    call    M_DEC
-    movlw   wheelCur
-    call    M_IF_ZERO
-    btfss   STATUS,Z        ; 0 ? timeout 
-    goto    motorFSM          ; no, let's check RPM
+    ; Don't use math routines in ISR, they are NOT ISR safe
+    ;movlw   wheelCur        ; decrement current counter
+    ;call    M_DEC
+    ;movlw   wheelCur
+    ;call    M_IF_ZERO
+    ;btfss   STATUS,Z        ; 0 ? timeout
+    ; Dec wheelCur (16 bits)
+    decf    wheelCur,f
+    incfsz  wheelCur,w
+    incf    wheelCurH,f
+    decf    wheelCurH,f
+    movf    wheelCur,w
+    iorwf   wheelCurH,w     ; for comparison
+    btfss   STATUS,Z        ; 0? => timeout
+    goto    motorFSM        ; no, let's check RPM
     btfss   state,WHEEL_OUT ; wheel state is high ?
-    goto    wheelLOW        ; no -> jump to low state
+    goto    wheelLOWstate   ; no -> jump to low state
 wheelHIGH                   ; high state
 switchToLow                 ; time to switch to low state
     bcf     state,WHEEL_OUT ; set state to low
@@ -155,7 +164,7 @@ switchToLow                 ; time to switch to low state
     movf    wheelLow, 0
     movwf   wheelCur 
     goto    motorFSM
-wheelLOW                    ; low state
+wheelLOWstate                    ; low state
 switchToHigh                ; time to switch to high state
     bsf     state,WHEEL_OUT ; set state to high
     bsf     GPIO, WHEEL_OUT ; set ouput pin
@@ -165,6 +174,9 @@ switchToHigh                ; time to switch to high state
 
 ; Motor signal management
 motorFSM
+    ; toggle RA2
+    ;movlw   B'00000100'
+    ;xorwf   GPIO,f 
     btfsc   state, MOTOR_ON ; check if motor signal is enable
     goto    motorRun        ; yes => generate signal
     bcf     GPIO, MOTOR_OUT ; no => for to low
@@ -249,8 +261,7 @@ main ; in background task : ADC conversions and period computations run in loop
 waitConv0
     btfsc   ADCON0, 1   ; wait for conversion end
     goto    waitConv0
-    movf    ADRESH,0
-    ;movlw   D'50'       ; debug
+    movf    ADRESH,w
     movwf   wheelAdc
     ; Compute high and low periods : 
     ; if adc < MIN_VAL => totally off, else
@@ -291,7 +302,7 @@ conv1
 waitConv1
     btfsc   ADCON0, 1   ; wait for conversion end
     goto    waitConv1
-    movf    ADRESH,0
+    movf    ADRESH,w
     movwf   motorAdc
     ; Compute high and low periods : 
     ; if adc < MIN_VAL => totally off, else
@@ -586,17 +597,10 @@ M_DIV_loop
 M_IF_ZERO                   ; check if REG is zero
                             ; STATUS,Z set if REG == 0
     movwf   FSR
-    movlw   PRECISION
-    movwf   REG_COUNTER
-M_ZERO_loop
-    movf    INDF,f
-    btfss   STATUS,Z
-    return
+    movlw   0
+    addwf   INDF,w
     incf    FSR,f
-    decf    REG_COUNTER,f
-    btfss   STATUS,Z
-    goto    M_DEC_loop
-    bsf     STATUS,Z        ; all 0 
+    addwf   INDF,w
     return
 
 ; interpolation Y = M.X + B
