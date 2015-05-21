@@ -36,7 +36,7 @@ $Descr A4 11693 8268
 encoding utf-8
 Sheet 1 1
 Title "Carte de test pour Solextronic"
-Date "8 may 2015"
+Date "21 may 2015"
 Rev "1"
 Comp "Le Galet Hurlant (https://code.google.com/p/solextronic/)"
 Comment1 ""
@@ -48,8 +48,6 @@ Wire Wire Line
 	4000 950  4000 900 
 Wire Wire Line
 	4000 900  4750 900 
-Wire Wire Line
-	2750 4050 2750 4500
 Connection ~ 4350 900 
 Wire Wire Line
 	4750 900  4750 950 
@@ -137,8 +135,6 @@ Wire Wire Line
 Wire Wire Line
 	10700 5250 10700 5150
 Wire Wire Line
-	3050 4400 3050 4500
-Wire Wire Line
 	4750 1350 4750 3900
 $Comp
 L R R1
@@ -176,24 +172,13 @@ $EndComp
 $Comp
 L +5V #PWR5
 U 1 1 52921929
-P 3050 4400
-F 0 "#PWR5" H 3050 4490 20  0001 C CNN
-F 1 "+5V" H 3050 4490 30  0000 C CNN
-F 2 "" H 3050 4400 60  0001 C CNN
-F 3 "" H 3050 4400 60  0001 C CNN
-	1    3050 4400
+P 3150 4400
+F 0 "#PWR5" H 3150 4490 20  0001 C CNN
+F 1 "+5V" H 3150 4490 30  0000 C CNN
+F 2 "" H 3150 4400 60  0001 C CNN
+F 3 "" H 3150 4400 60  0001 C CNN
+	1    3150 4400
 	1    0    0    -1  
-$EndComp
-$Comp
-L CONN_4 P1
-U 1 1 52921903
-P 2900 4850
-F 0 "P1" V 2850 4850 50  0000 C CNN
-F 1 "CONN_4" V 2950 4850 50  0000 C CNN
-F 2 "" H 2900 4850 60  0001 C CNN
-F 3 "" H 2900 4850 60  0001 C CNN
-	1    2900 4850
-	0    1    1    0   
 $EndComp
 $Comp
 L +5V #PWR24
@@ -709,14 +694,7 @@ NoConn ~ 1800 3000
 Wire Wire Line
 	1800 2700 2850 2700
 Wire Wire Line
-	2850 2700 2850 4500
-Wire Wire Line
 	1800 2500 2950 2500
-Wire Wire Line
-	2950 2500 2950 4500
-Wire Wire Line
-	2750 4050 2300 4050
-Connection ~ 2300 4050
 Wire Wire Line
 	1800 2300 3700 2300
 Wire Wire Line
@@ -856,12 +834,12 @@ Wire Wire Line
 	7300 1400 7400 1400
 Wire Wire Line
 	7100 1350 7100 1450
-Text Notes 2650 5050 0    60   ~ 0
+Text Notes 2650 5200 0    60   ~ 0
 Front Panel
 Text Notes 3100 1450 0    60   ~ 0
 Pump
-Text Notes 1950 950  0    60   ~ 0
-From Solextronic
+Text Notes 2400 850  0    60   ~ 0
++5v from \nSolextronic
 Wire Notes Line
 	6850 600  6850 2950
 Wire Notes Line
@@ -904,7 +882,7 @@ L R R7
 U 1 1 55075204
 P 9000 2650
 F 0 "R7" V 9080 2650 40  0000 C CNN
-F 1 "680" V 9007 2651 40  0000 C CNN
+F 1 "2.7k" V 9007 2651 40  0000 C CNN
 F 2 "~" V 8930 2650 30  0000 C CNN
 F 3 "~" H 9000 2650 30  0000 C CNN
 	1    9000 2650
@@ -1129,4 +1107,57 @@ Wire Wire Line
 Connection ~ 1750 5700
 Wire Wire Line
 	1500 7100 1500 6700
+$Comp
+L +BATT #PWR?
+U 1 1 555E3694
+P 10350 1250
+F 0 "#PWR?" H 10350 1200 20  0001 C CNN
+F 1 "+BATT" H 10350 1350 30  0000 C CNN
+F 2 "" H 10350 1250 60  0001 C CNN
+F 3 "" H 10350 1250 60  0001 C CNN
+	1    10350 1250
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	10350 1400 10350 1250
+$Comp
+L CONN_5 P?
+U 1 1 555E38A2
+P 2950 4900
+F 0 "P?" V 2900 4900 50  0000 C CNN
+F 1 "CONN_5" V 3000 4900 50  0000 C CNN
+F 2 "" H 2950 4900 60  0000 C CNN
+F 3 "" H 2950 4900 60  0000 C CNN
+	1    2950 4900
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	3150 4400 3150 4500
+Wire Wire Line
+	2950 2500 2950 4500
+Wire Wire Line
+	2850 2700 2850 4500
+Wire Wire Line
+	2750 4400 2750 4500
+Wire Wire Line
+	2400 4400 2750 4400
+Text Label 2400 4400 0    60   ~ 0
+BTN1
+$Comp
+L GND #PWR?
+U 1 1 555E3CAB
+P 3350 4500
+F 0 "#PWR?" H 3350 4500 30  0001 C CNN
+F 1 "GND" H 3350 4430 30  0001 C CNN
+F 2 "" H 3350 4500 60  0001 C CNN
+F 3 "" H 3350 4500 60  0001 C CNN
+	1    3350 4500
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	3050 4500 3050 4450
+Wire Wire Line
+	3050 4450 3350 4450
+Wire Wire Line
+	3350 4450 3350 4500
 $EndSCHEMATC
