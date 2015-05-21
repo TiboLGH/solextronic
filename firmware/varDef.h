@@ -64,7 +64,7 @@ typedef struct __attribute__ ((__packed__)){ // packed for alignment when used i
     u8         wheelSize;     /* scalar, U08,  xx,        "m",    0.01000,   0.00000, 1.0,  2.55,  2 ;  distance run in one wheel rotation */
     u8         PMHOffset;     /* scalar, U08,  xx,      "deg",    1.00000,   0.00000,   0,   255,  0 ;  PMH offset in deg */
     u16        maxRPM;        /* scalar, U16,  xx,      "RPM",    1.00000,   0.00000,   0, 16000,  0 ;  RPM limitation, 0 if no limit */
-    u16        maxTemp;       /* scalar, U16,  xx,     "degC",    1.00000,   0.00000,   0,   200,  0 ;  overheating threshold, 0 if no limit */
+    u8         maxTemp;       /* scalar, U08,  xx,     "degC",    1.00000,   0.00000,   0,   200,  0 ;  overheating threshold, 0 if no limit */
     u8         minBat;        /* scalar, U08,  xx,        "v",    0.10000,   0.00000, 7.0,  12.0,  1 ;  alarm on low battery */
     u16        igniDuration;  /* scalar, U16,  xx,       "us",    1.00000,   0.00000,   0,  1000,  0 ;  ignition duration */
     u8         starterAdv;    /* scalar, U08,  xx,      "deg",    1.00000,   0.00000,   0,   255,  0 ;  advance during crancking */
@@ -73,21 +73,22 @@ typedef struct __attribute__ ((__packed__)){ // packed for alignment when used i
     u16        injOpen;       /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  2000, 0 ;  time to open injector */
     u16        injRate;       /* scalar, U16,  xx,    "g/sec",    1.00000,   0.00000,   50,   500, 0 ;  flow rate of injector */
     u8         injAdv;        /* scalar, U08,  xx,      "deg",    1.00000,   0.00000,    0,   255, 0 ;  mean injection advance */
+    u8         targetAfr;     /* scalar, U08,  xx,         "",    0.10000,   0.00000,  7.0,  20.0, 1 ;  target Air Fuel ratio */
     u16        starterInj;    /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  5000, 0 ;  injection duration during crancking */
     u8         injOverheat;   /* scalar, U08,  xx,        "%",    1.00000,   0.00000,    0,    50, 0 ;  injection increase in case of overheating */
     u16        injFullOpen;   /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  500,  5000, 0 ;  injection duration at full TPS */
     u8         noInjAtDec;    /* bits,   U08,  xx,  [0:0], "inj at dec", "no inj at dec"             ;  1 to stop injection when deceleration */
     u16        injStart;      /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  2000, 0 ;  injector opening duration */
     u8         holdPWM;       /* scalar, U08,  xx,        "%",    1.00000,   0.00000,   10,   100, 0 ;  PWM ratio during hold time */
-    u8         igniPolarity;  /* bits,   U08,  xx,  [0:0], "Active on low", "Active on high"                 ;  0 active at low state */
-    u8         injPolarity;   /* bits,   U08,  xx,  [0:0], "Active on low", "Active on high"                 ;  0 active at low state */
-    u8         pmhPolarity;   /* bits,   U08,  xx,  [0:0], "Active on low", "Active on high"                 ;  0 active at low state */
-    u8         pumpPolarity;  /* bits,   U08,  xx,  [0:0], "Active on low", "Active on high"                 ;  0 active at low state */
+    u8         igniPolarity;  /* bits,   U08,  xx,  [0:0], "Active on low", "Active on high"         ;  0 active at low state */
+    u8         injPolarity;   /* bits,   U08,  xx,  [0:0], "Active on low", "Active on high"         ;  0 active at low state */
+    u8         pmhPolarity;   /* bits,   U08,  xx,  [0:0], "Active on low", "Active on high"         ;  0 active at low state */
+    u8         pumpPolarity;  /* bits,   U08,  xx,  [0:0], "Active on low", "Active on high"         ;  0 active at low state */
     u16        injTestPW;     /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200, 10000, 0 ;  pulse width of injector test mode */
     u16        injTestCycles; /* scalar, U16,  xx,         "",    1.00000,   0.00000,    0,  1000, 0 ;  number of cycle of injector test mode. 0 to stop */
-    u8         ignTestMode;   /* bits,   U08,  xx,  [0:0], "disable test mode", "Enable test mode"           ;  Enable/disable of ignition test mode */
-    u16        rpmBins[TABSIZE]; /* array,  U16,  xx, [10],"RPM",    1.00000,   0.00000,    0, 10000, 0 ;  table of RPM indexes */
-    u8         loadBins[TABSIZE]; /* array,  U08,  xx, [10],  "%",    1.00000,   0.00000,    0,   100, 0 ;  table of load/MAF indexes */
+    u8         ignTestMode;   /* bits,   U08,  xx,  [0:0], "disable test mode", "Enable test mode"   ;  Enable/disable of ignition test mode */
+    u16        rpmBins[TABSIZE]; /* array,  U16,  xx, [10],"RPM", 1.00000,   0.00000,    0, 10000, 0 ;  table of RPM indexes */
+    u8         loadBins[TABSIZE]; /* array,  U08,  xx, [10],  "%", 1.00000,  0.00000,    0,   100, 0 ;  table of load/MAF indexes */
     u8         injTable[TABSIZE][TABSIZE];   /* array,  U08,  xx,[10x10],   "%",    1.00000,   0.00000,  10,   130,  0 ;  table for injection */
     u8         igniTable[TABSIZE][TABSIZE];  /* array,  U08,  xx,[10x10], "deg",    1.00000,   0.00000,   0,   200,  0 ;  table for ignition */
     u8         iatCal[TABSIZE][2]; /* array,  U08,   xx,  [10x2],  "deg",    1.00000,   0.00000,   0,   255,  0 ;  conversion table for IAT sensors */
@@ -140,6 +141,9 @@ typedef struct  __attribute__ ((__packed__)){ // packed for alignment when used 
    u8  injTestMode;      /* scalar,     U08,  xx,   " ",    1.000,  0.0 ; current injector test mode */
    u16 injTestCycles;    /* scalar,     U16,  xx,   " ",    1.000,  0.0 ; current injector test cycles */
    u8  load;             /* scalar,     U08,  xx,  "%",     1.000,  0.0 ; current load */
+   s8  ignOffset;        /* scalar,     S08,  xx,  "deg",   1.000,  0.0 ; ignition offset adjustable runtime */
+   s16 injOffset;        /* scalar,     S16,  xx,  "us",    1.000,  0.0 ; injection duration offset adjustable runtime */
+   s8  injStartOffset;   /* scalar,     S08,  xx,  "deg",   1.000,  0.0 ; injection start offset adjustable runtime */
    u16 debug1;           /* scalar,     U16,  xx,  "%",     1.000,  0.0 ; debug for user */
    u16 debug2;           /* scalar,     U16,  xx,  "%",     1.000,  0.0 ; debug for user */
    u16 debug3;           /* scalar,     U16,  xx,  "%",     1.000,  0.0 ; debug for user */
