@@ -41,6 +41,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <avr/io.h>
+#include <avr/pgmspace.h>
 #include <util/delay.h>
 #include <util/twi.h>
 #include <ctype.h>
@@ -71,7 +72,7 @@ typedef enum{
 }menu_e;
 static menu_e           menuState;
 
-static char             lcdBuffer[32]; 	// 2 lines, 16 chars
+static char             lcdBuffer[33]; 	// 2 lines, 16 chars + 1 for terminal string
 
 /*** Internal functions ***/
 static void MenuInit(void);
@@ -109,6 +110,7 @@ void FPInit(const u8 type)
 
     /* Init LCD */
     LCDInit();
+    FPSetLed(WHITE);
 
     /* Init menu navigation */
     MenuInit();
@@ -136,7 +138,7 @@ void FPRun(void)
     
     /* Read buttons */
     u8 btn = BtnRead();
-   
+  
     /* Update menu */
     MenuUpdate(btn);
 
@@ -188,7 +190,7 @@ void FPDebugMsg(char *msg)
     }
 
     menuState = M_DEBUG;
-    strncpy(lcdBuffer, msg, 32);
+    strncpy(lcdBuffer, msg, 33);
     /* Force LCD update */
     LCDUpdate();
 
@@ -199,34 +201,48 @@ void FPDebugMsg(char *msg)
 static void MenuInit(void)
 {
     menuState = M_INIT;
-    memset(lcdBuffer, 0, 32);
+    memset(lcdBuffer, 0, 33);
 
-    /* Display version */
-    strncpy(lcdBuffer, signature, 32);
+    /* Set backlight */
+    FPSetLed(WHITE); 
+
     return;
 }
 
 #define NAV(button, state) if(btn & BUTTON_## button) {menuState = state;}
+
 static menu_e MenuUpdate(u8 btn)
 {
     static u8 inputUnit = 0;
+    static u8 normalView1 = 0;
+    static s16  var = 0;
 
     switch(menuState)
     {
         case M_INIT: // start. Display version
+            snprintf_P(lcdBuffer, 33, PSTR("%s      "), signature);
             NAV(DOWN, M_NORMAL);
             break;
 
         case M_DEBUG: // force msg display
+            snprintf_P(lcdBuffer, 33, PSTR("Debug TODO !"));
             if(btn) menuState = M_NORMAL;
             break;
 
         case M_ASSERT: //the only exit is reset !
+            snprintf_P(lcdBuffer, 33, PSTR("Assert TODO !"));
             break; 
 
         case M_NORMAL: // default view
             // Display
-            snprintf_P(lcdBuffer, 32, "%drpm   %dkm/h", gState.rpm, gState.speed);
+            if(normalView1)
+            {
+                snprintf_P(lcdBuffer, 33, PSTR("%4drpm %2d.%1dkm/h%4du %3dd %3dd "), gState.rpm, gState.speed/10, gState.speed%10, gState.injPulseWidth, gState.CLT, gState.advance);
+            }else{ //alternate view
+                snprintf_P(lcdBuffer, 33, PSTR("%4drpm %2d.%1dkm/h%2d.%1dv %3d%% %2ddeg"), gState.rpm, gState.speed/10, gState.speed%10, gState.battery/10, gState.battery%10, gState.TPS, gState.IAT);
+            }
+            if((btn & BUTTON_PLUS) || (btn & BUTTON_MINUS)) normalView1 ^= 1;
+            // TODO : chrono mgt on OK button
             // Navigation
             NAV(DOWN, M_INPUT);
             NAV(UP, M_CHRONO);
@@ -236,21 +252,58 @@ static menu_e MenuUpdate(u8 btn)
             // Display
             if(inputUnit) //raw values
             {
-                snprintf_P(lcdBuffer, 32, "%3d %3d %3d  %3d  %3d", gState.rawAdc[0], gState.rawAdc[1], gState.rawAdc[2], gState.rawAdc[3], gState.rawAdc[4]);
+                snprintf_P(lcdBuffer, 33, PSTR("B%3d C %3d I %3d T %3d  M %3d   "), gState.rawAdc[0], gState.rawAdc[1], gState.rawAdc[2], gState.rawAdc[3], gState.rawAdc[4]);
             }else{ // converted values
-                snprintf_P(lcdBuffer, 32, "%2d.%1d %3d %3d  %3d  %3d", gState.battery/10, gState.battery%10, gState.CLT, gState.IAT, gState.TPS, gState.MAP);
+                snprintf_P(lcdBuffer, 33, PSTR("%2d.%1dv %3dd  %3dd  %3d%%  %3dkpa  "), gState.battery/10, gState.battery%10, gState.CLT, gState.IAT, gState.TPS, gState.MAP);
             }
             // Navigation
-            if((btn & BUTTON_LEFT) || (btn & BUTTON_RIGHT)) inputUnit ^= 1;
+            if((btn & BUTTON_PLUS) || (btn & BUTTON_MINUS)) inputUnit ^= 1;
             NAV(DOWN, M_IGN_OFFSET);
             NAV(UP, M_NORMAL);
             break;
 
-            case M_IGN_OFFSET:
-            case M_INJ_OFFSET:
-            case M_INJ_START_OFFSET:
-            case M_AUTODIAG:
-            case M_CHRONO:
+        case M_IGN_OFFSET:
+            snprintf_P(lcdBuffer, 33, PSTR("Ign Offset %2ddeg+/-/OK"), var);
+            // Navigation
+            if(btn & BUTTON_PLUS) var++;
+            else if(btn & BUTTON_MINUS) var--;
+            else if(btn & BUTTON_OK) gState.ignOffset = (s8)var;
+            NAV(DOWN, M_INJ_OFFSET);
+            NAV(UP, M_INPUT);
+            break;
+
+        case M_INJ_OFFSET:
+            snprintf_P(lcdBuffer, 33, PSTR("Inj Offset %3u+/-/OK"), var);
+            // Navigation
+            if(btn & BUTTON_PLUS) var++;
+            else if(btn & BUTTON_MINUS) var--;
+            else if(btn & BUTTON_OK) gState.injOffset = var;
+            NAV(DOWN, M_INJ_START_OFFSET);
+            NAV(UP, M_IGN_OFFSET);
+            break;
+
+        case M_INJ_START_OFFSET:
+            snprintf_P(lcdBuffer, 33, PSTR("Ign Offset %2ddeg+/-/OK"), var);
+            // Navigation
+            if(btn & BUTTON_PLUS) var++;
+            else if(btn & BUTTON_MINUS) var--;
+            else if(btn & BUTTON_OK) gState.injStartOffset = (s8)var;
+            NAV(DOWN, M_AUTODIAG);
+            NAV(UP, M_INJ_OFFSET);
+            break;
+
+        case M_AUTODIAG:
+            snprintf_P(lcdBuffer, 33, PSTR("Autodiag TODO !"));
+            // Navigation
+            NAV(DOWN, M_CHRONO);
+            NAV(UP, M_INJ_START_OFFSET);
+            break;
+        case M_CHRONO:
+            snprintf_P(lcdBuffer, 33, PSTR("Chrono TODO !"));
+            // Navigation
+            NAV(DOWN, M_NORMAL);
+            NAV(UP, M_AUTODIAG);
+            break;
 
         default:
             menuState = M_NORMAL;
@@ -298,50 +351,47 @@ static menu_e MenuUpdate(u8 btn)
 #define LCD_CMD            0x00
 
 //Pins assigment
-#define RS 7
-#define RW 6
-#define EN 5
-#define D4 4
-#define D5 3
-#define D6 2
-#define D7 1
+#define RS 0x80
+#define RW 0x40
+#define EN 0x20
+#define D4 0x10
+#define D5 0x08
+#define D6 0x04
+#define D7 0x02
 
 static void Send(u8 value, u8 mode, u8 lowNibbleOnly) 
 {
-    //set RS
-    u8 out = (mode << RS);
-    IOExpanderWriteLCDPin(out);
+    u8 out;
+    if(!lowNibbleOnly)
+    {
+        //set RS
+        out = EN;
+        if(mode == LCD_DATA) out |= RS;
+        // set high nibble
+        // bit reverse and shift as pins are not is the natural order :-(
+        if(value & (1 << 7)) out |= D7;
+        if(value & (1 << 6)) out |= D6;
+        if(value & (1 << 5)) out |= D5;
+        if(value & (1 << 4)) out |= D4;
+        IOExpanderWriteLCDPin(out);
+        // pulse enable
+        _delay_us(1);
+        out &= ~(EN);
+        IOExpanderWriteLCDPin(out);
+        _delay_us(1);
+    }
 
-    // set low nibble and enable low
-    // bit reverse and shift as pins are not is the natural order :-(
-    out |= (value & (1 << 7)) >> 6; //D7
-    out |= (value & (1 << 6)) >> 4; //D6
-    out |= (value & (1 << 5)) >> 2; //D5
-    out |= (value & (1 << 4));      //D4
-    out &= ~(1 << EN);
+    // set low nibble
+    out = EN;
+    if(mode == LCD_DATA) out |= RS;
+    if(value & (1 << 3)) out |= D7;
+    if(value & (1 << 2)) out |= D6;
+    if(value & (1 << 1)) out |= D5;
+    if(value & (1 << 0)) out |= D4;
     IOExpanderWriteLCDPin(out);
     // pulse enable
     _delay_us(1);
-    out |= (1 << EN);
-    IOExpanderWriteLCDPin(out);
-    _delay_us(1);
-    out &= ~(1 << EN);
-    IOExpanderWriteLCDPin(out);
-    _delay_us(100);
-
-    if(lowNibbleOnly) return;
-
-    // set high nibble + EN high
-    out = (mode << RS);
-    out |= (value & (1 << 3)) >> 2; //D7
-    out |= (value & (1 << 2));      //D6
-    out |= (value & (1 << 1)) << 2; //D5
-    out |= (value & (1 << 0)) << 4; //D4
-    out |= (1 << EN);
-    IOExpanderWriteLCDPin(out);
-    // pulse enable
-    _delay_us(1);
-    out &= ~(1 << EN);
+    out &= ~(EN);
     IOExpanderWriteLCDPin(out);
     _delay_us(100);
 }
@@ -368,7 +418,7 @@ static void LCDInit(void)
     // third go!
     Send(0x03, LCD_CMD, 1);
     _delay_us(150);
-    // finally, set to 4-bit interface
+    // set to 4-bit interface
     Send(0x02, LCD_CMD, 1);
     // finally, set # lines, font size, etc.
     Send(LCD_FUNCTIONSET | LCD_2LINE | LCD_4BITMODE | LCD_5x8DOTS, LCD_CMD, 0);  
@@ -376,6 +426,8 @@ static void LCDInit(void)
     Send(LCD_DISPLAYCONTROL | LCD_DISPLAYON | LCD_CURSOROFF | LCD_BLINKOFF, LCD_CMD, 0);
     // set the entry mode
     Send(LCD_ENTRYMODESET | LCD_ENTRYLEFT | LCD_ENTRYSHIFTDECREMENT, LCD_CMD, 0);
+    // clear
+    Send(LCD_CLEARDISPLAY, LCD_CMD, 0);
 }
 
 static void LCDUpdate(void)
@@ -406,7 +458,7 @@ static u8 BtnRead(void)
 /********************** MCP23017 IO EXPANDER MANAGEMENT ***************************/
 
 #define SCL_CLOCK  100000L
-#define MCP23017_ADDRESS 0x0
+#define MCP23017_ADDRESS 0x40
 
 // registers
 #define MCP23017_IODIRA 0x00
@@ -505,6 +557,7 @@ static u8 IOExpanderRegRead(u8 reg)
 
 	i2cStart(MCP23017_ADDRESS);
 	i2cWrite(reg);
+	i2cStart(MCP23017_ADDRESS+1); //for read
 	u8 read = i2cReadNack();
 	i2cStop();
     return read;
@@ -530,7 +583,7 @@ static void IOExpanderWriteBackLightPins(u8 val)
 
 static u8 IOExpanderReadBtn(void)
 {
-	return (0x1F & IOExpanderRegRead(MCP23017_GPIOA));
+	return (0x1F & ~IOExpanderRegRead(MCP23017_GPIOA));
 }
 
 static void IOExpanderInit(void)

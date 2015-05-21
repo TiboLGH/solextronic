@@ -57,9 +57,9 @@ typedef enum
 
 #define BUTTON_UP 0x08
 #define BUTTON_DOWN 0x04
-#define BUTTON_LEFT 0x10
-#define BUTTON_RIGHT 0x02
-#define BUTTON_SELECT 0x01
+#define BUTTON_MINUS 0x10
+#define BUTTON_PLUS 0x02
+#define BUTTON_OK 0x01
 
 
 /* Public functions */
