@@ -50,7 +50,6 @@ volatile u16 toto = 0;
 
 u8 ComputeIgnition(void)
 {
-    DEBUG = 44;
     //TODO manage load based on throttle/pressure/whatever. Force to 50% for now
     gState.load = 50; 
     // compute advance from table
@@ -59,10 +58,16 @@ u8 ComputeIgnition(void)
     // TODO set adjustement for acceleration
     
     // TODO set limitation for overheating
+    if(gState.CLT > eData.maxTemp)
+    {
+        gState.advance -= eData.igniOverheat;
+    }
+    
+    // Add runtime offset
+    gState.advance += gState.ignOffset;
 
     // commit advance for next cycle
     SetIgnitionTiming(AUTO, gState.advance);
-    DEBUG = 0;
 
     return OK;
 }    
@@ -72,6 +77,10 @@ int main(void)
 	LED_DDR |= _BV(5);
 	LED_DDR |= _BV(1);
 	LED_DDR |= _BV(2);
+
+    // init var
+    //memset(gState, 0, sizeof(gState));
+    //memset(intState, 0, sizeof(intState));
 	
     InitIOs();
     InitUart();
@@ -84,8 +93,7 @@ int main(void)
     StartTimer(TIMER_100MS);
     printstr("x");
     USART_RX_EN;
-    eData.timerLed = 50;
-    DEBUG = 0;
+    eData.timerLed = 100;
  
 	while(1)
 	{
@@ -110,7 +118,7 @@ int main(void)
         {
             ADCProcessing();
         }
-
+        
         // Compute ignition and injection
         if(intState.newCycle) 
         {
