@@ -263,7 +263,7 @@ static menu_e MenuUpdate(u8 btn)
             break;
 
         case M_IGN_OFFSET:
-            snprintf_P(lcdBuffer, 33, PSTR("Ign Offset %2ddeg+/-/OK"), var);
+            snprintf_P(lcdBuffer, 33, PSTR("Ign Offset %2ddeg+/-/OK          "), var);
             // Navigation
             if(btn & BUTTON_PLUS) var++;
             else if(btn & BUTTON_MINUS) var--;
@@ -273,7 +273,7 @@ static menu_e MenuUpdate(u8 btn)
             break;
 
         case M_INJ_OFFSET:
-            snprintf_P(lcdBuffer, 33, PSTR("Inj Offset %3u+/-/OK"), var);
+            snprintf_P(lcdBuffer, 33, PSTR("Inj Offset  %3du+/-/OK          "), var);
             // Navigation
             if(btn & BUTTON_PLUS) var++;
             else if(btn & BUTTON_MINUS) var--;
@@ -283,7 +283,7 @@ static menu_e MenuUpdate(u8 btn)
             break;
 
         case M_INJ_START_OFFSET:
-            snprintf_P(lcdBuffer, 33, PSTR("Ign Offset %2ddeg+/-/OK"), var);
+            snprintf_P(lcdBuffer, 33, PSTR("Ign Offset %2ddeg+/-/OK          "), var);
             // Navigation
             if(btn & BUTTON_PLUS) var++;
             else if(btn & BUTTON_MINUS) var--;

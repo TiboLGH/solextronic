@@ -32,6 +32,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <util/delay.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -79,8 +80,8 @@ int main(void)
 	LED_DDR |= _BV(2);
 
     // init var
-    //memset(gState, 0, sizeof(gState));
-    //memset(intState, 0, sizeof(intState));
+    memset((char *)&gState, 0, sizeof(gState));
+    memset((char *)&intState, 0, sizeof(intState));
 	
     InitIOs();
     InitUart();
