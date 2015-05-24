@@ -145,6 +145,7 @@ void GetTime(u16 *dst);
 /* ADC related functions */
 void ADCInit(void);
 void ADCProcessing(void);
+void startAdc(void);
 
 /* PWM related functions */
 void InitPWM(void);

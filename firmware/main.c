@@ -103,9 +103,9 @@ int main(void)
         toto = OCR1B;
         if(EndTimer(TIMER_100MS, eData.timerLed))
         {
+            StartTimer(TIMER_100MS);
             C_FLIPBIT(LED_PIN);
             FPRun();
-            StartTimer(TIMER_100MS);
         }
         
         if(intState.rReady)

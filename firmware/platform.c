@@ -84,7 +84,6 @@ extern u16 txCur;
 extern u16 txCount;
 extern u8 isTx;
 
-static volatile u8 adcValues[5];
 static volatile u8 adcState;
 static u32	timerTable[TIMER_QTY];
 static volatile u32 masterClk;
@@ -273,11 +272,17 @@ ISR(TIMER2_COMPA_vect)
         }
 
         // start ADC acquisition
-        adcState = ADC_BATTERY;
-        ADMUX = (1 << REFS0) | (1 << ADLAR) | ((adcIndex[adcState]) & 0x0F);
-        ADCSRA |= (1 << ADSC);
-        intState.adcDone = False;
+        startAdc();
     }
+}
+        
+void startAdc(void)
+{
+    // start ADC acquisition
+    adcState = ADC_BATTERY;
+    ADMUX = (1 << REFS0) | (1 << ADLAR) | ((adcIndex[adcState]) & 0x0F);
+    ADCSRA |= (1 << ADSC);
+    intState.adcDone = False;
 }
 
 /**
@@ -440,11 +445,11 @@ void GetTime(u16 *dst)
 ISR(ADC_vect)
 {
     // save results, use only the MSB bits
-    adcValues[adcState] = ADCH;
+    gState.rawAdc[adcState] = ADCH;
     // Next channel
     adcState++;
     // next ADC acquisition
-    if(adcIndex[adcState] != ADC_IDLE)
+    if(adcState != ADC_IDLE)
     {
         ADMUX = (1 << REFS0) | (1 << ADLAR) | ((adcIndex[adcState]) & 0x0F);
         ADCSRA |= (1 << ADSC);
@@ -464,7 +469,7 @@ void ADCInit(void)
 {
     ADCSRA = (1 << ADEN)  |
              (0 << ADATE) |
-             (0 << ADIE) | 
+             (1 << ADIE) | 
              (1 << ADPS2) | (1 << ADPS1) | (0 << ADPS0); // prescaler 64 : 250kHz for 16MHz Xtal, 52us per conversion
     DIDR0 = 0x0E; // set ADC1..3 pin to ADC inputs
     ADMUX = (1 << REFS0) | (1 << ADLAR) | (adcIndex[ADC_BATTERY] & 0x0F);
@@ -486,13 +491,13 @@ void ADCProcessing(void)
     if(adcState != ADC_IDLE) return;
 
     // Conversion and filtering
-    gState.battery = (150 * (u16)adcValues[ADC_BATTERY]) / 256;     
-    gState.CLT = Interp1D(eData.cltCal, adcValues[ADC_CLT]);     
-    gState.IAT = Interp1D(eData.iatCal, adcValues[ADC_IAT]);     
-    gState.TPS = 100 * (u16)adcValues[ADC_TPS] / 256; // TODO : use min/max
+    gState.battery = (150 * (u16)gState.rawAdc[ADC_BATTERY]) / 256;     
+    gState.CLT = Interp1D(eData.cltCal, gState.rawAdc[ADC_CLT]);     
+    gState.IAT = Interp1D(eData.iatCal, gState.rawAdc[ADC_IAT]);     
+    gState.TPS = 100 * (u16)gState.rawAdc[ADC_TPS] / 256; // TODO : use min/max
     gState.TPSVariation = lastTps - gState.TPS;
     lastTps = gState.TPS;    
-    gState.MAP = Interp1D(eData.mapCal, adcValues[ADC_MAP]);     
+    gState.MAP = Interp1D(eData.mapCal, gState.rawAdc[ADC_MAP]);     
     // conversion done, inhibit useless recompute until next acquisition
     intState.adcDone = False;
 }
