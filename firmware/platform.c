@@ -84,8 +84,7 @@ extern u16 txCur;
 extern u16 txCount;
 extern u8 isTx;
 
-static volatile u16 adcValues[5];
-const u8 adcIndex[] = {7, 1, 2, 3, 6, 255};
+static volatile u8 adcValues[5];
 static volatile u8 adcState;
 static u32	timerTable[TIMER_QTY];
 static volatile u32 masterClk;
@@ -96,6 +95,7 @@ static volatile wvf_t nextInjTiming = {.state = OFF, .start = 0, .duration = 0};
 static volatile wvf_t curIgnTiming = {.state = OFF, .start = 0, .duration = 0};
 static volatile wvf_t nextIgnTiming = {.state = OFF, .start = 0, .duration = 0};
 
+const u8 adcIndex[] = {1, 3, 6, 2, 7, 255}; 
 
 /**
  * \fn void InitUsart(void)
@@ -439,8 +439,8 @@ void GetTime(u16 *dst)
 */
 ISR(ADC_vect)
 {
-    // save results
-    adcValues[adcState] = ADC;
+    // save results, use only the MSB bits
+    adcValues[adcState] = ADCH;
     // Next channel
     adcState++;
     // next ADC acquisition
@@ -486,13 +486,15 @@ void ADCProcessing(void)
     if(adcState != ADC_IDLE) return;
 
     // Conversion and filtering
-    gState.battery = 150 * (u16)adcValues[ADC_BATTERY] / 256;     
-    gState.CLT = Interp1D(eData.cltCal, ADCH);     
-    gState.IAT = Interp1D(eData.iatCal, ADCH);     
-    gState.TPS = 100 * (u16)ADC / 256;
+    gState.battery = (150 * (u16)adcValues[ADC_BATTERY]) / 256;     
+    gState.CLT = Interp1D(eData.cltCal, adcValues[ADC_CLT]);     
+    gState.IAT = Interp1D(eData.iatCal, adcValues[ADC_IAT]);     
+    gState.TPS = 100 * (u16)adcValues[ADC_TPS] / 256; // TODO : use min/max
     gState.TPSVariation = lastTps - gState.TPS;
     lastTps = gState.TPS;    
-    gState.MAP = Interp1D(eData.mapCal, ADCH);     
+    gState.MAP = Interp1D(eData.mapCal, adcValues[ADC_MAP]);     
+    // conversion done, inhibit useless recompute until next acquisition
+    intState.adcDone = False;
 }
 
 /**

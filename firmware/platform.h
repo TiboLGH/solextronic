@@ -57,11 +57,11 @@ enum
 
 enum
 {
-    ADC_BATTERY = 0, /*!< ADC7 */
-    ADC_CLT,   /*!< ADC1 */
-    ADC_IAT,     /*!< ADC2 */
-    ADC_TPS,    /*!< ADC3 */
-    ADC_MAP,    /*!< ADC6 */
+    ADC_BATTERY = 0, /*!< ADC1 */
+    ADC_CLT,         /*!< ADC3 */
+    ADC_IAT,         /*!< ADC6 */
+    ADC_TPS,         /*!< ADC2*/
+    ADC_MAP,         /*!< ADC7 */
     ADC_IDLE
 };
 

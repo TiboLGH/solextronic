@@ -526,12 +526,12 @@ static u8 i2cWrite(u8 data)
 	return 0;
 }
 
-static u8 i2cReadAck(void)
+/*static u8 i2cReadAck(void)
 {
 	TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWEA);
 	while(!(TWCR & (1<<TWINT)));    
     return TWDR;
-}
+}*/
 
 static u8 i2cReadNack(void)
 {
