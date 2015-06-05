@@ -71,7 +71,34 @@ u8 ComputeIgnition(void)
     SetIgnitionTiming(AUTO, gState.advance);
 
     return OK;
-}    
+}   
+
+u8 ComputeInjection(void)
+{
+    //TODO manage load based on throttle/pressure/whatever. Force to 50% for now
+    gState.load = 50; 
+    // compute injection delay from table
+    gState.advance = Interp2D(&(eData.igniTable[0][0]), gState.rpm, gState.load);
+
+    // TODO set adjustement for acceleration
+    
+    // TODO set limitation for overheating
+    if(gState.CLT > eData.maxTemp)
+    {
+        gState.injPulseWidth *= (100 + eData.injOverheat) / 100;
+    }
+    
+    // Add runtime offset
+    gState.injPulseWidth += gState.ignOffset;
+
+    // Compute start time
+
+    // commit advance for next cycle
+    SetIgnitionTiming(AUTO, gState.advance);
+
+
+    return OK;
+}
 
 int main(void)
 {
