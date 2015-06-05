@@ -94,6 +94,7 @@ typedef struct __attribute__ ((__packed__)){ // packed for alignment when used i
     u8         iatCal[TABSIZE][2]; /* array,  U08,   xx,  [10x2],  "deg",    1.00000,   0.00000,   0,   255,  0 ;  conversion table for IAT sensors */
     u8         cltCal[TABSIZE][2]; /* array,  U08,   xx,  [10x2],  "deg",    1.00000,   0.00000,   0,   255,  0 ;  conversion table for CLT sensors */
     u8         mapCal[TABSIZE][2]; /* array,  U08,   xx,  [10x2],  "kpa",    1.00000,   0.00000,   0,   255,  0 ;  conversion table for MAP sensor */
+    u16        lapLength;     /* scalar, U16,  xx,        "m",    1.00000,   0.00000,    1, 65535, 0 ;  lap length in meter */
     u16        user1;         /* scalar, U16,  xx,         "",    1.00000,   0.00000,    0,  1000, 0 ;  for debug */
     u16        user2;         /* scalar, U16,  xx,         "",    1.00000,   0.00000,    0,  1000, 0 ;  for debug */ 
     u16        user3;         /* scalar, U16,  xx,         "",    1.00000,   0.00000,    0,  1000, 0 ;  for debug */

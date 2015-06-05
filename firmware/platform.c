@@ -42,6 +42,7 @@
 #include "common.h"
 #include "platform.h"
 #include "helper.h"
+#include "chrono.h"
 
 #define BAUD 	        57600
 
@@ -87,7 +88,7 @@ extern u8 isTx;
 static volatile u8 adcState;
 static u32	timerTable[TIMER_QTY];
 static volatile u32 masterClk;
-static volatile u8 count10ms;
+static volatile u8 count10ms, count100ms;
 static TimeStamp_t     prevTs, newTs;
 static volatile wvf_t curInjTiming = {.state = OFF, .start = 0, .duration = 0};
 static volatile wvf_t nextInjTiming = {.state = OFF, .start = 0, .duration = 0};
@@ -241,6 +242,7 @@ ISR(TIMER2_COMPA_vect)
 {
     masterClk++;
     count10ms++;
+    count100ms++;
     if(count10ms >= 10)
     {
         count10ms = 0;
@@ -273,6 +275,12 @@ ISR(TIMER2_COMPA_vect)
 
         // start ADC acquisition
         startAdc();
+    }
+    
+    if(count100ms >= 100)
+    {
+        count100ms = 0;
+        ChronoTop100ms();
     }
 }
         

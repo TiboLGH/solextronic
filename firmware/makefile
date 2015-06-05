@@ -11,7 +11,7 @@ DUDE		= /usr/bin/avrdude -V -p $(MCU)
 
 DEPS		= $(wildcard *.h)
 C_SRCS		= $(wildcard *.c)
-OBJ_FILES	= main.o platform.o command.o helper.o frontpanel.o
+OBJ_FILES	= main.o platform.o command.o helper.o frontpanel.o chrono.o
 OBJ_FILES2	= $(C_SRCS:.c=.o)
 
 all:	$(TARGET).hex

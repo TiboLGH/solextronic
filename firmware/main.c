@@ -42,6 +42,7 @@
 #include "command.h"
 #include "helper.h"
 #include "frontpanel.h"
+#include "chrono.h"
 
 volatile eeprom_data_t    eData;
 volatile Current_Data_t   gState;
@@ -116,6 +117,7 @@ int main(void)
     ADCInit();
     InitEeprom(1);
     FPInit(0);
+    ChronoInit();
 
 	sei();
     StartTimer(TIMER_100MS);

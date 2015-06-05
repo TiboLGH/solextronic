@@ -47,6 +47,7 @@
 #include <ctype.h>
 #include "frontpanel.h"
 #include "common.h"
+#include "chrono.h"
 #include "version.h"
 
 
@@ -242,7 +243,8 @@ static menu_e MenuUpdate(u8 btn)
                 snprintf_P(lcdBuffer, 33, PSTR("%4drpm %2d.%1dkm/h%2d.%1dv %3d%% %2ddeg"), gState.rpm, gState.speed/10, gState.speed%10, gState.battery/10, gState.battery%10, gState.TPS, gState.IAT);
             }
             if((btn & BUTTON_PLUS) || (btn & BUTTON_MINUS)) normalView1 ^= 1;
-            // TODO : chrono mgt on OK button
+            // chrono top lap on OK button
+            if(btn & BUTTON_OK) ChronoTopLap();
             // Navigation
             NAV(DOWN, M_INPUT);
             NAV(UP, M_CHRONO);
@@ -298,8 +300,14 @@ static menu_e MenuUpdate(u8 btn)
             NAV(DOWN, M_CHRONO);
             NAV(UP, M_INJ_START_OFFSET);
             break;
+
         case M_CHRONO:
-            snprintf_P(lcdBuffer, 33, PSTR("Chrono TODO !"));
+            ChronoGetCurrentTime(lcdBuffer);
+            ChronoGetAvgLapTime(lcdBuffer + 8);
+            u16 speed = ChronoGetAvgSpeed();
+            snprintf_P(lcdBuffer+16, 17, PSTR("%2d.%1dkm/h %2d tr"), speed/10, speed%10, ChronoGetLapNumber());
+            // chrono reset on OK button
+            if(btn & BUTTON_OK) ChronoReset();
             // Navigation
             NAV(DOWN, M_NORMAL);
             NAV(UP, M_AUTODIAG);
