@@ -305,7 +305,7 @@ static menu_e MenuUpdate(u8 btn)
             ChronoGetCurrentTime(lcdBuffer);
             ChronoGetAvgLapTime(lcdBuffer + 8);
             u16 speed = ChronoGetAvgSpeed();
-            snprintf_P(lcdBuffer+16, 17, PSTR("%2d.%1dkm/h %2d tr"), speed/10, speed%10, ChronoGetLapNumber());
+            snprintf_P(lcdBuffer + 16, 17, PSTR("%2d.%1dkm/h %2d tr  "), speed/10, speed%10, ChronoGetLapNumber());
             // chrono reset on OK button
             if(btn & BUTTON_OK) ChronoReset();
             // Navigation

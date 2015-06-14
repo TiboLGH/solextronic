@@ -141,7 +141,7 @@ void ChronoTop100ms(void)
 {
     if(enabled)
     {
-        accTime++; // 0.1sec unit
+        curLapTime++; // 0.1sec unit
     }
 }
 
@@ -160,7 +160,7 @@ void ChronoGetCurrentTime(char *dest)
     u8 tenth = curLapTime % 10;
     u8 sec   = (curLapTime/10) % 60;
     u8 min   = (curLapTime/600);
-    sprintf(dest, "%u'%u\"%u", min, sec, tenth);
+    sprintf(dest, "%2u'%2u\"%1u ", min, sec, tenth);
     return;
 }
 
@@ -178,14 +178,14 @@ void ChronoGetAvgLapTime(char *dest)
 {
     if(!accLap)
     {
-        sprintf(dest, "0");
+        sprintf(dest, " 0' 0\"0 ");
         return;
     }
     u16 avgLapTime = accTime / accLap;
     u8 tenth = avgLapTime % 10;
     u8 sec   = (avgLapTime/10) % 60;
     u8 min   = (avgLapTime/600);
-    sprintf(dest, "%u'%u\"%u", min, sec, tenth);
+    sprintf(dest, "%2u'%2u\"%1u ", min, sec, tenth);
     return;
 }
 
