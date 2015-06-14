@@ -499,7 +499,7 @@ void ADCProcessing(void)
     if(adcState != ADC_IDLE) return;
 
     // Conversion and filtering
-    gState.battery = (150 * (u16)gState.rawAdc[ADC_BATTERY]) / 256;     
+    gState.battery = (150 * (u16)gState.rawAdc[ADC_BATTERY]) / 256 + 7; // + 0.7v for the diode     
     gState.CLT = Interp1D(eData.cltCal, gState.rawAdc[ADC_CLT]);     
     gState.IAT = Interp1D(eData.iatCal, gState.rawAdc[ADC_IAT]);     
     gState.TPS = 100 * (u16)gState.rawAdc[ADC_TPS] / 256; // TODO : use min/max
