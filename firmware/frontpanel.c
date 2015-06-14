@@ -135,12 +135,18 @@ void FPInit(const u8 type)
 */
 void FPRun(void)
 {
+    static u8 prevBtn = 0;
     if(menuState == M_DEBUG) return;
     
     /* Read buttons */
     u8 btn = BtnRead();
   
     /* Update menu */
+    if(btn != prevBtn) // calm down the btn
+    {
+        prevBtn = btn;
+        btn = 0;
+    }
     MenuUpdate(btn);
 
     /* Update display */
