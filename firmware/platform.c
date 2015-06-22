@@ -64,7 +64,6 @@ const PROGMEM eeprom_data_t eeInit = {
     .injAdv         = 140, //?
     .starterInj     = 1000,
     .injOverheat    = 3,
-    .injFullOpen    = 3000,
     .noInjAtDec     = 0,
     .injStart       = 500,
     .holdPWM        = 50,
@@ -72,6 +71,8 @@ const PROGMEM eeprom_data_t eeInit = {
     .injPolarity    = 0,
     .pmhPolarity    = 0,
     .pumpPolarity   = 0,
+    .minTps         = 0,
+    .maxTps         = 0,
 };
 
 extern volatile eeprom_data_t    eData;
@@ -502,7 +503,7 @@ void ADCProcessing(void)
     gState.battery = (150 * (u16)gState.rawAdc[ADC_BATTERY]) / 256 + 7; // + 0.7v for the diode     
     gState.CLT = Interp1D(eData.cltCal, gState.rawAdc[ADC_CLT]);     
     gState.IAT = Interp1D(eData.iatCal, gState.rawAdc[ADC_IAT]);     
-    gState.TPS = 100 * (u16)gState.rawAdc[ADC_TPS] / 256; // TODO : use min/max
+    gState.TPS = 100 * (u16)(gState.rawAdc[ADC_TPS] - eData.minTps) / (eData.maxTps - eData.minTps); 
     gState.TPSVariation = lastTps - gState.TPS;
     lastTps = gState.TPS;    
     gState.MAP = Interp1D(eData.mapCal, gState.rawAdc[ADC_MAP]);     
