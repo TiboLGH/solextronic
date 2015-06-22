@@ -98,7 +98,10 @@ enum
 #define IGNITION_PIN  PORTB, 1 
 // Pump control on PD7 (pin 11 on 32 pins parts)
 #define PUMP_PIN  PORTD, 7 
+// BTN1 used for crancking (D4 on Arduino Nano => PD5)
+#define CRANKING_PIN  PORTD, 5 
 
+// for simulation only
 #define DEBUG TWBR
 #define PARAM TWDR
 

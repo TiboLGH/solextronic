@@ -61,15 +61,15 @@ typedef enum
 	POL_QTY
 }POL_SEL;
 
-enum
+typedef enum
 {
-    STOP = 0,
-    CRANKING,
-    RUNNING,
-    ALARM,
-    ERROR,
-    STALLED
-};
+    M_STOP = 0,
+    M_CRANKING,
+    M_RUNNING,
+    M_OVERHEAT,
+    M_ERROR,
+    M_STALLED
+}motor_e;
 
 
 /**
@@ -97,6 +97,7 @@ typedef struct {
     u8  rReady;
     u16 RPMperiod;
     u8  adcDone;
+    motor_e motorState;
 }intState_t; 
 
 #endif

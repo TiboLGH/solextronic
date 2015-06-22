@@ -66,21 +66,21 @@ typedef struct __attribute__ ((__packed__)){ // packed for alignment when used i
     u16        maxRPM;        /* scalar, U16,  xx,      "RPM",    1.00000,   0.00000,   0, 16000,  0 ;  RPM limitation, 0 if no limit */
     u8         maxTemp;       /* scalar, U08,  xx,     "degC",    1.00000,   0.00000,   0,   200,  0 ;  overheating threshold, 0 if no limit */
     u8         minBat;        /* scalar, U08,  xx,        "v",    0.10000,   0.00000, 7.0,  12.0,  1 ;  alarm on low battery */
-    u16        igniDuration;  /* scalar, U16,  xx,       "us",    1.00000,   0.00000,   0,  1000,  0 ;  ignition duration */
-    u8         starterAdv;    /* scalar, U08,  xx,      "deg",    1.00000,   0.00000,   0,   255,  0 ;  advance during crancking */
-    u8         igniOverheat;  /* scalar, U08,  xx,      "deg",    1.00000,   0.00000,   0,    20,  0 ;  advance decrease in case of overheating */
+    u16        ignDuration;   /* scalar, U16,  xx,       "us",    1.00000,   0.00000,   0,  1000,  0 ;  ignition duration */
+    u8         ignOverheat;   /* scalar, U08,  xx,      "deg",    1.00000,   0.00000,   0,    20,  0 ;  advance decrease in case of overheating */
     u8         noSparkAtDec;  /* bits,   U08,  xx,  [0:0], "spark at dec", "no spark at dec"         ;  1 to stop ignition when deceleration */
     u16        injOpen;       /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  2000, 0 ;  time to open injector */
+    u16        injStart;      /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  2000, 0 ;  injector opening duration */
+    u8         holdPWM;       /* scalar, U08,  xx,        "%",    1.00000,   0.00000,   10,   100, 0 ;  PWM ratio during hold time */
     u16        injRate;       /* scalar, U16,  xx,    "g/sec",    1.00000,   0.00000,   50,   500, 0 ;  flow rate of injector */
     u8         injAdv;        /* scalar, U08,  xx,      "deg",    1.00000,   0.00000,    0,   255, 0 ;  mean injection advance */
     u8         targetAfr;     /* scalar, U08,  xx,         "",    0.10000,   0.00000,  7.0,  20.0, 1 ;  target Air Fuel ratio */
     u16        starterInj;    /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  5000, 0 ;  injection duration during crancking */
+    u8         starterAdv;    /* scalar, U08,  xx,      "deg",    1.00000,   0.00000,   0,   255,  0 ;  advance during crancking */
     u8         injOverheat;   /* scalar, U08,  xx,        "%",    1.00000,   0.00000,    0,    50, 0 ;  injection increase in case of overheating */
     u16        injFullOpen;   /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  500,  5000, 0 ;  injection duration at full TPS */
     u8         noInjAtDec;    /* bits,   U08,  xx,  [0:0], "inj at dec", "no inj at dec"             ;  1 to stop injection when deceleration */
-    u16        injStart;      /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  2000, 0 ;  injector opening duration */
-    u8         holdPWM;       /* scalar, U08,  xx,        "%",    1.00000,   0.00000,   10,   100, 0 ;  PWM ratio during hold time */
-    u8         igniPolarity;  /* bits,   U08,  xx,  [0:0], "Active on low", "Active on high"         ;  0 active at low state */
+    u8         ignPolarity;   /* bits,   U08,  xx,  [0:0], "Active on low", "Active on high"         ;  0 active at low state */
     u8         injPolarity;   /* bits,   U08,  xx,  [0:0], "Active on low", "Active on high"         ;  0 active at low state */
     u8         pmhPolarity;   /* bits,   U08,  xx,  [0:0], "Active on low", "Active on high"         ;  0 active at low state */
     u8         pumpPolarity;  /* bits,   U08,  xx,  [0:0], "Active on low", "Active on high"         ;  0 active at low state */

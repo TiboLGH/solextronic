@@ -50,7 +50,8 @@ volatile intState_t       intState;
 volatile u16 toto = 0;
 
 
-u8 ComputeIgnition(void)
+
+u8 ComputeIgnition(u8 overheat)
 {
     //TODO manage load based on throttle/pressure/whatever. Force to 50% for now
     gState.load = 50; 
@@ -59,10 +60,10 @@ u8 ComputeIgnition(void)
 
     // TODO set adjustement for acceleration
     
-    // TODO set limitation for overheating
-    if(gState.CLT > eData.maxTemp)
+    // set limitation for overheating
+    if(overheat)
     {
-        gState.advance -= eData.igniOverheat;
+        gState.advance -= eData.ignOverheat;
     }
     
     // Add runtime offset
@@ -74,7 +75,7 @@ u8 ComputeIgnition(void)
     return OK;
 }   
 
-u8 ComputeInjection(void)
+u8 ComputeInjection(u8 overheat)
 {
     //TODO manage load based on throttle/pressure/whatever. Force to 50% for now
     gState.load = 50; 
@@ -83,22 +84,82 @@ u8 ComputeInjection(void)
 
     // TODO set adjustement for acceleration
     
-    // TODO set limitation for overheating
-    if(gState.CLT > eData.maxTemp)
+    // set limitation for overheating
+    if(overheat)
     {
         gState.injPulseWidth *= (100 + eData.injOverheat) / 100;
     }
     
     // Add runtime offset
-    gState.injPulseWidth += gState.ignOffset;
-
-    // Compute start time
+    gState.injPulseWidth += gState.injOffset;
+    
+    // Injector open time
+    gState.injPulseWidth += eData.injOpen;
 
     // commit advance for next cycle
-    SetIgnitionTiming(AUTO, gState.advance);
-
+    SetInjectionTiming(AUTO, gState.injPulseWidth);
 
     return OK;
+}
+
+u8 MainFsm(void)
+{
+    switch(intState.motorState)
+    {
+        case M_STOP: // engine stopped : no injection/ignition (except test)
+            FPSetLed(VIOLET);
+            SetInjectionTiming(FORCEOFF, 0);
+            SetInjectionTiming(FORCEOFF, 0);
+            if(!C_CHECKBIT(CRANKING_PIN))
+            {
+                intState.motorState = M_CRANKING;
+            }
+        break;
+
+        case M_CRANKING: // someone is pushing ! force inj/ign to crancking values
+            FPSetLed(TEAL);
+            gState.advance = eData.starterAdv;
+            gState.injPulseWidth = eData.starterInj + eData.injOpen;
+            SetIgnitionTiming(AUTO, gState.advance);
+            SetInjectionTiming(AUTO, gState.injPulseWidth);
+            if(C_CHECKBIT(CRANKING_PIN))
+            {
+                intState.motorState = M_RUNNING;
+            }
+        break;
+
+        case M_RUNNING: // normal operation: apply formula
+            if(intState.newCycle) 
+            {
+                intState.newCycle = 0;
+                FPSetLed(GREEN);
+                u8 overheat = gState.CLT > eData.maxTemp;
+                ComputeInjection(overheat);
+                ComputeIgnition(overheat);
+            }
+        break;
+
+        case M_ERROR: // that's bad : stop everything
+            FPSetLed(RED);
+            SetInjectionTiming(FORCEOFF, 0);
+            SetInjectionTiming(FORCEOFF, 0);
+        break;
+
+        case M_STALLED: // wait for cranking
+            FPSetLed(BLUE);
+            SetInjectionTiming(FORCEOFF, 0);
+            SetInjectionTiming(FORCEOFF, 0);
+            if(!C_CHECKBIT(CRANKING_PIN))
+            {
+                intState.motorState = M_CRANKING;
+            }
+        break;
+
+        default:
+            ASSERT(0);
+    } // switch
+
+    return (u8)intState.motorState;
 }
 
 int main(void)
@@ -118,6 +179,7 @@ int main(void)
     InitEeprom(1);
     FPInit(0);
     ChronoInit();
+    intState.motorState = M_STOP; 
 
 	sei();
     StartTimer(TIMER_100MS);
@@ -130,6 +192,8 @@ int main(void)
         toto = TCNT1;
         toto = OCR1A;
         toto = OCR1B;
+
+
         if(EndTimer(TIMER_100MS, eData.timerLed))
         {
             StartTimer(TIMER_100MS);
@@ -150,11 +214,7 @@ int main(void)
         }
         
         // Compute ignition and injection
-        if(intState.newCycle) 
-        {
-            intState.newCycle = 0;
-            ComputeIgnition();
-        }
+        MainFsm();
 	}
 
 	return(0);

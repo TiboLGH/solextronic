@@ -170,7 +170,12 @@ void FPRun(void)
 */
 void FPSetLed(const color_e color)
 {
-    IOExpanderWriteBackLightPins((u8) color);
+    static color_e currentColor = 0;
+    if(currentColor != color)
+    {
+        IOExpanderWriteBackLightPins((u8) color);
+        currentColor = color;
+    }
     return;
 }
 

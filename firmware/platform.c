@@ -55,9 +55,9 @@ const PROGMEM eeprom_data_t eeInit = {
     .maxRPM         = 0,
     .maxTemp        = 150,
     .minBat         = 110,
-    .igniDuration   = 1000,
+    .ignDuration    = 1000,
     .starterAdv     = 5,
-    .igniOverheat   = 2,
+    .ignOverheat    = 2,
     .noSparkAtDec   = 0,
     .injOpen        = 500,
     .injRate        = 500, //?
@@ -68,7 +68,7 @@ const PROGMEM eeprom_data_t eeInit = {
     .noInjAtDec     = 0,
     .injStart       = 500,
     .holdPWM        = 50,
-    .igniPolarity   = 0,
+    .ignPolarity    = 0,
     .injPolarity    = 0,
     .pmhPolarity    = 0,
     .pumpPolarity   = 0,
@@ -302,7 +302,7 @@ void startAdc(void)
  */
 ISR(TIMER1_OVF_vect)
 {
-    gState.engine = STALLED;
+    intState.motorState = M_STALLED;
 }
 
 
@@ -566,7 +566,7 @@ ISR(INT0_vect)
 
     // compute RPM : tick is 4us
     gState.rpm = 60 * (250000 / intState.RPMperiod);
-    gState.engine = RUNNING;
+    intState.motorState = M_RUNNING;
 
     // update injection and ignition timings
     INJ_INT_DISABLE;
@@ -607,7 +607,7 @@ ISR(INT1_vect)
     prevTs.tick = newTs.tick;
 
     // Compute speed in 1/10 of km/h
-    //wh/period = cm/4us
+    // wh/period = cm/4us
     gState.speed = ((u32)eData.wheelSize * 25 * 3600) / period;
 }
 
@@ -644,7 +644,7 @@ void SetIgnitionTiming(u8 force, u8 advance)
     // Convert angle to timer tick through RPM. Timer tick is 4us
     // TODO : use PMHOffset setting
     nextIgnTiming.start = (u32)intState.RPMperiod * (360 - advance) / 360;
-    nextIgnTiming.duration  = eData.igniDuration >> 2;
+    nextIgnTiming.duration  = eData.ignDuration >> 2;
 
     return;
 }
@@ -679,7 +679,7 @@ void IgnitionStartTest(void)
     IGN_INT_DISABLE;
     /* Configure waveform generator */
     nextIgnTiming.start = IGN_TEST_ADV;
-    nextIgnTiming.duration  = eData.igniDuration >> 2; // conversion from us to timer step (4us) 
+    nextIgnTiming.duration  = eData.ignDuration >> 2; // conversion from us to timer step (4us) 
     intState.ignTestMode = True;
     IGN_INT_ENABLE;
     return;
