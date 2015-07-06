@@ -91,7 +91,7 @@ typedef struct __attribute__ ((__packed__)){ // packed for alignment when used i
     u16        rpmBins[TABSIZE]; /* array,  U16,  xx, [10],"RPM", 1.00000,   0.00000,    0, 10000, 0 ;  table of RPM indexes */
     u8         loadBins[TABSIZE]; /* array,  U08,  xx, [10],  "%", 1.00000,  0.00000,    0,   100, 0 ;  table of load/MAF indexes */
     u8         injTable[TABSIZE][TABSIZE];   /* array,  U08,  xx,[10x10],   "%",    1.00000,   0.00000,  10,   130,  0 ;  table for injection */
-    u8         igniTable[TABSIZE][TABSIZE];  /* array,  U08,  xx,[10x10], "deg",    1.00000,   0.00000,   0,   200,  0 ;  table for ignition */
+    u8         ignTable[TABSIZE][TABSIZE];   /* array,  U08,  xx,[10x10], "deg",    1.00000,   0.00000,   0,   200,  0 ;  table for ignition */
     u8         iatCal[TABSIZE][2]; /* array,  U08,   xx,  [10x2],  "deg",    1.00000,   0.00000,   0,   255,  0 ;  conversion table for IAT sensors */
     u8         cltCal[TABSIZE][2]; /* array,  U08,   xx,  [10x2],  "deg",    1.00000,   0.00000,   0,   255,  0 ;  conversion table for CLT sensors */
     u8         mapCal[TABSIZE][2]; /* array,  U08,   xx,  [10x2],  "kpa",    1.00000,   0.00000,   0,   255,  0 ;  conversion table for MAP sensor */

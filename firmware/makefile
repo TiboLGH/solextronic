@@ -45,7 +45,7 @@ test: $(TARGET).hex sim
 	
 
 
-.PHONY: tags clean sim
+.PHONY: tags clean sim version.h
 
 tags:
 	ctags -R

@@ -56,7 +56,7 @@ u8 ComputeIgnition(u8 overheat)
     //TODO manage load based on throttle/pressure/whatever. Force to 50% for now
     gState.load = 50; 
     // compute advance from table
-    gState.advance = Interp2D(&(eData.igniTable[0][0]), gState.rpm, gState.load);
+    gState.advance = Interp2D(&(eData.ignTable[0][0]), gState.rpm, gState.load);
 
     // TODO set adjustement for acceleration
     
@@ -80,7 +80,7 @@ u8 ComputeInjection(u8 overheat)
     //TODO manage load based on throttle/pressure/whatever. Force to 50% for now
     gState.load = 50; 
     // compute injection delay from table
-    gState.advance = Interp2D(&(eData.igniTable[0][0]), gState.rpm, gState.load);
+    gState.advance = Interp2D(&(eData.ignTable[0][0]), gState.rpm, gState.load);
 
     // TODO set adjustement for acceleration
     
@@ -133,7 +133,7 @@ u8 MainFsm(void)
             {
                 intState.newCycle = 0;
                 FPSetLed(GREEN);
-                u8 overheat = gState.CLT > eData.maxTemp;
+                u8 overheat = eData.maxTemp ? (gState.CLT > eData.maxTemp) : 0;
                 ComputeInjection(overheat);
                 ComputeIgnition(overheat);
             }
