@@ -71,6 +71,12 @@ typedef enum
     M_STALLED
 }motor_e;
 
+enum
+{
+    T_NORMAL = 0,
+    T_IDLE,
+    T_WOT,
+};
 
 /**
  * \struct TimeStamp_t
@@ -97,7 +103,6 @@ typedef struct {
     u8  rReady;
     u16 RPMperiod;
     u8  adcDone;
-    motor_e motorState;
 }intState_t; 
 
 #endif

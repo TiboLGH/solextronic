@@ -341,7 +341,7 @@ void startAdc(void)
  */
 ISR(TIMER1_OVF_vect)
 {
-    intState.motorState = M_STALLED;
+    gState.engineState = M_STALLED;
 }
 
 
@@ -533,7 +533,7 @@ void ADCInit(void)
 */
 void ADCProcessing(void)
 {
-    u8 lastTps = 0;
+    static u8 lastTps = 0;
 
     if(adcState != ADC_IDLE) return;
 
@@ -544,6 +544,9 @@ void ADCProcessing(void)
     gState.TPS = 100 * (u16)(gState.rawAdc[ADC_TPS] - eData.minTps) / (eData.maxTps - eData.minTps); 
     gState.TPSVariation = lastTps - gState.TPS;
     lastTps = gState.TPS;    
+    if(gState.TPS > 97) gState.TPSState = T_WOT;
+    else if(gState.TPS < 3) gState.TPSState = T_IDLE;
+    else gState.TPSState = T_NORMAL;
     gState.MAP = Interp1D(eData.mapCal, gState.rawAdc[ADC_MAP]);     
     // conversion done, inhibit useless recompute until next acquisition
     intState.adcDone = False;
@@ -605,7 +608,6 @@ ISR(INT0_vect)
 
     // compute RPM : tick is 4us
     gState.rpm = 60 * (250000 / intState.RPMperiod);
-    intState.motorState = M_RUNNING;
 
     // update injection and ignition timings
     INJ_INT_DISABLE;

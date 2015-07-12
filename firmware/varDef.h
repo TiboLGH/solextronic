@@ -119,23 +119,10 @@ typedef struct  __attribute__ ((__packed__)){ // packed for alignment when used 
    s8  TPSVariation;     /* scalar,     S08,   xx, "%/10ms",    1.000,  0.0 ; TPS variation speed */
    u16 rpm;              /* scalar,     U16,   xx,    "RPM",    1.000,  0.0 ; engine speed */
    u16 speed;            /* scalar,     U16,   xx,   "km/h",    1.000,  0.0 ; solex speed */
-   u8  engine;           /* scalar,     U08,   xx,   "bits",    1.000,  0.0 ; engine state bitmap */
-                         /* ready:    bit 0 => 0 = engine not ready 1 = ready to run */
-                         /* crank:    bit 1 => 0 = engine not cranking 1 = engine cranking */
-                         /* startw:   bit 2 => 0 = not in startup warmup 1 = in warmup enrichment */
-                         /* warmup:   bit 3 => 0 = not in warmup 1 = in warmup */
-                         /* tpsaen:   bit 4 => 0 = not in TPS acceleration mode 1 = TPS acceleration mode */
-                         /* tpsden:   bit 5 => 0 = not in deacceleration mode 1 = in deacceleration mode */
-                         /* revlim:   bit 6 => 0 = not in rev limiter mode 1 = rev limiter mode*/
-                         /* overheat: bit 7 => 0 = not in overheat mode 1 = overheat mode*/
-                         /* ready            = bits,   U08,  xx, [0:0] */
-                         /* crank            = bits,   U08,  xx, [1:1] */
-                         /* startw           = bits,   U08,  xx, [2:2] */
-                         /* warmup           = bits,   U08,  xx, [3:3] */
-                         /* tpsaen           = bits,   U08,  xx, [4:4] */
-                         /* tpsden           = bits,   U08,  xx, [5:5] */ 
-                         /* revlim           = bits,   U08,  xx, [6:6] */
-                         /* overheat         = bits,   U08,  xx, [7:7] */
+   u8  engineState;      /* scalar,     U08,   xx,   "bits",    1.000,  0.0 ; engine state */
+                         /* state            = bits,   U08,  xx, [0:7], "STOP", "CRANKING", "RUNNING", "OVERHEAT", "ERROR", "STALLED" */
+   u8  TPSState;         /* scalar,     U08,   xx,   "bits",    1.000,  0.0 ; TPS state */
+                         /* state            = bits,   U08,  xx, [0:7], "NORMAL", "IDLE", "FULL OPEN" */
    u16 injPulseWidth;    /* scalar,     U16,  xx,  "us",    1.000,  0.0 ; Injector active time */
    u16 injStart;         /* scalar,     U16,  xx, "deg",    1.000,  0.0 ; Injector start time before PMH */
    u8  advance;          /* scalar,     U08,  xx, "deg",    1.000,  0.0 ; Spark advance in deg before PMH */

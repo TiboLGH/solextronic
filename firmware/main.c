@@ -104,7 +104,7 @@ u8 ComputeInjection(u8 overheat)
 
 u8 MainFsm(void)
 {
-    switch(intState.motorState)
+    switch(gState.engineState)
     {
         case M_STOP: // engine stopped : no injection/ignition (except test)
             FPSetLed(VIOLET);
@@ -112,7 +112,7 @@ u8 MainFsm(void)
             SetInjectionTiming(FORCEOFF, 0);
             if(!C_CHECKBIT(CRANKING_PIN))
             {
-                intState.motorState = M_CRANKING;
+                gState.engineState = M_CRANKING;
             }
         break;
 
@@ -124,7 +124,7 @@ u8 MainFsm(void)
             SetInjectionTiming(AUTO, gState.injPulseWidth);
             if(C_CHECKBIT(CRANKING_PIN))
             {
-                intState.motorState = M_RUNNING;
+                gState.engineState = M_RUNNING;
             }
         break;
 
@@ -151,7 +151,7 @@ u8 MainFsm(void)
             SetInjectionTiming(FORCEOFF, 0);
             if(!C_CHECKBIT(CRANKING_PIN))
             {
-                intState.motorState = M_CRANKING;
+                gState.engineState = M_CRANKING;
             }
         break;
 
@@ -159,7 +159,7 @@ u8 MainFsm(void)
             ASSERT(0);
     } // switch
 
-    return (u8)intState.motorState;
+    return gState.engineState;
 }
 
 int main(void)
@@ -179,7 +179,7 @@ int main(void)
     InitEeprom(1);
     FPInit(0);
     ChronoInit();
-    intState.motorState = M_STOP; 
+    gState.engineState = M_STOP; 
 
 	sei();
     StartTimer(TIMER_100MS);
