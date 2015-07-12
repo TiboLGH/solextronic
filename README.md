@@ -4,6 +4,12 @@ Solextronic est un ECU (Electronic Control Unit) pour Solex visant à controler 
 Le projet est en développement lent, les idées allant bien plus vites que le temps de réalisation disponible (je ne consacre que quelques heures par semaine à Solextronic...)
 J'espère avoir un prototype plus ou moins fonctionnel d'ici quelques mois ;-).
 
+### 12 Juillet 2015 
+Pas mal de commits a droite a gauche et la definition du faisceau :
+![https://github.com/TiboLGH/solextronic/blob/master/hardware/harness/harness.png]
+(https://github.com/TiboLGH/solextronic/blob/master/hardware/harness/harness.png)
+
+
 ### 28 Mars 2015
 Migration vers Github étant donné que Google Code va bientôt fermer !
 
