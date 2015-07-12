@@ -78,8 +78,8 @@ enum
 #define FLIPBITMASK(x,y) (x ^= (y)) 
 #define CHECKBITMASK(x,y) (x & (y)) 
 
-#define VARFROMCOMB(x, y) x 
-#define BITFROMCOMB(x, y) y 
+#define VARFROMCOMB(x, y) (x) 
+#define BITFROMCOMB(x, y) (y) 
 
 #define C_SETBIT(comb) SETBIT(VARFROMCOMB(comb), BITFROMCOMB(comb)) 
 #define C_CLEARBIT(comb) CLEARBIT(VARFROMCOMB(comb), BITFROMCOMB(comb)) 
@@ -100,6 +100,18 @@ enum
 #define PUMP_PIN  PORTD, 7 
 // BTN1 used for crancking (D4 on Arduino Nano => PD5)
 #define CRANKING_PIN  PORTD, 5 
+
+#define PIN_ON(pin, polarity) \
+    do{ \
+        if((polarity)) {sbi(pin);} \
+        else {cbi(pin);} \
+    }while(0)
+#define PIN_OFF(pin, polarity) \
+    do{ \
+        if((polarity)) {cbi(pin);} \
+        else {sbi(pin);} \
+    }while(0)
+
 
 // for simulation only
 #define DEBUG TWBR

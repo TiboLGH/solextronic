@@ -110,6 +110,7 @@ u8 MainFsm(void)
             FPSetLed(VIOLET);
             SetInjectionTiming(FORCEOFF, 0);
             SetInjectionTiming(FORCEOFF, 0);
+            PIN_OFF(PUMP_PIN, eData.pumpPolarity);
             if(!C_CHECKBIT(CRANKING_PIN))
             {
                 gState.engineState = M_CRANKING;
@@ -122,6 +123,7 @@ u8 MainFsm(void)
             gState.injPulseWidth = eData.starterInj + eData.injOpen;
             SetIgnitionTiming(AUTO, gState.advance);
             SetInjectionTiming(AUTO, gState.injPulseWidth);
+            PIN_ON(PUMP_PIN, eData.pumpPolarity);
             if(C_CHECKBIT(CRANKING_PIN))
             {
                 gState.engineState = M_RUNNING;
@@ -143,12 +145,14 @@ u8 MainFsm(void)
             FPSetLed(RED);
             SetInjectionTiming(FORCEOFF, 0);
             SetInjectionTiming(FORCEOFF, 0);
+            PIN_OFF(PUMP_PIN, eData.pumpPolarity);
         break;
 
         case M_STALLED: // wait for cranking
             FPSetLed(BLUE);
             SetInjectionTiming(FORCEOFF, 0);
             SetInjectionTiming(FORCEOFF, 0);
+            PIN_OFF(PUMP_PIN, eData.pumpPolarity);
             if(!C_CHECKBIT(CRANKING_PIN))
             {
                 gState.engineState = M_CRANKING;
@@ -156,6 +160,7 @@ u8 MainFsm(void)
         break;
 
         default:
+            PIN_OFF(PUMP_PIN, eData.pumpPolarity);
             ASSERT(0);
     } // switch
 
