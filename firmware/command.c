@@ -232,6 +232,7 @@ static void PostWriteHook(void)
     if(eData.injTestCycles)// && !gState.injTestCycles)
     {
         // start injection test 
+        gState.engineState = M_TEST_INJ;
         gState.injTestCycles = eData.injTestCycles + 1;
         eData.injTestCycles = 0;
         InjectorStartTest();
@@ -240,6 +241,7 @@ static void PostWriteHook(void)
     // 2. Ignition test mode : detect transitions
     if(eData.ignTestMode && !intState.ignTestMode)
     {
+        gState.engineState = M_TEST_IGN;
         IgnitionStartTest();
     }
     else if(intState.ignTestMode && !eData.ignTestMode)

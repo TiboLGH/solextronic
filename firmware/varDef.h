@@ -120,7 +120,7 @@ typedef struct  __attribute__ ((__packed__)){ // packed for alignment when used 
    u16 rpm;              /* scalar,     U16,   xx,    "RPM",    1.000,  0.0 ; engine speed */
    u16 speed;            /* scalar,     U16,   xx,   "km/h",    1.000,  0.0 ; solex speed */
    u8  engineState;      /* scalar,     U08,   xx,   "bits",    1.000,  0.0 ; engine state */
-                         /* state            = bits,   U08,  xx, [0:7], "STOP", "CRANKING", "RUNNING", "OVERHEAT", "ERROR", "STALLED" */
+                         /* state            = bits,   U08,  xx, [0:7], "STOP", "CRANKING", "RUNNING", "OVERHEAT", "ERROR", "STALLED", "Test Ignition", "Test injection" */
    u8  TPSState;         /* scalar,     U08,   xx,   "bits",    1.000,  0.0 ; TPS state */
                          /* state            = bits,   U08,  xx, [0:7], "NORMAL", "IDLE", "FULL OPEN" */
    u16 injPulseWidth;    /* scalar,     U16,  xx,  "us",    1.000,  0.0 ; Injector active time */

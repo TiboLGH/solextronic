@@ -68,7 +68,9 @@ typedef enum
     M_RUNNING,
     M_OVERHEAT,
     M_ERROR,
-    M_STALLED
+    M_STALLED,
+    M_TEST_IGN,
+    M_TEST_INJ
 }motor_e;
 
 enum

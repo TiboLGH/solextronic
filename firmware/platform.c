@@ -292,6 +292,7 @@ ISR(TIMER2_COMPA_vect)
             {
                 INJ_INT_DISABLE;
                 gState.injTestMode = False;
+                gState.engineState = M_STOP;
             }else{ // trigger cycle     
                 INJ_INT_DISABLE;
                 curInjTiming.start = TCNT1 + nextInjTiming.start;

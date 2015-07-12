@@ -117,6 +117,16 @@ u8 MainFsm(void)
             }
         break;
 
+        case M_TEST_INJ: // injector test mode
+            FPSetLed(TEAL);
+            PIN_ON(PUMP_PIN, eData.pumpPolarity);
+        break;
+        
+        case M_TEST_IGN: // ignition test mode
+            FPSetLed(TEAL);
+            PIN_OFF(PUMP_PIN, eData.pumpPolarity);
+        break;
+
         case M_CRANKING: // someone is pushing ! force inj/ign to crancking values
             FPSetLed(TEAL);
             gState.advance = eData.starterAdv;
