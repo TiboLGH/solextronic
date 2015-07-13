@@ -111,6 +111,7 @@ u8 MainFsm(void)
             SetInjectionTiming(FORCEOFF, 0);
             SetInjectionTiming(FORCEOFF, 0);
             PIN_OFF(PUMP_PIN, eData.pumpPolarity);
+            PIN_OFF(HV_PIN, 1);
             if(!C_CHECKBIT(CRANKING_PIN))
             {
                 gState.engineState = M_CRANKING;
@@ -120,11 +121,13 @@ u8 MainFsm(void)
         case M_TEST_INJ: // injector test mode
             FPSetLed(TEAL);
             PIN_ON(PUMP_PIN, eData.pumpPolarity);
+            PIN_OFF(HV_PIN, 1);
         break;
         
         case M_TEST_IGN: // ignition test mode
             FPSetLed(TEAL);
             PIN_OFF(PUMP_PIN, eData.pumpPolarity);
+            PIN_ON(HV_PIN, 1);
         break;
 
         case M_CRANKING: // someone is pushing ! force inj/ign to crancking values
@@ -134,6 +137,7 @@ u8 MainFsm(void)
             SetIgnitionTiming(AUTO, gState.advance);
             SetInjectionTiming(AUTO, gState.injPulseWidth);
             PIN_ON(PUMP_PIN, eData.pumpPolarity);
+            PIN_ON(HV_PIN, 1);
             if(C_CHECKBIT(CRANKING_PIN))
             {
                 gState.engineState = M_RUNNING;
@@ -156,6 +160,7 @@ u8 MainFsm(void)
             SetInjectionTiming(FORCEOFF, 0);
             SetInjectionTiming(FORCEOFF, 0);
             PIN_OFF(PUMP_PIN, eData.pumpPolarity);
+            PIN_OFF(HV_PIN, 1);
         break;
 
         case M_STALLED: // wait for cranking
@@ -163,6 +168,7 @@ u8 MainFsm(void)
             SetInjectionTiming(FORCEOFF, 0);
             SetInjectionTiming(FORCEOFF, 0);
             PIN_OFF(PUMP_PIN, eData.pumpPolarity);
+            PIN_OFF(HV_PIN, 1);
             if(!C_CHECKBIT(CRANKING_PIN))
             {
                 gState.engineState = M_CRANKING;
@@ -171,6 +177,7 @@ u8 MainFsm(void)
 
         default:
             PIN_OFF(PUMP_PIN, eData.pumpPolarity);
+            PIN_OFF(HV_PIN, 1);
             ASSERT(0);
     } // switch
 

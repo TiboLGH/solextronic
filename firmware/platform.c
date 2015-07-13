@@ -357,12 +357,11 @@ ISR(TIMER1_COMPA_vect)
 {
     if(curIgnTiming.state == OFF)
     {
-        // TODO : use polarity
-        C_SETBIT(IGNITION_PIN);
+        PIN_ON(IGNITION_PIN, eData.ignPolarity);
         curIgnTiming.state = ON;
         OCR1A += curIgnTiming.duration;
     }else{
-        C_CLEARBIT(IGNITION_PIN);
+        PIN_OFF(IGNITION_PIN, eData.ignPolarity);
         curIgnTiming.state = OFF;
         OCR1A = curIgnTiming.start;
     }
@@ -379,12 +378,12 @@ ISR(TIMER1_COMPB_vect)
 {
     if(curInjTiming.state == OFF)
     {
-        // TODO : use polarity
-        C_SETBIT(INJECTOR_PIN);
+        PIN_ON(INJECTOR_PIN, eData.injPolarity);
         curInjTiming.state = ON;
         OCR1B += curInjTiming.duration;
     }else{
         C_CLEARBIT(INJECTOR_PIN);
+        PIN_OFF(INJECTOR_PIN, eData.injPolarity);
         curInjTiming.state = OFF;
         OCR1B = curInjTiming.start;
     }
