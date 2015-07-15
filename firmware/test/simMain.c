@@ -634,7 +634,7 @@ int TestIgnitionAuto(void)
     if(ReadConfigRetry() != OK) return FAIL;
     eDataToWrite = eData;
     eDataToWrite.PMHOffset      = 0;
-    eDataToWrite.igniDuration   = ignDuration;
+    eDataToWrite.ignDuration    = ignDuration;
     eDataToWrite.ignTestMode    = 1;
     SleepMs(100);
     if(WriteConfigRetry() != OK) return FAIL;
@@ -686,7 +686,7 @@ int TestIgnition(void)
     eDataToWrite = eData;
     eDataToWrite.ignTestMode    = 0;
     eDataToWrite.PMHOffset      = 0;
-    eDataToWrite.igniDuration   = ignDuration;
+    eDataToWrite.ignDuration    = ignDuration;
     //Fill advance table
     for(int i = 0; i < TABSIZE; i++)
     {
@@ -694,7 +694,7 @@ int TestIgnition(void)
         eDataToWrite.loadBins[i] = 10 * (i+1);
         for(int j = 0; j < TABSIZE; j++)
         {
-            eDataToWrite.igniTable[i][j] = 4*i+j;
+            eDataToWrite.ignTable[i][j] = 4*i+j;
         }
     }
     if(WriteConfigRetry() != OK) return FAIL;
@@ -716,7 +716,7 @@ int TestIgnition(void)
         timing_analyzer_result(&timing_analyzer_ignition, &result); // read stats
         float advance = TimingToAdvance(result.period, result.rising_offset);
         //float advance = TimingToAdvance(rpmTable[i], result.rising_offset);
-        int refAdvance = Interp2D(&(eData.igniTable[0][0]), rpmTable[i], load);
+        int refAdvance = Interp2D(&(eData.ignTable[0][0]), rpmTable[i], load);
         V("result.period            %d\n", result.period);
         V("result.rising_offset     %d\n", result.rising_offset);
         V("result.falling_offset    %d\n", result.falling_offset);
