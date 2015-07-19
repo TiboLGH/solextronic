@@ -62,6 +62,7 @@ const char *ptyName = "/tmp/simavr-uart0";
 #define RPM_QTY 5
 #define SPEED_QTY 5
 #define ANALOG_QTY 4
+#define RETRY_SERIAL 3
 
 #define RED(msg, ...) fprintf(stdout, "\033[31m" msg "\033[0m", ##__VA_ARGS__ )
 #define GREEN(msg, ...) fprintf(stdout, "\033[32m" msg "\033[0m", ##__VA_ARGS__ )
@@ -334,14 +335,16 @@ static int WriteConfig(void)
 
 static int QueryState(void)
 {
-    int res;
+    int res, i = 0;
 
     /* send command */
-    V(">> a\n");
-    write(fd, "a", 1);
-    res = ReadFromSerial(sizeof(gState), (u8*)&gState);
-    if(res != OK) return FAIL;  
-    return OK;
+    do{
+        i++;
+        V(">> a\n");
+        write(fd, "a", 1);
+        res = ReadFromSerial(sizeof(gState), (u8*)&gState);
+    }while((res != OK) && (i <= RETRY_SERIAL));
+    return (res != OK)?FAIL:OK;  
 }
 
 static int QuerySignature(u8 *signature, u8 *revision)
@@ -352,12 +355,14 @@ static int QuerySignature(u8 *signature, u8 *revision)
     V(">> S\n");
     write(fd, "S", 1);
     res = ReadFromSerial(32, signature);
+    V("%s", signature);
     if(res != OK) return FAIL;
 
     /* send command */
     V(">> Q\n");
     write(fd, "Q", 1);
     res = ReadFromSerial(20, revision);
+    V("%s", revision);
     if(res != OK) return FAIL;
 
     return OK;
@@ -441,7 +446,7 @@ int TestRPM(void)
         uint32_t high, low;
         RPMtoPeriod(rpmTable[i], &high, &low);
         pulse_input_config(&pulse_input_engine, high, low);
-        SleepMs(1000);
+        SleepMs(5000);
         /* query result */
         QueryState();
 

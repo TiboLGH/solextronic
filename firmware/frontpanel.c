@@ -46,6 +46,7 @@
 #include <util/twi.h>
 #include <ctype.h>
 #include "frontpanel.h"
+#include "platform.h"
 #include "common.h"
 #include "chrono.h"
 #include "version.h"
@@ -215,9 +216,6 @@ static void MenuInit(void)
     menuState = M_INIT;
     memset(lcdBuffer, 0, 33);
 
-    /* Set backlight */
-    FPSetLed(WHITE); 
-
     return;
 }
 
@@ -247,13 +245,35 @@ static menu_e MenuUpdate(u8 btn)
 
         case M_NORMAL: // default view
             // Display
-            if(normalView1)
+            switch(normalView1)
             {
-                snprintf_P(lcdBuffer, 33, PSTR("%4drpm %2d.%1dkm/h%4du %3dd %3dd "), gState.rpm, gState.speed/10, gState.speed%10, gState.injPulseWidth, gState.CLT, gState.advance);
-            }else{ //alternate view
-                snprintf_P(lcdBuffer, 33, PSTR("%4drpm %2d.%1dkm/h%2d.%1dv %3d%% %2ddeg"), gState.rpm, gState.speed/10, gState.speed%10, gState.battery/10, gState.battery%10, gState.TPS, gState.IAT);
+                case 0: // current state
+                    switch(gState.engineState)
+                    {
+                        case M_STOP:     snprintf_P(lcdBuffer, 33, PSTR("STOP                             ")); break;
+                        case M_CRANKING: snprintf_P(lcdBuffer, 33, PSTR("CRANKING                         ")); break;
+                        case M_RUNNING:  snprintf_P(lcdBuffer, 33, PSTR("RUNNING                          ")); break;
+                        case M_OVERHEAT: snprintf_P(lcdBuffer, 33, PSTR("OVERHEAT                         ")); break;
+                        case M_ERROR:    snprintf_P(lcdBuffer, 33, PSTR("ERROR                            ")); break;
+                        case M_STALLED:  snprintf_P(lcdBuffer, 33, PSTR("STALLED                          ")); break;
+                        case M_TEST_IGN: snprintf_P(lcdBuffer, 33, PSTR("TEST_IGNITION                    ")); break;
+                        case M_TEST_INJ: snprintf_P(lcdBuffer, 33, PSTR("TEST INJECTION                   ")); break;
+                    }
+                break;
+
+                case 1: // main view
+                    snprintf_P(lcdBuffer, 33, PSTR("%4drpm %2d.%1dkm/h%4du %3dd %3dd "), gState.rpm, gState.speed/10, gState.speed%10, gState.injPulseWidth, gState.CLT, gState.advance);
+                break;
+
+                case 2: //alternate view
+                    snprintf_P(lcdBuffer, 33, PSTR("%4drpm %2d.%1dkm/h%2d.%1dv %3d%% %2ddeg"), gState.rpm, gState.speed/10, gState.speed%10, gState.battery/10, gState.battery%10, gState.TPS, gState.IAT);
+                break;
             }
-            if((btn & BUTTON_PLUS) || (btn & BUTTON_MINUS)) normalView1 ^= 1;
+            if((btn & BUTTON_PLUS) || (btn & BUTTON_MINUS))
+            {
+               normalView1++;
+               if(normalView1 > 2) normalView1 = 0;
+            }
             // chrono top lap on OK button
             if(btn & BUTTON_OK) ChronoTopLap();
             // Navigation

@@ -88,32 +88,40 @@ enum
 #define sbi(a, b) (a) |= (1 << (b)) 
 #define cbi(a, b) (a) &= ~(1 << (b)) 
 
+// Macros dedicated to GPIOs
 // Arduino Nano LED on PB5 (pin 17 on 32 pins parts)
-#define LED_DDR		DDRB
-#define LED_PORT	PORTB
-#define LED_PIN  PORTB, 5 
+#define LED_PIN  B, 5 
+// AUX input on PB0
+#define AUX_PIN B, 0
 // Injector control on PB2/OC1B (pin 14 on 32 pins parts)
-#define INJECTOR_PIN  PORTB, 2 
+#define INJECTOR_PIN  B, 2 
 // Ignition control on PB1/OC1A (pin 13 on 32 pins parts)
-#define IGNITION_PIN  PORTB, 1 
+#define IGNITION_PIN  B, 1 
 // Pump control on PD7 (pin 11 on 32 pins parts)
-#define PUMP_PIN  PORTD, 7 
+//#define PUMP_PIN  PORTD, 7 
+#define PUMP_PIN  D, 7 
 // HV supply on PD5 (pin 9 on 32 pins parts)
-#define HV_PIN  PORTD, 5 
-// BTN1 used for crancking (D4 on Arduino Nano => PD5)
-#define CRANKING_PIN  PORTD, 4 
+#define HV_PIN  D, 5 
+// BTN1 used for crancking (D4 on Arduino Nano => PD4)
+#define CRANKING_PIN  D, 4 
+
+#define sbiPin(a, b) (PORT##a |= (1 << (b))) 
+#define cbiPin(a, b) (PORT##a &= ~(1 << (b))) 
+#define readPin(a, b) (PIN##a & (1 << (b)))
+#define togglePin(a, b) (PIN##a |= (1 << (b)))
 
 #define PIN_ON(pin, polarity) \
     do{ \
-        if((polarity)) {sbi(pin);} \
-        else {cbi(pin);} \
+        if((polarity)) {sbiPin(pin);} \
+        else {cbiPin(pin);} \
     }while(0)
 #define PIN_OFF(pin, polarity) \
     do{ \
-        if((polarity)) {cbi(pin);} \
-        else {sbi(pin);} \
+        if((polarity)) {cbiPin(pin);} \
+        else {sbiPin(pin);} \
     }while(0)
-
+#define PIN_READ(pin) readPin(pin)
+#define PIN_TOGGLE(pin) togglePin(pin)
 
 // for simulation only
 #define DEBUG TWBR

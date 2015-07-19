@@ -112,7 +112,7 @@ u8 MainFsm(void)
             SetInjectionTiming(FORCEOFF, 0);
             PIN_OFF(PUMP_PIN, eData.pumpPolarity);
             PIN_OFF(HV_PIN, 1);
-            if(!C_CHECKBIT(CRANKING_PIN))
+            if(!PIN_READ(CRANKING_PIN))
             {
                 gState.engineState = M_CRANKING;
             }
@@ -138,17 +138,17 @@ u8 MainFsm(void)
             SetInjectionTiming(AUTO, gState.injPulseWidth);
             PIN_ON(PUMP_PIN, eData.pumpPolarity);
             PIN_ON(HV_PIN, 1);
-            if(C_CHECKBIT(CRANKING_PIN))
+            if(PIN_READ(CRANKING_PIN))
             {
                 gState.engineState = M_RUNNING;
             }
         break;
 
         case M_RUNNING: // normal operation: apply formula
+            FPSetLed(GREEN);
             if(intState.newCycle) 
             {
                 intState.newCycle = 0;
-                FPSetLed(GREEN);
                 u8 overheat = eData.maxTemp ? (gState.CLT > eData.maxTemp) : 0;
                 ComputeInjection(overheat);
                 ComputeIgnition(overheat);
@@ -169,7 +169,7 @@ u8 MainFsm(void)
             SetInjectionTiming(FORCEOFF, 0);
             PIN_OFF(PUMP_PIN, eData.pumpPolarity);
             PIN_OFF(HV_PIN, 1);
-            if(!C_CHECKBIT(CRANKING_PIN))
+            if(!PIN_READ(CRANKING_PIN))
             {
                 gState.engineState = M_CRANKING;
             }
@@ -186,10 +186,6 @@ u8 MainFsm(void)
 
 int main(void)
 {
-	LED_DDR |= _BV(5);
-	LED_DDR |= _BV(1);
-	LED_DDR |= _BV(2);
-
     // init var
     memset((char *)&gState, 0, sizeof(gState));
     memset((char *)&intState, 0, sizeof(intState));
@@ -219,7 +215,7 @@ int main(void)
         if(EndTimer(TIMER_100MS, eData.timerLed))
         {
             StartTimer(TIMER_100MS);
-            C_FLIPBIT(LED_PIN);
+            PIN_TOGGLE(LED_PIN);
             FPRun();
         }
         

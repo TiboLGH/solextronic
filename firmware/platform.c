@@ -212,11 +212,24 @@ ISR(USART_TX_vect)
  */
 void InitIOs(void)
 {
-    /* HTINPUT on PD6 : input, pull-up enable
-       Dead high on PD2/INT0 : input, pull-up, interrupt on rising edge
-       Wheel synchro on PD3/INT1 : input, pull-up, interrupt on rising edge */
-    DDRD  = 0b10110010;
-    PORTD = 0b10110010;
+    /*
+     * PORT B :
+     *  Aux on PB0 : input
+     *  Ignition on PB1 : output
+     *  Injection on PB2 : output
+     *  LED on PB5 : output
+     * Port D :
+     *  Dead high on PD2/INT0 : input, pull-up, interrupt on rising edge
+     *  Wheel synchro on PD3/INT1 : input, pull-up, interrupt on rising edge 
+     *  BTN1/Cranking on PD4 : input, pull-up 
+     *  HV supply on PD5 : output
+     *  Pump on PD7 : output
+     */
+
+    DDRB  = 0b00100110;
+    PORTB = 0b00000000;
+    DDRD  = 0b11100010;
+    PORTD = 0b00010000;
 
     EICRA = (1 << ISC11) | (1 << ISC10) | (1 << ISC01) | (1 << ISC00);
     EIMSK = (1 << INT1) | (1 << INT0);
@@ -342,7 +355,7 @@ void startAdc(void)
  */
 ISR(TIMER1_OVF_vect)
 {
-    gState.engineState = M_STALLED;
+    if(gState.engineState == M_RUNNING) gState.engineState = M_STALLED;
 }
 
 
@@ -382,7 +395,7 @@ ISR(TIMER1_COMPB_vect)
         curInjTiming.state = ON;
         OCR1B += curInjTiming.duration;
     }else{
-        C_CLEARBIT(INJECTOR_PIN);
+        PIN_OFF(INJECTOR_PIN, eData.injPolarity);
         PIN_OFF(INJECTOR_PIN, eData.injPolarity);
         curInjTiming.state = OFF;
         OCR1B = curInjTiming.start;

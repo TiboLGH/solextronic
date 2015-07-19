@@ -30,13 +30,14 @@ LIBS:atmel
 LIBS:contrib
 LIBS:valves
 LIBS:solextronic
+LIBS:solextronic-cache
 EELAYER 27 0
 EELAYER END
 $Descr A4 11693 8268
 encoding utf-8
 Sheet 1 1
 Title "Solextronic"
-Date "21 may 2015"
+Date "18 jul 2015"
 Rev "1.0"
 Comp "Le Galet Hurlant"
 Comment1 ""
@@ -117,7 +118,7 @@ F 3 "" H 10400 6700 60  0001 C CNN
 	1    10400 6700
 	1    0    0    -1  
 $EndComp
-Text Label 7800 4750 2    60   ~ 0
+Text Label 7850 5400 2    60   ~ 0
 PUMP_CMD
 $Comp
 L R R14
@@ -149,7 +150,7 @@ Text Label 5250 7100 2    60   ~ 0
 Wheel
 Text Label 5250 6650 2    60   ~ 0
 Motor
-Text Label 7750 4850 2    60   ~ 0
+Text Label 7800 4750 2    60   ~ 0
 Ignition
 $Comp
 L GND #PWR04
@@ -738,7 +739,7 @@ Text Label 9400 2800 0    60   ~ 0
 BTN1
 Text Label 9400 2600 0    60   ~ 0
 AUX1
-Text Label 7800 5400 2    60   ~ 0
+Text Label 7650 4850 2    60   ~ 0
 AUX1
 Text Label 7400 5600 0    60   ~ 0
 EnableHV
@@ -1151,7 +1152,7 @@ Connection ~ 7950 1800
 Wire Wire Line
 	7350 5800 7700 5800
 Wire Wire Line
-	7350 5400 7800 5400
+	7350 5400 7850 5400
 Wire Wire Line
 	10400 6550 10400 6700
 Wire Wire Line
@@ -1230,8 +1231,6 @@ Wire Wire Line
 Wire Wire Line
 	9400 2600 10300 2600
 Wire Wire Line
-	7350 4850 8500 4850
-Wire Wire Line
 	8400 5050 8500 5050
 Wire Wire Line
 	8500 4950 8400 4950
@@ -1241,8 +1240,6 @@ Wire Wire Line
 	8250 4750 8250 5600
 Wire Wire Line
 	8250 4750 8500 4750
-Wire Wire Line
-	7350 4750 7800 4750
 Wire Wire Line
 	1550 1650 1550 1750
 Connection ~ 1550 1700
@@ -1387,4 +1384,12 @@ F 3 "" H 10400 5550 60  0000 C CNN
 	1    10400 5550
 	1    0    0    -1  
 $EndComp
+Wire Wire Line
+	7350 4750 8100 4750
+Wire Wire Line
+	8100 4750 8100 4850
+Wire Wire Line
+	8100 4850 8500 4850
+Wire Wire Line
+	7650 4850 7350 4850
 $EndSCHEMATC

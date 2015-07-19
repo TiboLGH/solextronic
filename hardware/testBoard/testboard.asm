@@ -217,7 +217,7 @@ start
     movwf   OSCCAL
 ; I/O settings
     BANK1
-    movlw   B'00000011'
+    movlw   B'11001111'
     movwf   TRISIO
     clrf    WPU
     BANK0
