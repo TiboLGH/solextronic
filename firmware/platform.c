@@ -73,6 +73,7 @@ const PROGMEM eeprom_data_t eeInit = {
     .pumpPolarity   = 0,
     .minTps         = 0,
     .maxTps         = 255,
+    .battRatio      = 160,
     .mapCal         = {[0][0]= 24/*0.5v*/,[0][1]= 20/*kPa*/,
                        [1][0]=225/*4.5v*/,[1][1]=100/*kPa*/},
     .iatCal         = {[0][0]=   0,[0][1]=200/*deg*/,
@@ -551,7 +552,7 @@ void ADCProcessing(void)
     if(adcState != ADC_IDLE) return;
 
     // Conversion and filtering
-    gState.battery = (150 * (u16)gState.rawAdc[ADC_BATTERY]) / 256 + 7; // + 0.7v for the diode     
+    gState.battery = (eData.battRatio * (u16)gState.rawAdc[ADC_BATTERY]) / 256 + 7; // + 0.7v for the diode     
     gState.CLT = Interp1D(eData.cltCal, gState.rawAdc[ADC_CLT]);     
     gState.IAT = Interp1D(eData.iatCal, gState.rawAdc[ADC_IAT]);     
     gState.TPS = 100 * (u16)(gState.rawAdc[ADC_TPS] - eData.minTps) / (eData.maxTps - eData.minTps); 
