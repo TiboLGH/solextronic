@@ -63,21 +63,23 @@ typedef enum
 
 typedef enum
 {
-    M_STOP = 0,
-    M_CRANKING,
-    M_RUNNING,
-    M_OVERHEAT,
-    M_ERROR,
-    M_STALLED,
-    M_TEST_IGN,
-    M_TEST_INJ
+    M_STOP      = 0,
+    M_CRANKING  = 1 << 0,
+    M_RUNNING   = 1 << 1,
+    M_OVERHEAT  = 1 << 2,
+    M_ERROR     = 1 << 3,
+    M_STALLED   = 1 << 4,
+    M_TEST_IGN  = 1 << 5,
+    M_TEST_INJ  = 1 << 6
 }motor_e;
 
 enum
 {
-    T_NORMAL = 0,
-    T_IDLE,
-    T_WOT,
+    T_NORMAL    = 0,
+    T_IDLE      = 1 << 0,
+    T_WOT       = 1 << 1,
+    T_OPENING   = 1 << 2,
+    T_CLOSING   = 1 << 3,
 };
 
 /**

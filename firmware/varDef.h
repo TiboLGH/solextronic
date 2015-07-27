@@ -68,6 +68,7 @@ typedef struct __attribute__ ((__packed__)){ // packed for alignment when used i
     u8         minBat;        /* scalar, U08,  xx,        "v",    0.10000,   0.00000, 7.0,  12.0,  1 ;  alarm on low battery */
     u8         minTps;        /* scalar, U08,  xx,         "",    1.00000,   0.00000,   0,   255,  0 ;  minimum value of TPS ADC */
     u8         maxTps;        /* scalar, U08,  xx,         "",    1.00000,   0.00000,   0,   255,  0 ;  maximum value of TPS ADC */
+    u8         battRatio;     /* scalar, U08,  xx,         "",    1.00000,   0.00000,   0,   255,  0 ;  ratio for the battery ADC in 1/256 */
     u16        ignDuration;   /* scalar, U16,  xx,       "us",    1.00000,   0.00000,   0,  1000,  0 ;  ignition duration */
     u8         ignOverheat;   /* scalar, U08,  xx,      "deg",    1.00000,   0.00000,   0,    20,  0 ;  advance decrease in case of overheating */
     u8         noSparkAtDec;  /* bits,   U08,  xx,  [0:0], "spark at dec", "no spark at dec"         ;  1 to stop ignition when deceleration */
@@ -119,10 +120,19 @@ typedef struct  __attribute__ ((__packed__)){ // packed for alignment when used 
    s8  TPSVariation;     /* scalar,     S08,   xx, "%/10ms",    1.000,  0.0 ; TPS variation speed */
    u16 rpm;              /* scalar,     U16,   xx,    "RPM",    1.000,  0.0 ; engine speed */
    u16 speed;            /* scalar,     U16,   xx,   "km/h",    1.000,  0.0 ; solex speed */
-   u8  engineState;      /* scalar,     U08,   xx,   "bits",    1.000,  0.0 ; engine state */
-                         /* state            = bits,   U08,  xx, [0:7], "STOP", "CRANKING", "RUNNING", "OVERHEAT", "ERROR", "STALLED", "Test Ignition", "Test injection" */
-   u8  TPSState;         /* scalar,     U08,   xx,   "bits",    1.000,  0.0 ; TPS state */
-                         /* state            = bits,   U08,  xx, [0:7], "NORMAL", "IDLE", "FULL OPEN" */
+   u8  engineState;      /* scalar,     U08,   xx,    "bit",    1.000,  0.0 ; engine state */
+                         /* cranking         = bits,   U08,   xx, [0:0] */
+                         /* running          = bits,   U08,   xx, [1:1] */
+                         /* overheat         = bits,   U08,   xx, [2:2] */
+                         /* error            = bits,   U08,   xx, [3:3] */
+                         /* stalled          = bits,   U08,   xx, [4:4] */
+                         /* test_ign         = bits,   U08,   xx, [5:5] */
+                         /* test_inj         = bits,   U08,   xx, [6:6] */
+   u8  TPSState;         /* scalar,     U08,   xx,    "bit",    1.000,  0.0 ; TPS state */
+                         /* idle             = bits,   U08,   xx, [0:0] */
+                         /* wot              = bits,   U08,   xx, [1:1] */
+                         /* opening          = bits,   U08,   xx, [2:2] */
+                         /* closing          = bits,   U08,   xx, [3:3] */
    u16 injPulseWidth;    /* scalar,     U16,  xx,  "us",    1.000,  0.0 ; Injector active time */
    u16 injStart;         /* scalar,     U16,  xx, "deg",    1.000,  0.0 ; Injector start time before PMH */
    u8  advance;          /* scalar,     U08,  xx, "deg",    1.000,  0.0 ; Spark advance in deg before PMH */
