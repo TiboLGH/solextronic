@@ -285,7 +285,7 @@ static menu_e MenuUpdate(u8 btn)
             // Display
             if(inputUnit) //raw values
             {
-                snprintf_P(lcdBuffer, 33, PSTR("B%3d C %3d I %3d T %3d  M %3d   "), gState.rawAdc[0], gState.rawAdc[1], gState.rawAdc[2], gState.rawAdc[3], gState.rawAdc[4]);
+                snprintf_P(lcdBuffer, 33, PSTR("B%3d C %3d I %3d T %3d  M %3d   "), gState.rawBattery, gState.rawClt, gState.rawIat, gState.rawTps, gState.rawMap);
             }else{ // converted values
                 snprintf_P(lcdBuffer, 33, PSTR("%2d.%1dv %3dd  %3dd  %3d%%  %3dkpa  "), gState.battery/10, gState.battery%10, gState.CLT, gState.IAT, gState.TPS, gState.MAP);
             }

@@ -71,11 +71,11 @@ const PROGMEM eeprom_data_t eeInit = {
     .injPolarity    = 0,
     .pmhPolarity    = 0,
     .pumpPolarity   = 0,
-    .minTps         = 0,
-    .maxTps         = 255,
+    .tpsMin         = 0,
+    .tpsMax         = 255,
     .battRatio      = 160,
-    .mapCal         = {[0][0]= 24/*0.5v*/,[0][1]= 20/*kPa*/,
-                       [1][0]=225/*4.5v*/,[1][1]=100/*kPa*/},
+    .map0           = 0,
+    .map5           = 110,
     .iatCal         = {[0][0]=   0,[0][1]=200/*deg*/,
                        [1][0]=  18,[1][1]=160/*deg*/,
                        [2][0]=  48,[2][1]=120/*deg*/,
@@ -505,11 +505,10 @@ void GetTime(u16 *dst)
 */
 ISR(ADC_vect)
 {
-    // save results, use only the MSB bits
-    gState.rawAdc[adcState] = ADCH;
+    // save results, use only the MSB bits. Small WA as tunerstudio doesn't support array in outputchannel
+    *(&(gState.rawBattery) + adcState) = ADCH;
     // Next channel
     adcState++;
-    // next ADC acquisition
     if(adcState != ADC_IDLE)
     {
         ADMUX = (1 << REFS0) | (1 << ADLAR) | ((adcIndex[adcState]) & 0x0F);
@@ -552,16 +551,16 @@ void ADCProcessing(void)
     if(adcState != ADC_IDLE) return;
 
     // Conversion and filtering
-    gState.battery = (eData.battRatio * (u16)gState.rawAdc[ADC_BATTERY]) / 256 + 7; // + 0.7v for the diode     
-    gState.CLT = Interp1D(eData.cltCal, gState.rawAdc[ADC_CLT]);     
-    gState.IAT = Interp1D(eData.iatCal, gState.rawAdc[ADC_IAT]);     
-    gState.TPS = 100 * (u16)(gState.rawAdc[ADC_TPS] - eData.minTps) / (eData.maxTps - eData.minTps); 
+    gState.battery = (eData.battRatio * (u16)gState.rawBattery) / 256 + 7; // + 0.7v for the diode     
+    gState.CLT = Interp1D(eData.cltCal, gState.rawClt);     
+    gState.IAT = Interp1D(eData.iatCal, gState.rawIat);     
+    gState.TPS = 100 * (u16)(gState.rawTps - eData.tpsMin) / (eData.tpsMax - eData.tpsMin); 
     gState.TPSVariation = lastTps - gState.TPS;
     lastTps = gState.TPS;    
     if(gState.TPS > 97) gState.TPSState = T_WOT;
     else if(gState.TPS < 3) gState.TPSState = T_IDLE;
     else gState.TPSState = T_NORMAL;
-    gState.MAP = Interp1D(eData.mapCal, gState.rawAdc[ADC_MAP]);     
+    gState.MAP = (gState.rawMap - eData.map0) / (eData.map5 - eData.map0); 
     // conversion done, inhibit useless recompute until next acquisition
     intState.adcDone = False;
 }

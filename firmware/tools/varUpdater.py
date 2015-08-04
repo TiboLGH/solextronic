@@ -136,72 +136,8 @@ userDefinedMenu="""[UserDefined]
       field = "#Close and re-open Table(s) to see changes"
 
 	  
-   help = burnHelp, "Burning Values to ECU"
-      webHelp = "http://www.megamanual.com/mt28.htm"
-      text = "Occassionally, you may have trouble getting values to 'stick'"
-      text = "in MegaTune. There are a few things you can try if this happens:<br><br>"
-      text = "\tHit TAB after entering the value. This forces MegaTune to" 
-      text = "recognize the changed value.<br>" 
-      text = "\tThen 'Burn to ECU'<br><br>"	
-      text = "If that doesn't work:<br><br>"	
-      text = "\tChange the value (as above) and immediately save the MSQ file ('File/Save').<br>"
-      text = "\tThen reload the file you just saved, and burn it when prompted.<br><br>"
-      text = "This forces all the values to be burned to both flash and RAM memory, and"
-      text = "should solve the problem."	
-   
-   help = sensorHelp, "Sensor Calibration"
-      webHelp = "http://www.megamanual.com/mt28.htm#os"
-      text = "MAP Sensor Calibration<br>"
-      text = "<br>"
-      text = "For the\tMPX4115   use\t10.6 and \t121.7<br>"
-      text = "\tMPX4250\t\t10.0\t260.0<br>"
-      text = "\tMPXH6300\t1.1\t315.5<br>"
-      text = "\tGM 3-BAR\t1.1\t315.5<br>"
-      text = "\tMPXH6400\t3.5\t416.5<br>"
-      text = "<br>"
-      text = "(GM 3-bar data from Dave Hartnell, http://www.not2fast.com/electronics/component_docs/MAP_12223861.pdf)<br>"
-      text = "<br>"
-      text = "\tSensor type\tvLo\tpLo\tvHi\tpHi\tvRef<br>"
-      text = "\tMPX4115 \t0.204 v\t15 kPa\t4.794 v\t115 kPa\t5.100 v<br>"
-      text = "\tMPX4250 \t0.204 v\t20 kPa\t4.896 v\t250 kPa\t5.100 v<br>"
-      text = "\tMPXH6300\t0.306 v\t20 kPa\t4.913 v\t304 kPa\t5.100 v<br>"
-      text = "\tGM 3-BAR\t0.631 v\t40 kPa\t4.914 v\t304 kPa\t5.100 v<br>"
-      text = "\tMPXH6400\t0.200 v\t20 kPa\t4.800 v\t400 kPa\t5.000 v<br>"
-      text = "<br>"
-      text = "In general, use values derived from these equations:<br>"
-      text = "<br>"
-      text = "\tm = (pHi-pLo)/(vHi-vLo)<br>"
-      text = "\tpv1 = pLo - m * vLo<br>"
-      text = "\tpv2 = pv1 + m * vRef<br>"
-      text = "<br>"
-      text = "References:<br>"
-      text = "\thttp://www.freescale.com/files/sensors/doc/data_sheet/MPX4115A.pdf<br>"
-      text = "\thttp://www.freescale.com/files/sensors/doc/data_sheet/MPX4250A.pdf<br>"
-      text = "\thttp://www.freescale.com/files/sensors/doc/data_sheet/MPXH6300A.pdf<br>"
-      text = "\thttp://www.freescale.com/files/sensors/doc/data_sheet/MPXH6400A.pdf<br>"
-      text = "<br>"
-      text = "Barometer Sensor Calibration<br>"
-      text = "<br>"
-      text = "If your system has an external barometer sensor, separate from the MAP"
-      text = "sensor, then use these values to calibrate it properly.  If you have"
-      text = "a standard MS installation, then copy your MAP sensor values here.<br>"
-      text = "<br>"
-      text = "Barometric Correction Calibration<br>"
-      text = "<br>"
-      text = "Correction for barometric effects is performed using the linear function below.<br>"
-      text = "<br>"
-      text = "\tcorrection = correction_0 + (rate * barometer) / 100<br>"
-      text = "<br>"
-      text = "'At total vacuum' contains the total correction at a barometer reading"
-      text = "of 0 kPa (you are on the moon).  The 'Rate' contains the percentage per 100"
-      text = "kPa to scale the barometer value.  Using the default values of 147 and -47,"
-      text = "we see that for a barometer of 100 kPa, we have 100% correction.<br>"
-      text = "<br>"
-      text = "\tcorrection = 147 + (-47*100) / 100 = 100%"
-
-
-   help = helpGeneral, "MS-II General Info"
-      webHelp = "http://www.megamanual.com/mt28.htm"
+   help = helpGeneral, "Solextronic General Info"
+      webHelp = "https://github.com/TiboLGH/solextronic"
       text = "Al Grippo and Bruce Bowling have created MegaSquirt-II, which"
       text = "is a plug-in daughter card that replaces the 8-bit MC68HC908GP32"
       text = "with a 16-bit MC9S12C64 processor."
@@ -386,13 +322,11 @@ tuningSection="""
 outputChannelHeaderSection="""
 [BurstMode]
    getCommand       = "A"
-;getCommand       = "a\x00\x06"
 
 [OutputChannels]
    deadValue        = { 0 } ; Convenient unchanging value.
 
    ochBlockSize     = 26
-;ochGetCommand    = "a\x00\x06" ; Lower case so we don't get confused.
    ochGetCommand    = "A" ; Lower case so we don't get confused.
 
 """
@@ -452,9 +386,9 @@ class TunerFile(OutputFile):
         self.outputChannelSize = 0
         self.outputChannelSection = []
 
-    def computeSize(self, lineContent):
+    def computeSize(self, lineContent, sectionType):
         size = 0
-        if (lineContent['class'] in ('scalar','bits')):
+        if (lineContent['class'] =='scalar') or (lineContent['class'] =='bits' and sectionType == 'eeprom'):
             typeMember = re.sub("[a-zA-Z]", "", lineContent['type'])
             if(typeMember.isdigit()):
                 size = int(typeMember) / 8
@@ -478,31 +412,31 @@ class TunerFile(OutputFile):
 
     def addEepromLine(self, lineContent):
         if (lineContent['class'] == 'scalar'):
-            self.eepromSection.append("\t%16s\t= %s,\t%s,\t%d,\t\t\"%s\",\t%.5f,\t%.5f,\t%.2f,\t%.2f,\t%d ;\t%s" % (lineContent['name'], lineContent['class'], lineContent['type'], self.eepromSize, lineContent['units'], lineContent['scale'], lineContent['translate'], lineContent['lo'], lineContent['hi'], lineContent['digits'], lineContent['comment']))
+            self.eepromSection.append("\t%-12s\t= %s,\t%s,\t%d,\t\t\"%s\",\t%.5f,\t%.5f,\t%.2f,\t%.2f,\t%d ;\t%s" % (lineContent['name'], lineContent['class'], lineContent['type'], self.eepromSize, lineContent['units'], lineContent['scale'], lineContent['translate'], lineContent['lo'], lineContent['hi'], lineContent['digits'], lineContent['comment']))
 
         elif (lineContent['class'] == 'array'):
-            self.eepromSection.append("\t%16s\t= %s,\t%s,\t%d,\t[%s],\t\"%s\",\t%.5f,\t%.5f,\t%d,\t%d,\t%d ;\t%s" % (lineContent['name'], lineContent['class'], lineContent['type'], self.eepromSize, lineContent['shape'], lineContent['units'], lineContent['scale'], lineContent['translate'], lineContent['lo'], lineContent['hi'], lineContent['digits'], lineContent['comment']))
+            self.eepromSection.append("\t%-12s\t= %s,\t%s,\t%d,\t[%s],\t\"%s\",\t%.5f,\t%.5f,\t%d,\t%d,\t%d ;\t%s" % (lineContent['name'], lineContent['class'], lineContent['type'], self.eepromSize, lineContent['shape'], lineContent['units'], lineContent['scale'], lineContent['translate'], lineContent['lo'], lineContent['hi'], lineContent['digits'], lineContent['comment']))
 
         elif (lineContent['class'] == 'bits'): # TODO : manage more than 1 bit
-            self.eepromSection.append("\t%16s\t= %s,\t%s,\t%d, [%d:%d], \"%s\", \"%s\";\t%s" % (lineContent['name'], lineContent['class'], lineContent['type'], self.eepromSize, lineContent['start'], lineContent['stop'], lineContent['state0'], lineContent['state1'], lineContent['comment']))
+            self.eepromSection.append("\t%-12s\t= %s,\t\t%s,\t%d, [%d:%d], \"%s\", \"%s\";\t%s" % (lineContent['name'], lineContent['class'], lineContent['type'], self.eepromSize, lineContent['start'], lineContent['stop'], lineContent['state0'], lineContent['state1'], lineContent['comment']))
         else:
             FATAL("EEPROM class not supported %s" % lineContent)
 
-        self.eepromSize += self.computeSize(lineContent)
+        self.eepromSize += self.computeSize(lineContent, 'eeprom')
     
     def addOutputChannelLine(self, lineContent):
         if (lineContent['class'] == 'scalar'):
-            self.eepromSection.append("\t%16s\t= %s,\t%s,\t%d,\t\t\"%s\",\t%.5f,\t%.5f ;\t%s" % (lineContent['name'], lineContent['class'], lineContent['type'], self.eepromSize, lineContent['units'], lineContent['scale'], lineContent['translate'], lineContent['comment']))
+            self.outputChannelSection.append("\t%-12s\t= %s,\t%s,\t%d,\t\t\"%s\",\t%.5f,\t%.5f ;\t%s" % (lineContent['name'], lineContent['class'], lineContent['type'], self.outputChannelSize, lineContent['units'], lineContent['scale'], lineContent['translate'], lineContent['comment']))
 
         elif (lineContent['class'] == 'array'):
-            self.eepromSection.append("\t%16s\t= %s,\t%s,\t%d,\t[%s],\t\"%s\",\t%.5f,\t%.5f ;\t%s" % (lineContent['name'], lineContent['class'], lineContent['type'], self.eepromSize, lineContent['shape'], lineContent['units'], lineContent['scale'], lineContent['translate'], lineContent['comment']))
+            self.outputChannelSection.append("\t%-12s\t= %s,\t%s,\t%d,\t[%s],\t\"%s\",\t%.5f,\t%.5f ;\t%s" % (lineContent['name'], lineContent['class'], lineContent['type'], self.outputChannelSize, lineContent['shape'], lineContent['units'], lineContent['scale'], lineContent['translate'], lineContent['comment']))
 
         elif (lineContent['class'] == 'bits'): # TODO : manage more than 1 bit
-            self.eepromSection.append("\t%16s\t= %s,\t%s,\t%d, [%d:%d], \"%s\", \"%s\";\t%s" % (lineContent['name'], lineContent['class'], lineContent['type'], self.eepromSize, lineContent['start'], lineContent['stop'], lineContent['state0'], lineContent['state1'], lineContent['comment']))
+            self.outputChannelSection.append("\t%-12s\t %s,\t%s,\t%d, [%d:%d]" % (lineContent['name'], lineContent['class'], lineContent['type'], self.outputChannelSize-1, lineContent['start'], lineContent['stop']))
         else:
             FATAL("Output Channel class not supported %s" % lineContent)
 
-        self.outputChannelSize += self.computeSize(lineContent)
+        self.outputChannelSize += self.computeSize(lineContent, 'outputChannel')
 
     def close(self):
         # Assemble and update sections to output buffer
