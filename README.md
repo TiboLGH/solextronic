@@ -4,6 +4,13 @@ Solextronic est un ECU (Electronic Control Unit) pour Solex visant à controler 
 Le projet est en développement lent, les idées allant bien plus vites que le temps de réalisation disponible (je ne consacre que quelques heures par semaine à Solextronic...)
 J'espère avoir un prototype plus ou moins fonctionnel d'ici quelques mois ;-).
 
+### 5 Aout 2015 : Sortie de la version 0.2
+Ca avance ! mais pas vite... Les principales nouveautées :
+  * La 1ere carte de test est faite (sur plaque de test a trous). Elle s'accompagne du carte de test.
+  * Le fichier de config de Tunerstudio a ete mis a jour, un script automatique est en cours de developpement
+  * Nouvelle gestion des ADC, de la pompe a essence...
+  * Ajout du LCD/bouton
+
 ### 12 Juillet 2015 
 Pas mal de commits a droite a gauche et la definition du faisceau :
 ![https://github.com/TiboLGH/solextronic/blob/master/hardware/harness/harness.png]
