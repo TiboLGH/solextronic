@@ -347,6 +347,21 @@ static menu_e MenuUpdate(u8 btn)
         default:
             menuState = M_NORMAL;
     }
+
+    // Backlight 
+    color_e color = RED;
+    switch(gState.engineState)
+    {
+        case M_STOP:     color = VIOLET; break;
+        case M_CRANKING: color = TEAL;   break;
+        case M_RUNNING:  color = GREEN;  break;
+        case M_OVERHEAT: color = YELLOW; break;
+        case M_ERROR:    color = RED;    break;
+        case M_STALLED:  color = BLUE;   break;
+        case M_TEST_IGN: color = TEAL;   break;
+        case M_TEST_INJ: color = TEAL;   break;
+    }
+    FPSetLed(color);
     return menuState;
 }
 

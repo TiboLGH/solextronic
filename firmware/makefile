@@ -3,7 +3,8 @@ TARGET_ARCH	= -mmcu=$(MCU)
 TARGET		= solextronic
 CC		= avr-gcc
 CPPFLAGS	= -mmcu=$(MCU)
-CFLAGS		= -Os -g -Wall -I. -DF_CPU=16000000 -std=c99
+SIM			= 0
+CFLAGS   	= -Os -g -Wall -I. -DF_CPU=16000000 -std=c99 -DSIM=$(SIM)
 LDFLAGS		= -g -mmcu=$(MCU) -lm -Wl,--gc-sections -Os
 PGMER		= -c arduino -b 57600 -P /dev/ttyUSB0
 PGMERISP	= -c avrispv2 -P /dev/ttyUSB0
@@ -30,7 +31,6 @@ $(TARGET).elf: $(OBJ_FILES)
 
 $(TARGET).hex: $(TARGET).elf
 	avr-objcopy -j .text -j .data -O ihex $(TARGET).elf $(TARGET).hex
-#avr-objcopy -j .eeprom --set-section-flags=.eeprom="alloc,load" --change-section-lma .eeprom=0 -O ihex $(TARGET).elf eeprom.hex
 
 upload: $(TARGET).hex
 	$(DUDE) $(PGMER) -U flash:w:$(TARGET).hex
@@ -38,7 +38,8 @@ upload: $(TARGET).hex
 size: $(TARGET).elf
 	avr-size -C --mcu=$(MCU) $(TARGET).elf
 
-sim: $(TARGET).hex
+sim:
+	make $(TARGET).hex SIM=1
 	make -C test/
 
 test: $(TARGET).hex sim

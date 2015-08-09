@@ -107,7 +107,6 @@ u8 MainFsm(void)
     switch(gState.engineState)
     {
         case M_STOP: // engine stopped : no injection/ignition (except test)
-            FPSetLed(VIOLET);
             SetInjectionTiming(FORCEOFF, 0);
             SetInjectionTiming(FORCEOFF, 0);
             PIN_OFF(PUMP_PIN, eData.pumpPolarity);
@@ -119,19 +118,16 @@ u8 MainFsm(void)
         break;
 
         case M_TEST_INJ: // injector test mode
-            FPSetLed(TEAL);
             PIN_ON(PUMP_PIN, eData.pumpPolarity);
             PIN_OFF(HV_PIN, 1);
         break;
         
         case M_TEST_IGN: // ignition test mode
-            FPSetLed(TEAL);
             PIN_OFF(PUMP_PIN, eData.pumpPolarity);
             PIN_ON(HV_PIN, 1);
         break;
 
         case M_CRANKING: // someone is pushing ! force inj/ign to crancking values
-            FPSetLed(TEAL);
             gState.advance = eData.starterAdv;
             gState.injPulseWidth = eData.starterInj + eData.injOpen;
             SetIgnitionTiming(AUTO, gState.advance);
@@ -145,7 +141,6 @@ u8 MainFsm(void)
         break;
 
         case M_RUNNING: // normal operation: apply formula
-            FPSetLed(GREEN);
             if(intState.newCycle) 
             {
                 intState.newCycle = 0;
@@ -156,7 +151,6 @@ u8 MainFsm(void)
         break;
 
         case M_ERROR: // that's bad : stop everything
-            FPSetLed(RED);
             SetInjectionTiming(FORCEOFF, 0);
             SetInjectionTiming(FORCEOFF, 0);
             PIN_OFF(PUMP_PIN, eData.pumpPolarity);
@@ -164,7 +158,6 @@ u8 MainFsm(void)
         break;
 
         case M_STALLED: // wait for cranking
-            FPSetLed(BLUE);
             SetInjectionTiming(FORCEOFF, 0);
             SetInjectionTiming(FORCEOFF, 0);
             PIN_OFF(PUMP_PIN, eData.pumpPolarity);
@@ -195,7 +188,9 @@ int main(void)
     InitTimer();
     ADCInit();
     InitEeprom(0);
+#if(!SIM)
     FPInit(0);
+#endif
     ChronoInit();
     gState.engineState = M_STOP; 
 
@@ -213,7 +208,9 @@ int main(void)
         {
             StartTimer(TIMER_100MS);
             PIN_TOGGLE(LED_PIN);
+#if(!SIM)
             FPRun();
+#endif
         }
         
         if(intState.rReady)
