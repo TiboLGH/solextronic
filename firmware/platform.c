@@ -46,7 +46,6 @@
 
 #define BAUD 	        57600
 
-u16 EEMEM magic = 0xCAFE;
 eeprom_data_t EEMEM eeprom;
 const PROGMEM eeprom_data_t eeInit = {
     .timerLed       = 20,
@@ -245,12 +244,10 @@ void InitIOs(void)
  */
 void InitEeprom(u8 force)
 {
-    /* read 2 first bytes to check magic : 
-     * allow to see if eeprom is void */
-    if(force || (0xCAFE != eeprom_read_word(&magic)))
+    /* read first byte to check eeprom content : if 0xFF, eeprom is void */
+    if(force || (255 == eeprom_read_byte(&eeprom.wheelSize)))
     {
         /* initialise eeprom */
-        eeprom_write_word(&magic, 0xCAFE);
         memcpy_P((void *)&eData, (PGM_VOID_P)&eeInit, sizeof(eeprom_data_t));
         for(u8 i = 0; i < TABSIZE; i++)
         {
@@ -273,11 +270,11 @@ void InitEeprom(u8 force)
  */
 void updateEeprom(void)
 {
-    static u8 index = 0;
-    u8 *pData = (u8 *)&eData;
+    static u16 index = 0;
+    u8 *pData = (u8 *)&(eData.wheelSize);
     if(eeprom_is_ready())
     {
-        eeprom_update_byte((u8*)(&eeprom + index), *(pData + index));
+        eeprom_update_byte((u8*)(&(eeprom.wheelSize) + index), *(pData + index));
         index++;
         if(index > sizeof(eeprom_data_t)) index = 0;
     }

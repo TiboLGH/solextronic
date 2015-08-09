@@ -194,7 +194,7 @@ int main(void)
     InitUart();
     InitTimer();
     ADCInit();
-    InitEeprom(1);
+    InitEeprom(0);
     FPInit(0);
     ChronoInit();
     gState.engineState = M_STOP; 
@@ -207,10 +207,7 @@ int main(void)
  
 	while(1)
 	{
-        toto = TCNT1;
-        toto = OCR1A;
-        toto = OCR1B;
-
+        updateEeprom();
 
         if(EndTimer(TIMER_100MS, eData.timerLed))
         {
