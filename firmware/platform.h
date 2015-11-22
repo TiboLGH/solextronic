@@ -102,8 +102,10 @@ enum
 #define PUMP_PIN  D, 7 
 // HV supply on PD5 (pin 9 on 32 pins parts)
 #define HV_PIN  D, 5 
+#define HV_POLARITY 1
 // BTN1 used for crancking (D4 on Arduino Nano => PD4)
 #define CRANKING_PIN  D, 4 
+
 
 #define sbiPin(a, b) (PORT##a |= (1 << (b))) 
 #define cbiPin(a, b) (PORT##a &= ~(1 << (b))) 

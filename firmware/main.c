@@ -49,7 +49,23 @@ volatile Current_Data_t   gState;
 volatile intState_t       intState;
 volatile u16 toto = 0;
 
+#define CYL (50)	// 50 cm3 = 5e-5m3
 
+u16 ComputeK(u16 patm)
+{
+	/* K = MMAir.CYL.Patm / AFR.R
+	* MMAir = 28,965338 g·mol-1
+	* CYL = 50cm3 => *1e-6m3
+	* pAtm in hPa => *100Pa
+	* AFR no unit
+	* R = 8,3144621 J·mol-1·K-1
+	* Patm, AFR are semi-static meaning it won't change after boot => function can be called once in init (only need a valid MAP measurement) 
+	* K = (MMAir/R).CYL/1e6.PAtm*100/(AFR10/10)
+	* K = 3.48373e-3.CYL.Patm/AFR10
+	* K = 3.484.CYL.Patm/AFR10 with output in mg
+	*/
+	return  (u16)(3484L * CYL * (u32)patm / (1000 * eData.targetAfr)); 	
+}
 
 u8 ComputeIgnition(u8 overheat)
 {
@@ -79,22 +95,35 @@ u8 ComputeInjection(u8 overheat)
 {
     //TODO manage load based on throttle/pressure/whatever. Force to 50% for now
     gState.load = 50; 
-    // compute injection delay from table
-    gState.advance = Interp2D(&(eData.ignTable[0][0]), gState.rpm, gState.load);
+    // compute VE from table
+    gState.injVE = Interp2D(&(eData.injTable[0][0]), gState.rpm, gState.load);
+	
+	// apply formula, K has been computed before (semi-static). QFuel is in mg
+	gState.injQFuel = gState.injK * gState.injVE / (gState.IAT + 273);
 
-    // TODO set adjustement for acceleration
-    
-    // set limitation for overheating
+	// add various enrichments
+	u16 enrich = 0;
     if(overheat)
-    {
-        gState.injPulseWidth *= (100 + eData.injOverheat) / 100;
+    { 
+        enrich += eData.injOverheat;
     }
+	if(intState.afterStartPeriod)
+	{
+		enrich += gState.injAfterStartEnrich;
+		intState.afterStartPeriod--;
+	}else{
+		gState.injAfterStartEnrich = 0;
+	}
+	
+	enrich += gState.injWarmupEnrich;
+    
+	// TODO set adjustement for acceleration
     
     // Add runtime offset
-    gState.injPulseWidth += gState.injOffset;
+    enrich += gState.injOffset;
     
-    // Injector open time
-    gState.injPulseWidth += eData.injOpen;
+	// turn into injector pulse width
+	gState.injPulseWidth = (gState.injQFuel * (100 + enrich)) / (100 * eData.injRate) + eData.injOpen;
 
     // commit advance for next cycle
     SetInjectionTiming(AUTO, gState.injPulseWidth);
@@ -110,37 +139,46 @@ u8 MainFsm(void)
             SetInjectionTiming(FORCEOFF, 0);
             SetInjectionTiming(FORCEOFF, 0);
             PIN_OFF(PUMP_PIN, eData.pumpPolarity);
-            PIN_OFF(HV_PIN, 1);
+            PIN_OFF(HV_PIN, HV_POLARITY);
             if(!PIN_READ(CRANKING_PIN))
             {
+				// latch CLT to compute afterstart enrich
+				gState.injAfterStartEnrich = Interp1D(eData.injAfterStartTbl, gState.CLT);
+				// compute K
+				gState.injK = ComputeK(gState.MAP);
+				gState.advance = eData.ignStarter;
+				gState.injPulseWidth = ((u32)eData.injStarter * (100 + gState.injAfterStartEnrich) / 100) + eData.injOpen;
+				SetIgnitionTiming(AUTO, gState.advance);
+				SetInjectionTiming(AUTO, gState.injPulseWidth);
                 gState.engineState = M_CRANKING;
             }
         break;
 
         case M_TEST_INJ: // injector test mode
             PIN_ON(PUMP_PIN, eData.pumpPolarity);
-            PIN_OFF(HV_PIN, 1);
+            PIN_OFF(HV_PIN, HV_POLARITY);
         break;
         
         case M_TEST_IGN: // ignition test mode
             PIN_OFF(PUMP_PIN, eData.pumpPolarity);
-            PIN_ON(HV_PIN, 1);
+            PIN_ON(HV_PIN, HV_POLARITY);
         break;
 
-        case M_CRANKING: // someone is pushing ! force inj/ign to crancking values
-            gState.advance = eData.starterAdv;
-            gState.injPulseWidth = eData.starterInj + eData.injOpen;
-            SetIgnitionTiming(AUTO, gState.advance);
-            SetInjectionTiming(AUTO, gState.injPulseWidth);
+        case M_CRANKING: // someone is pushing ! force inj/ign to crancking values until we reach 1000rpm
             PIN_ON(PUMP_PIN, eData.pumpPolarity);
-            PIN_ON(HV_PIN, 1);
+            PIN_ON(HV_PIN, HV_POLARITY);
             if(PIN_READ(CRANKING_PIN))
             {
-                gState.engineState = M_RUNNING;
+                gState.engineState = M_STOP;
             }
+			if(gState.rpm > 1000)
+			{
+				intState.afterStartPeriod = eData.injAfterStartDur;
+				gState.engineState = M_RUNNING;
+			}
         break;
 
-        case M_RUNNING: // normal operation: apply formula
+        case M_RUNNING: // normal operation: apply formula, recomputed each new cycle
             if(intState.newCycle) 
             {
                 intState.newCycle = 0;
@@ -154,14 +192,14 @@ u8 MainFsm(void)
             SetInjectionTiming(FORCEOFF, 0);
             SetInjectionTiming(FORCEOFF, 0);
             PIN_OFF(PUMP_PIN, eData.pumpPolarity);
-            PIN_OFF(HV_PIN, 1);
+            PIN_OFF(HV_PIN, HV_POLARITY);
         break;
 
         case M_STALLED: // wait for cranking
             SetInjectionTiming(FORCEOFF, 0);
             SetInjectionTiming(FORCEOFF, 0);
             PIN_OFF(PUMP_PIN, eData.pumpPolarity);
-            PIN_OFF(HV_PIN, 1);
+            PIN_OFF(HV_PIN, HV_POLARITY);
             if(!PIN_READ(CRANKING_PIN))
             {
                 gState.engineState = M_CRANKING;
@@ -170,7 +208,7 @@ u8 MainFsm(void)
 
         default:
             PIN_OFF(PUMP_PIN, eData.pumpPolarity);
-            PIN_OFF(HV_PIN, 1);
+            PIN_OFF(HV_PIN, HV_POLARITY);
             ASSERT(0);
     } // switch
 

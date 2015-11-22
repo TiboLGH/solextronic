@@ -45,7 +45,7 @@ u16 Interp2D(volatile u8 *table, u16 rpm, u8 load)
 {
     u8 rpmIdx, loadIdx;
   
-    /****** 1. Step 1 : locate surronding values in table  *******/
+    /****** 1. Step 1 : locate surrounding values in table  *******/
     /****** 1.1. RPM coordinate lookup *******/
     // Check for limit
     if(rpm > eData.rpmBins[TABSIZE-1])
@@ -146,3 +146,4 @@ u8  Interp1D(volatile u8 table[TABSIZE][2], u8 adcVal)
     }
     return table[i-1][1];
 }
+

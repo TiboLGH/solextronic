@@ -55,13 +55,13 @@ const PROGMEM eeprom_data_t eeInit = {
     .maxTemp        = 150,
     .minBat         = 110,
     .ignDuration    = 1000,
-    .starterAdv     = 5,
+    .ignStarter     = 5,
     .ignOverheat    = 2,
     .noSparkAtDec   = 0,
     .injOpen        = 500,
     .injRate        = 500, //?
     .injAdv         = 140, //?
-    .starterInj     = 1000,
+    .injStarter     = 1000,
     .injOverheat    = 3,
     .noInjAtDec     = 0,
     .injStart       = 500,
@@ -607,14 +607,17 @@ ISR(INT0_vect)
     static u16 lastTick = 0;
     // Save timer value
     u16 latchedTimer1 = TCNT1;
-    // Compute RPM period
+    // Compute RPM period with predictive algo
     if(latchedTimer1 < lastTick) // overflow of Timer1
     {
-        intState.RPMperiod = 65535 - lastTick + latchedTimer1;
+        intState.period_1 = 65535 - lastTick + latchedTimer1;
     }else{
-        intState.RPMperiod = latchedTimer1 - lastTick;
+        intState.period_1 = latchedTimer1 - lastTick;
     } 
     lastTick = latchedTimer1;
+
+	intState.RPMperiod = intState.period_1 * 2 - intState.period_2;
+	intState.period_2 = intState.period_1;
 
     // compute RPM : tick is 4us
     gState.rpm = 60 * (250000 / intState.RPMperiod);
@@ -674,10 +677,11 @@ ISR(INT1_vect)
 void SetInjectionTiming(u8 force, u16 duration)
 {
     // Convert angle to timer tick through RPM. Timer tick is 4us
+	// This define the start of injection
     // TODO : use PMHOffset setting
     u16 angleTick = (u32)intState.RPMperiod * (360 - eData.injAdv) / 360;
-    nextInjTiming.start = angleTick - (duration >> 3);
-    nextInjTiming.duration  = duration >> 2;
+    nextInjTiming.start = angleTick;
+    nextInjTiming.duration  = duration >> 2; // us to 4us unit
     
     return;
 }

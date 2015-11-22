@@ -106,7 +106,11 @@ typedef struct {
     u8  newCycle;
     u8  rReady;
     u16 RPMperiod;
+    u16 period_1;
+    u16 period_2;
     u8  adcDone;
+    u8  afterStartPeriod;
+	u8  mapMeasureReady;
 }intState_t; 
 
 #endif

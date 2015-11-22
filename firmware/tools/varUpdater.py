@@ -2,8 +2,8 @@
 
 # This script is used to produces tuner software INI config file and wiki documentation from source code varDef.h
 # To comply with Megasquirt serial protocol and use associated tuner software, a INI config file shall be used to described mapping of config and monitoring data buffers. 
-# This INI file also described how the tuner interface is linked to variables (panel contents, min/max, gauges...). This part is directly part of this script (don't want to have another config file)
-# The documentation page output produces a wiki page compliant with Google code format describing the data structure. It is basically a "pretty-print" of the varDef.h file.
+# This INI file also described how the tuner interface is linked to variables (panel contents, min/max, gauges...). This part is directly part of this script (don't want to have another config file), so you have to change the definition directly in the script source code (not a perfect solution but allow to have everything in the same file)
+# The documentation page output produces a wiki page compliant with Markdown format describing the data structure. It is basically a "pretty-print" of the varDef.h file.
 
 # Warning ! The varDef.h file has to be correctly formatted ! This script aims to be fairly robust but it is just a script ;-)
 
@@ -12,7 +12,7 @@ import re
 
 #-----------------------------------------------------------------------------------------------------------------
 license = """;/***************************************************************************
-; *   Copyright (C) 2012 by Thibault Bouttevin                              *
+; *   Copyright (C) 2015 by Thibault Bouttevin                              *
 ; *   thibault.bouttevin@gmail.com                                          *
 ; *   www.legalethurlant.fr.st                                              *
 ; *                                                                         *
