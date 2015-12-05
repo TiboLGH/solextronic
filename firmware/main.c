@@ -49,6 +49,7 @@ volatile Current_Data_t   gState;
 volatile intState_t       intState;
 volatile u16 toto = 0;
 
+
 #define CYL (50)	// 50 cm3 = 5e-5m3
 
 u16 ComputeK(u16 patm)
@@ -225,8 +226,10 @@ int main(void)
     InitUart();
     InitTimer();
     ADCInit();
+#ifdef SIM
+    InitEeprom(1); // force init
+#else
     InitEeprom(0);
-#if(!SIM)
     FPInit(0);
 #endif
     ChronoInit();

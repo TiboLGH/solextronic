@@ -271,10 +271,10 @@ void InitEeprom(u8 force)
 void updateEeprom(void)
 {
     static u16 index = 0;
-    u8 *pData = (u8 *)&(eData.wheelSize);
+    u8 *pData = (u8 *)&(eData.wheelImpulse);
     if(eeprom_is_ready())
     {
-        eeprom_update_byte((u8*)(&(eeprom.wheelSize) + index), *(pData + index));
+        eeprom_update_byte((u8*)(&(eeprom.wheelImpulse) + index), *(pData + index));
         index++;
         if(index > sizeof(eeprom_data_t)) index = 0;
     }
@@ -656,7 +656,7 @@ ISR(INT1_vect)
     // Compute period
     period = (newTs.clk - prevTs.clk) * 250;
     period += (signed)(newTs.tick - prevTs.tick);
-
+    
     prevTs.clk  = newTs.clk;
     prevTs.tick = newTs.tick;
 

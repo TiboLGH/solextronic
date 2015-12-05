@@ -126,8 +126,8 @@ enum
 #define PIN_TOGGLE(pin) togglePin(pin)
 
 // for simulation only
-#define DEBUG TWBR
-#define PARAM TWDR
+#define DEBUG SPDR
+#define PARAM SPSR
 
 /**
  * \struct wvf_t

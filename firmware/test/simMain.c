@@ -83,10 +83,6 @@ enum{
     TEST_ANALOG,
     TEST_IGNAUTO,
     TEST_INJTESTMODE,
-    TEST_IGNITION,
-    TEST_INJECTION,
-    TEST_FLYBACK,
-    TEST_LCD,
     TEST_QTY
 };
 
@@ -120,6 +116,7 @@ int fd = 0; /* access to serial port */
 eeprom_data_t    eData, eDataToWrite;
 Current_Data_t   gState;
 bool             _verbose = false;
+bool             _wave    = false;
 
 /* Forward declaration */
 int TestVersion(void);
@@ -139,10 +136,6 @@ Test_t testList[] = {
     {TEST_ANALOG,       "Entrees analogiques", TestAnalog},
     {TEST_IGNAUTO,      "AllumageAuto", TestIgnitionAuto},
     {TEST_INJTESTMODE,  "InjectionTestMode", TestInjectionTestMode},
-    {TEST_IGNITION,     "Allumage", TestIgnition},
-    {TEST_INJECTION,    "Injection", TestStub},
-    {TEST_FLYBACK,      "Flyback", TestStub},
-    {TEST_LCD,          "LCD", TestStub},
 };
 
 /********* Helpers ************/
@@ -245,7 +238,7 @@ static int SleepMs(const int delayms)
     //wait for end
     while(avr->cycle < end)
     {
-	usleep(10*1000);
+	    usleep(10*1000);
     }
     return OK;
 }
@@ -288,7 +281,7 @@ static int ReadConfig(void)
     int res;
 
     const u8 toRead[] = {'r', 0, 0, (u8)(sizeof(eData)%256), (u8)(sizeof(eData)/256)};
-    V(">> read conf\n");
+    V("\n>> read conf\n");
     PrintArray(toRead, 5);
     write(fd, toRead, 5);
     res = ReadFromSerial(sizeof(eData), (u8*)&eData);
@@ -304,7 +297,7 @@ static int WriteConfig(void)
 
     //write new config
     const u8 toWrite[] = {'w', 0, 0, (u8)(sizeof(eData)%256), (u8)(sizeof(eData)/256)};
-    V(">> write new conf\n");
+    V("\n>> write new conf\n");
     PrintArray(toWrite, 5);
     write(fd, toWrite, 5);
     // Need to slow down writing to avoid buffer overflow
@@ -340,7 +333,7 @@ static int QueryState(void)
     /* send command */
     do{
         i++;
-        V(">> a\n");
+        //V("\n>> a\n");
         write(fd, "a", 1);
         res = ReadFromSerial(sizeof(gState), (u8*)&gState);
     }while((res != OK) && (i <= RETRY_SERIAL));
@@ -352,17 +345,17 @@ static int QuerySignature(u8 *signature, u8 *revision)
     int res;
 
     /* send command */
-    V(">> S\n");
+    V("\n>> S\n");
     write(fd, "S", 1);
     res = ReadFromSerial(32, signature);
-    V("%s", signature);
+    V("%s\n", signature);
     if(res != OK) return FAIL;
 
     /* send command */
-    V(">> Q\n");
+    V("\n>> Q\n");
     write(fd, "Q", 1);
     res = ReadFromSerial(20, revision);
-    V("%s", revision);
+    V("%s\n", revision);
     if(res != OK) return FAIL;
 
     return OK;
@@ -493,9 +486,9 @@ int TestSpeed(void)
 
         if(error > tolerance || error < -tolerance)
         {       
-            RED("Vitesse mesure a %d km/h : %.1f km/h, erreur %.1f %% \n", speedTable[i], gState.speed/10., error);
+            RED("Vitesse mesuree a %d km/h : %.1f km/h, erreur %.1f %% \n", speedTable[i], gState.speed/10., error);
         }else{
-            GREEN("Vitesse mesure a %d km/h : %.1f km/h, erreur %.1f %% \n", speedTable[i], gState.speed/10., error);
+            GREEN("Vitesse mesuree a %d km/h : %.1f km/h, erreur %.1f %% \n", speedTable[i], gState.speed/10., error);
             subTestPassed++;
         }
     }
@@ -785,6 +778,7 @@ static void printHelp(FILE *stream, int exitMsg, const char* progName)
             "  -h\t\t affiche ce message\n"
             "  -m\t\t mode manuel\n"
             "  -v\t\t mode verbose\n"
+            "  -w\t\t capture waveform dans wave.vcd\n"
             "  -l\t\t liste des tests disponibles\n"
             "  -a\t\t lancement de tous les tests\n"
             "  -t <test>\t\t lancement du test <test>\n"
@@ -807,7 +801,7 @@ int main(int argc, char *argv[])
     {
         printHelp(stdout, EXIT_SUCCESS, argv[0]);
     }
-    while ((c = getopt (argc, argv, "hvlmar:t:")) != -1)
+    while ((c = getopt (argc, argv, "hvlmawr:t:")) != -1)
     {
         switch (c)
         {
@@ -823,6 +817,9 @@ int main(int argc, char *argv[])
                 break;
             case 'v': // verbose mode
                 _verbose = true;
+                break;
+            case 'w': // verbose mode
+                _wave = true;
                 break;
             case 'm': // manual mode
                 mode = MANUAL;
@@ -873,6 +870,10 @@ int main(int argc, char *argv[])
 
     avr_init(avr);
     avr_load_firmware(avr, &f);
+    /*if(_verbose) 
+    {   
+        avr->log = LOG_TRACE;
+    }*/
 
     /* External parts connections */
     uart_pty_init(avr, &uart_pty);
@@ -900,19 +901,22 @@ int main(int argc, char *argv[])
     /**** Manual mode ****/
     if(mode == MANUAL)
     {
-        /* VCD files */
-        avr_vcd_init(avr, "gtkwave_output.vcd", &vcd_file, 100 /* usec */);
-        avr_vcd_add_signal(&vcd_file,
-                avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 5),
-                1 /* bits */, "LED");
-        avr_vcd_add_signal(&vcd_file,
-                avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 6),
-                1 /* bits */, "Image");
+        if(_wave)
+        {
+            /* VCD files */
+            avr_vcd_init(avr, "wave.vcd", &vcd_file, 100 /* usec */);
+            avr_vcd_add_signal(&vcd_file,
+                    avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 5),
+                    1 /* bits */, "LED");
+            avr_vcd_add_signal(&vcd_file,
+                    avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 6),
+                    1 /* bits */, "Image");
 
-        avr_vcd_add_signal(&vcd_file, pulse_input_engine.irq + IRQ_PULSE_OUT, 1, "Pulse_engine");
-        avr_vcd_add_signal(&vcd_file, pulse_input_wheel.irq  + IRQ_PULSE_OUT, 1, "Pulse_Wheel");
-        avr_vcd_add_signal(&vcd_file, i_pwm, 8 /* bits */, "PWM" );
-        avr_vcd_start(&vcd_file);
+            avr_vcd_add_signal(&vcd_file, pulse_input_engine.irq + IRQ_PULSE_OUT, 1, "Pulse_engine");
+            avr_vcd_add_signal(&vcd_file, pulse_input_wheel.irq  + IRQ_PULSE_OUT, 1, "Pulse_Wheel");
+            avr_vcd_add_signal(&vcd_file, i_pwm, 8 /* bits */, "PWM" );
+            avr_vcd_start(&vcd_file);
+        }
 
         pthread_t run;
         pthread_create(&run, NULL, avr_run_thread, NULL);
@@ -940,38 +944,41 @@ int main(int argc, char *argv[])
 
     /**** Automatic mode ****/
     // start AVR core
-    /* VCD files */
-    avr_vcd_init(avr, "gtkwave_output.vcd", &vcd_file, 1000);
-    avr_vcd_add_signal(&vcd_file,
-            avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 5),
-            1, "LED");
-    avr_vcd_add_signal(&vcd_file,
-            avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 2),
-            1, "RPM");
-    avr_vcd_add_signal(&vcd_file,
-            avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 2),
-            1, "INJ");
-    avr_vcd_add_signal(&vcd_file,
-            avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 1),
-            1, "IGN");
-    avr_vcd_add_signal(&vcd_file, pulse_input_wheel.irq  + IRQ_PULSE_OUT, 1, "Pulse_Wheel");
-    /*avr_vcd_add_signal(&vcd_file,
-            avr_iomem_getirq(avr, 0x89, "OCR1AH", 8), 8, "OCR1AH");
-    avr_vcd_add_signal(&vcd_file,
-            avr_iomem_getirq(avr, 0x88, "OCR1AL", 8), 8, "OCR1AL");
-    avr_vcd_add_signal(&vcd_file,
-            avr_iomem_getirq(avr, 0x8B, "OCR1BH", 8), 8, "OCR1BH");
-    avr_vcd_add_signal(&vcd_file,
-            avr_iomem_getirq(avr, 0x8A, "OCR1BL", 8), 8, "OCR1BL");*/
-    avr_vcd_add_signal(&vcd_file,
-            avr_iomem_getirq(avr, 0x85, "TCNT1H", 8), 8, "TCNT1H");
-    avr_vcd_add_signal(&vcd_file,
-            avr_iomem_getirq(avr, 0x84, "TCNT1L", 8), 8, "TCNT1L");
-    avr_vcd_add_signal(&vcd_file,
-            avr_iomem_getirq(avr, 0xB8, "TWBR", 8), 8, "DEBUG");
-    avr_vcd_add_signal(&vcd_file,
-            avr_iomem_getirq(avr, 0xBB, "TWDR", 8), 8, "PARAM");
-    avr_vcd_start(&vcd_file);
+    if(_wave)
+    {
+        /* VCD files */
+        avr_vcd_init(avr, "wave.vcd", &vcd_file, 1000);
+        avr_vcd_add_signal(&vcd_file,
+                avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 5),
+                1, "LED");
+        avr_vcd_add_signal(&vcd_file,
+                avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 2),
+                1, "RPM");
+        avr_vcd_add_signal(&vcd_file,
+                avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 2),
+                1, "INJ");
+        avr_vcd_add_signal(&vcd_file,
+                avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 1),
+                1, "IGN");
+        avr_vcd_add_signal(&vcd_file, pulse_input_wheel.irq  + IRQ_PULSE_OUT, 1, "Pulse_Wheel");
+        avr_vcd_add_signal(&vcd_file,
+                avr_iomem_getirq(avr, 0x89, "OCR1AH", 8), 8, "OCR1AH");
+        avr_vcd_add_signal(&vcd_file,
+                avr_iomem_getirq(avr, 0x88, "OCR1AL", 8), 8, "OCR1AL");
+        avr_vcd_add_signal(&vcd_file,
+                avr_iomem_getirq(avr, 0x8B, "OCR1BH", 8), 8, "OCR1BH");
+        avr_vcd_add_signal(&vcd_file,
+                avr_iomem_getirq(avr, 0x8A, "OCR1BL", 8), 8, "OCR1BL");
+        avr_vcd_add_signal(&vcd_file,
+                avr_iomem_getirq(avr, 0x85, "TCNT1H", 8), 8, "TCNT1H");
+        avr_vcd_add_signal(&vcd_file,
+                avr_iomem_getirq(avr, 0x84, "TCNT1L", 8), 8, "TCNT1L");
+        avr_vcd_add_signal(&vcd_file,
+                avr_iomem_getirq(avr, 0x4E, "SPDR", 8), 8, "DEBUG");
+        avr_vcd_add_signal(&vcd_file,
+                avr_iomem_getirq(avr, 0x4D, "SPSR", 8), 8, "PARAM");
+        avr_vcd_start(&vcd_file);
+    }
     
     pthread_t run;
     pthread_create(&run, NULL, avr_run_thread, NULL);

@@ -1,5 +1,5 @@
 TARGET		= simMain.exe
-CC		= gcc
+CC			= gcc
 CFLAGS		= -I$(SIMAVR)/sim -MMD --std=gnu99 -O2 -Wall -g -D$(GIT_VER) -fPIC
 LIBDIR		= $(SIMAVR)/obj-x86_64-linux-gnu
 LDFLAGS		= -MMD -fPIC -Wl,-rpath,$(LIBDIR) -L$(LIBDIR) -lsimavr -lelf -lutil -lpthread
@@ -8,7 +8,7 @@ GIT_VER		:=VERSION_GIT=0x$(shell git rev-parse --short HEAD)
 DEPS		= ../varDef.h ../helper.h
 C_SRCS		= $(wildcard *.c) ../helper.c
 OBJ_FILES	= simMain.o uart_pty.o pulse_input.o analog_input.o timing_analyzer.o  HT_supply.o helper.o
-SIMAVR		= /home/tibo/Projets/simavrU/simavr
+SIMAVR		= /home/tibo/Projets/simavr/simavr
 
 all:	$(TARGET)
 
@@ -24,8 +24,11 @@ $(TARGET): $(OBJ_FILES)
 	@$(CC) $(LDFLAGS) $(OBJ_FILES) -o $@ 
 	@echo SIM $@ done
 
+run: $(TARGET)
+	LD_LIBRARY_PATH=$(LIBDIR):$(LD_LIBRARY_PATH) ./simMain.exe -v -a ../solextronic.elf
+
 .PHONY: clean
 
 clean: 
-	rm -f $(TARGET) *.o *.hex *.d
+	rm -f $(TARGET) *.o *.vcd *.d
 

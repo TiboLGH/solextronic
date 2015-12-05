@@ -1,14 +1,18 @@
-MCU		= atmega328p
+MCU			= atmega328p
 TARGET_ARCH	= -mmcu=$(MCU)
 TARGET		= solextronic
-CC		= avr-gcc
-CPPFLAGS	= -mmcu=$(MCU)
+CC			= avr-gcc
 SIM			= 0
-CFLAGS   	= -Os -g -Wall -I. -DF_CPU=16000000 -std=c99 -DSIM=$(SIM)
-LDFLAGS		= -g -mmcu=$(MCU) -lm -Wl,--gc-sections -Os
+CFLAGS   	= -mmcu=$(MCU) -Os -g -Wall -I. -DF_CPU=16000000 -std=c99
+ifeq ($(SIM), 1)
+# Simulation : activated specific compilation flags	
+CFLAGS		+= -DSIM
+endif
+LDFLAGS		= -g -mmcu=$(MCU) -lm -Wl,--gc-sections -Os 
 PGMER		= -c arduino -b 57600 -P /dev/ttyUSB0
 PGMERISP	= -c avrispv2 -P /dev/ttyUSB0
 DUDE		= /usr/bin/avrdude -V -p $(MCU)
+SIMAVR		= /home/tibo/Projets/simavr/simavr
 
 DEPS		= $(wildcard *.h)
 C_SRCS		= $(wildcard *.c)
@@ -39,10 +43,11 @@ size: $(TARGET).elf
 	avr-size -C --mcu=$(MCU) $(TARGET).elf
 
 sim:
-	make $(TARGET).hex SIM=1
+	make $(TARGET).elf SIM=1
 	make -C test/
 
-test: $(TARGET).hex sim
+test: sim
+	make -C test/ run
 	
 
 
