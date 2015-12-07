@@ -1,6 +1,6 @@
 TARGET		= simMain.exe
 CC			= gcc
-CFLAGS		= -I$(SIMAVR)/sim -MMD --std=gnu99 -O2 -Wall -g -D$(GIT_VER) -fPIC
+CFLAGS		= -I$(SIMAVR)/sim -MMD --std=gnu99 -O2 -Wall -g -D$(GIT_VER) -fPIC -DSIM_HOST
 LIBDIR		= $(SIMAVR)/obj-x86_64-linux-gnu
 LDFLAGS		= -MMD -fPIC -Wl,-rpath,$(LIBDIR) -L$(LIBDIR) -lsimavr -lelf -lutil -lpthread
 GIT_VER		:=VERSION_GIT=0x$(shell git rev-parse --short HEAD)

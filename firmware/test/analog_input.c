@@ -87,6 +87,11 @@ analog_input_set_value(
         const int adc_index,
 		const float value)
 {
+    if(adc_index >= p->nb_inputs)
+    {
+        printf("ADC setting out of range\n");
+        return;
+    }
 	p->value[adc_index] = value;
     //printf("Index %d = %f\n", adc_index, p->value[adc_index]);
 }

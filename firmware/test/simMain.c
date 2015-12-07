@@ -133,7 +133,7 @@ Test_t testList[] = {
     {TEST_VERSION,      "Version", TestVersion},
     {TEST_RPM,          "RPM", TestRPM},
     {TEST_SPEED,        "Vitesse", TestSpeed},
-    {TEST_ANALOG,       "Entrees analogiques", TestAnalog},
+    {TEST_ANALOG,       "Analog", TestAnalog},
     {TEST_IGNAUTO,      "AllumageAuto", TestIgnitionAuto},
     {TEST_INJTESTMODE,  "InjectionTestMode", TestInjectionTestMode},
 };
@@ -151,25 +151,40 @@ static void SpeedtoPeriod(const uint32_t speed, uint32_t *tHigh, uint32_t *tLow)
     *tLow  = 1000000 / (speed / 3.6 / 1.82) - *tHigh;
 }
 
-static float BatToVoltage(const float batterie)
+static float BatToVoltage(const float battery)
 {
-    return (batterie * 1 / 30.);
+    return ((battery-7) / 30.);  //-0.7 for protection diode, BattRatio shall be set to 150
 }
 
-static float TempToVoltage(const float degree) // for LM35 10mV/deg
+enum {IAT = 0, CLT};
+
+static float TempToVoltage(const float degree, int type) // 0 IAT, 1 CLT
 {
-    return (degree * 10 / 1000.);
+    // Reverse table to get adc value vs temp
+    volatile u8 tempTable[TABSIZE][2];
+    for(int i=0; i < TABSIZE; i++)
+    {
+        tempTable[TABSIZE-1 - i][0] = (type == IAT) ? eData.iatCal[i][1] : eData.cltCal[i][1];
+        tempTable[TABSIZE-1 - i][1] = (type == IAT) ? eData.iatCal[i][0] : eData.cltCal[i][0];
+    }
+    u8 adc = Interp1D(tempTable, (u8)degree);
+    //u8 temp = Interp1D(eData.iatCal, adc);
+    //V("Type %s : %f deg -> %d adc -> %d deg\n", (type == IAT) ? "IAT":"CLT", degree, adc, temp);
+
+    return (adc * 5 / 256.);
 }
 
-static float ThrToVoltage(const float TPS)
+static float MapToVoltage(const float kpa) // considering linear based on min/max
 {
-    //TODO include min/max values
-    return (TPS * 5 / 100.);
+    float voltage = (kpa + eData.map0) * 5 / (eData.map5 - eData.map0) ;
+    return voltage;
 }
 
-static void pwm_changed_hook(struct avr_irq_t * irq, uint32_t value, void * param)
+static float ThrToVoltage(const float TPS) // TPS in %
 {
-    display_pwm = value;
+    float adc = (eData.tpsMax - eData.tpsMin) * TPS / 100. + eData.tpsMin;
+    float voltage = adc * 5/256.;
+    return voltage;
 }
 
 static void PrintArray(const u8* buffer, const int len)
@@ -281,7 +296,7 @@ static int ReadConfig(void)
     int res;
 
     const u8 toRead[] = {'r', 0, 0, (u8)(sizeof(eData)%256), (u8)(sizeof(eData)/256)};
-    V("\n>> read conf\n");
+    V(">> read conf\n");
     PrintArray(toRead, 5);
     write(fd, toRead, 5);
     res = ReadFromSerial(sizeof(eData), (u8*)&eData);
@@ -297,7 +312,7 @@ static int WriteConfig(void)
 
     //write new config
     const u8 toWrite[] = {'w', 0, 0, (u8)(sizeof(eData)%256), (u8)(sizeof(eData)/256)};
-    V("\n>> write new conf\n");
+    V(">> write new conf\n");
     PrintArray(toWrite, 5);
     write(fd, toWrite, 5);
     // Need to slow down writing to avoid buffer overflow
@@ -502,53 +517,68 @@ int TestSpeed(void)
 
 int TestAnalog(void)
 {
-
-    //TODO : to fix
-    return NOTEST;
-    /* This test check the analog inputs
-     * conversions for temperature, TPS
-     * and batterie */
+    /* This test check the analog inputs capture and conversions for 
+     * temperature, TPS, MAP and battery */
 
     const float tolerance = 5; //%
     int subTestPassed = 0;
-    float analogTable[ANALOG_QTY][4] = {{100, 20, 20, 0},
-        {110, 100, 25, 50},
-        {120, 120, 30, 90},
-        {150, 180, 35, 100}}; // battery, CLT, tempAdm, TPS
-    // TODO : set conversion ratios to 100%
+    float analogTable[ANALOG_QTY][5] = {{ 95,  20, 20,  1,  30},
+                                        {110, 100, 25, 50,  50},
+                                        {120, 120, 30, 90,  90},
+                                        {150, 180, 35, 100, 100}}; // battery, CLT, IAT, TPS, MAP
+
+    const float analogMax[5] = { 150, 150, 40,  100, 110}; // battery, CLT, IAT, TPS, MAP
+    // Update config
+    if(ReadConfigRetry() != OK) 
+    {
+        RED("Impossible de lire la configuration");
+        return FAIL;
+    }
+    eDataToWrite = eData;
+    eDataToWrite.battRatio  = 150;
+    eDataToWrite.map0       = 0;
+    eDataToWrite.map5       = 110;
+    eDataToWrite.tpsMin     = 20;
+    eDataToWrite.tpsMax     = 150;
+    if(WriteConfigRetry() != OK) return FAIL;
 
     // now the requests
+    V("   Battery  |    CLT   |   IAT   |   TPS    |    MAP   | TPSState\n");
     for (int i = 0; i < ANALOG_QTY; i++)
     {
         /* set new inputs values */
-        float voltage[4];
+        float voltage[5];
         voltage[0] = BatToVoltage(analogTable[i][0]);
-        voltage[1] = TempToVoltage(analogTable[i][1]);
-        voltage[2] = TempToVoltage(analogTable[i][2]);
+        voltage[1] = TempToVoltage(analogTable[i][1], CLT);
+        voltage[2] = TempToVoltage(analogTable[i][2], IAT);
         voltage[3] = ThrToVoltage(analogTable[i][3]);
-        for(int j = 0; j < 4; j++)
+        voltage[4] = MapToVoltage(analogTable[i][4]);
+        for(int j = 0; j < 5; j++)
             analog_input_set_value(&analog, j, voltage[j]);
         SleepMs(1000);
         /* query result */
         QueryState();
 
         /* criteria : values are correct */
-        //V("Expected values : %.0f %.0f %.0f %.0f\n", analogTable[i][0], analogTable[i][1], analogTable[i][2], analogTable[i][3]);
         float maxError = 0.;
-        int analogResult[] = {gState.battery, gState.CLT, gState.IAT, gState.TPS};
+        int analogResult[] = {gState.battery, gState.CLT, gState.IAT, gState.TPS, gState.MAP};
+        int rawResult[]    = {gState.rawBattery, gState.rawClt, gState.rawIat, gState.rawTps, gState.rawMap};
         char message[256];
-        for(int j = 0; j < 4; j++)
+        message[0] = '\0';
+        for(int j = 0; j < 5; j++)
         {
-            float error = 100 - (100. * (analogResult[j]) / analogTable[i][j]);
-            sprintf(message, "Erreur %d / %.0f = %.1f %% \n", analogResult[j], analogTable[i][j], error);
-            V("%s", message);
+            // error over the ful dynamic
+            float error = 100. * (analogResult[j] - analogTable[i][j]) / analogMax[j];
+            sprintf(message, "%s %.0f%% %d %d|", message, error, analogResult[j], rawResult[j]);
             if(error < 0) error = -error;
-            if(error > maxError) maxError = error;
+            if(error > tolerance) 
+            {
+                maxError = error;
+            }
         }
-        if(maxError > tolerance)
-        {       
-            RED("Test failed\n");
-        }else{
+        V("%s 0x%x\n", message, gState.TPSState);
+        if(maxError <= tolerance)
+        {
             subTestPassed++;
         }
     }
@@ -885,11 +915,9 @@ int main(int argc, char *argv[])
     pulse_input_init(avr, &pulse_input_wheel, "Wheel", tHigh, tLow);
     avr_connect_irq(pulse_input_engine.irq + IRQ_PULSE_OUT, avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 2));
     avr_connect_irq(pulse_input_wheel.irq  + IRQ_PULSE_OUT, avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 3));
-    avr_irq_t * i_pwm = avr_io_getirq(avr, AVR_IOCTL_TIMER_GETIRQ('0'), TIMER_IRQ_OUT_PWM1);
-    avr_irq_register_notify(i_pwm, pwm_changed_hook, NULL); 
-    int   adc_input[4] = {ADC_IRQ_ADC7, ADC_IRQ_ADC1, ADC_IRQ_ADC2, ADC_IRQ_ADC3}; 
-    float adc_value[4] = {1, 1, 1, 1}; 
-    analog_input_init(avr, &analog, 4, adc_input, adc_value);
+    int   adc_input[5] = {ADC_IRQ_ADC1, ADC_IRQ_ADC3, ADC_IRQ_ADC6, ADC_IRQ_ADC2, ADC_IRQ_ADC7}; 
+    float adc_value[5] = {1, 1, 1, 1, 1}; 
+    analog_input_init(avr, &analog, 5, adc_input, adc_value);
     timing_analyzer_init(avr, &timing_analyzer_injection, "Injection");
     avr_connect_irq(avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 2), timing_analyzer_injection.irq + IRQ_TIMING_ANALYZER_REF_IN);
     avr_connect_irq(avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 2), timing_analyzer_injection.irq + IRQ_TIMING_ANALYZER_IN);
@@ -914,7 +942,6 @@ int main(int argc, char *argv[])
 
             avr_vcd_add_signal(&vcd_file, pulse_input_engine.irq + IRQ_PULSE_OUT, 1, "Pulse_engine");
             avr_vcd_add_signal(&vcd_file, pulse_input_wheel.irq  + IRQ_PULSE_OUT, 1, "Pulse_Wheel");
-            avr_vcd_add_signal(&vcd_file, i_pwm, 8 /* bits */, "PWM" );
             avr_vcd_start(&vcd_file);
         }
 

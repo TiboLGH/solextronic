@@ -39,7 +39,11 @@
 #include "varDef.h"
 
 extern eeprom_data_t    eData;
-//#define V(msg, ...) fprintf(stdout, msg, ##__VA_ARGS__ )
+#ifdef SIM_HOST
+#define V(msg, ...) fprintf(stdout, msg, ##__VA_ARGS__ )
+#else
+#define V(msg, ...) do{}while(0);
+#endif
 
 u16 Interp2D(volatile u8 *table, u16 rpm, u8 load)
 {
@@ -113,7 +117,7 @@ u16 Interp2D(volatile u8 *table, u16 rpm, u8 load)
         valueHigh = table[rpmIdx * TABSIZE + loadIdx+1] + ((rpm - eData.rpmBins[rpmIdx]) * (long)delta) / rpmDelta;
     }
 
-    /****** 2.2. First interpolate along rpm axis  *******/
+    /****** 2.2. Second interpolate along load axis  *******/
     if(!loadDelta)
     {
         return valueLow;
@@ -123,9 +127,14 @@ u16 Interp2D(volatile u8 *table, u16 rpm, u8 load)
     }
 }
 
-
+/* Interpolation over 1 dimension
+ * Constraints (not checked by the function !)
+ *  - x table (table[][0]) shall be sorted in rising values
+ *  - delta between consecutive y values shall be in {-128,+127} 
+ */ 
 u8  Interp1D(volatile u8 table[TABSIZE][2], u8 adcVal)
 {
+    //for(int i = 0; i < TABSIZE; i++) V("%d temp %d : adc %d\n", i, table[i][0], table[i][1]);
     u8 i = 0;
     // Check for limit
     if(adcVal > table[TABSIZE-1][0])
@@ -137,13 +146,17 @@ u8  Interp1D(volatile u8 table[TABSIZE][2], u8 adcVal)
     {
         return table[0][1];
     }
-    else // in the table
+    else // in the table : interpolate
     {
         for(i=0; i<TABSIZE-1; ++i)
         {
-            if (adcVal > table[i][0]) break;
+            if (adcVal < table[i][0]) break;
         }
+        u8 deltaX = table[i][0] - table[i-1][0];
+        if(!deltaX) return 0; // hum that's bad 
+        s8 deltaY = table[i][1] - table[i-1][1];
+        if(!deltaY) return table[i][1]; 
+        return table[i-1][1] + ((s16)(adcVal - table[i-1][0]) * deltaY) / deltaX; 
     }
-    return table[i-1][1];
 }
 

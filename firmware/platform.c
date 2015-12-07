@@ -557,7 +557,7 @@ void ADCProcessing(void)
     if(gState.TPS > 97) gState.TPSState = T_WOT;
     else if(gState.TPS < 3) gState.TPSState = T_IDLE;
     else gState.TPSState = T_NORMAL;
-    gState.MAP = (gState.rawMap - eData.map0) / (eData.map5 - eData.map0); 
+    gState.MAP = (u16)gState.rawMap * (eData.map5 - eData.map0) / 255 - eData.map0; 
     // conversion done, inhibit useless recompute until next acquisition
     intState.adcDone = False;
 }
