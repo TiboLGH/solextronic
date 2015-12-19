@@ -46,6 +46,7 @@ switch_auto(
 	pulse_input_t * b = (pulse_input_t *) param;
 	if(b->high){
         b->value = !b->value;
+        //if(b->value) printf("Pulse %s cyle %llu\n", b->name, avr->cycle);
         avr_raise_irq(b->irq + IRQ_PULSE_OUT, b->value);
     }
     if(b->value){

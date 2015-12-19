@@ -576,10 +576,12 @@ int TestAnalog(void)
                 maxError = error;
             }
         }
-        V("%s 0x%x\n", message, gState.TPSState);
         if(maxError <= tolerance)
         {
+            GREEN("%s 0x%x\n", message, gState.TPSState);
             subTestPassed++;
+        }else{
+            RED("%s 0x%x\n", message, gState.TPSState);
         }
     }
 

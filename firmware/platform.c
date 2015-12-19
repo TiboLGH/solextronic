@@ -617,10 +617,10 @@ ISR(INT0_vect)
     lastTick = latchedTimer1;
 
 	intState.RPMperiod = intState.period_1 * 2 - intState.period_2;
-	intState.period_2 = intState.period_1;
+    intState.period_2 = intState.period_1;
 
     // compute RPM : tick is 4us
-    gState.rpm = 60 * (250000 / intState.RPMperiod);
+    gState.rpm = (60 * 250000) / intState.RPMperiod;
 
     // update injection and ignition timings
     INJ_INT_DISABLE;
