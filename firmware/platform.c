@@ -322,7 +322,9 @@ ISR(TIMER2_COMPA_vect)
             IGN_INT_DISABLE;
             curIgnTiming.start = TCNT1 + nextIgnTiming.start;
             curIgnTiming.duration  = nextIgnTiming.duration;
-            if(curIgnTiming.state == OFF) OCR1A = curIgnTiming.start;
+            PIN_OFF(IGNITION_PIN, eData.ignPolarity);
+            curIgnTiming.state = OFF;
+            OCR1A = curIgnTiming.start;
             IGN_INT_ENABLE;
         }
 
@@ -376,7 +378,10 @@ ISR(TIMER1_COMPA_vect)
     }else{
         PIN_OFF(IGNITION_PIN, eData.ignPolarity);
         curIgnTiming.state = OFF;
-        OCR1A = curIgnTiming.start;
+        if(intState.ignTestMode)
+            IGN_INT_DISABLE;
+        else
+            OCR1A = curIgnTiming.start;
     }
 }
 
@@ -758,6 +763,7 @@ void IgnitionStartTest(void)
 */
 void IgnitionStopTest(void)
 {
+    intState.ignTestMode = False;
     IGN_INT_DISABLE;
     return;
 }

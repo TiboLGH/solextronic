@@ -134,7 +134,7 @@ Test_t testList[] = {
     {TEST_RPM,          "RPM",              TestRPM},
     {TEST_SPEED,        "Speed",            TestSpeed},
     {TEST_ANALOG,       "Analog",           TestAnalog},
-    {TEST_IGNTESTMODE,  "IgnitionTest",     TestStub},//TestIgnitionTestMode},
+    {TEST_IGNTESTMODE,  "IgnitionTest",     TestIgnitionTestMode},
     {TEST_INJTESTMODE,  "InjectionTest",    TestInjectionTestMode},
 };
 
@@ -667,6 +667,7 @@ int TestIgnitionTestMode(void)
     eDataToWrite.PMHOffset      = 0;
     eDataToWrite.ignDuration    = ignDuration;
     eDataToWrite.ignTestMode    = 1;
+    eDataToWrite.ignPolarity    = 1;
     SleepMs(100);
     if(WriteConfigRetry() != OK) return FAIL;
    
@@ -689,10 +690,10 @@ int TestIgnitionTestMode(void)
     error = 100 - (100. * result.high_duration / ignDuration);
     if(error > 2*tolerance || error < -2*tolerance)  // not a critical point
     {       
-        RED("Temps d'injection mesure : %d us, erreur %.1f %% \n", result.high_duration, error);
+        RED("Temps d'allumage mesure : %d us, erreur %.1f %% \n", result.high_duration, error);
         verdict = FAIL;
     }else{
-        GREEN("Temps d'injection mesure : %d us, erreur %.1f %% \n", result.high_duration, error);
+        GREEN("Temps d'allumage mesure : %d us, erreur %.1f %% \n", result.high_duration, error);
     }
     eDataToWrite = eData;
     eDataToWrite.ignTestMode    = 0;
