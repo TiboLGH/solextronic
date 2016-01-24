@@ -81,7 +81,7 @@ enum{
     TEST_RPM,
     TEST_SPEED,
     TEST_ANALOG,
-    TEST_IGNAUTO,
+    TEST_IGNTESTMODE,
     TEST_INJTESTMODE,
     TEST_QTY
 };
@@ -123,19 +123,19 @@ int TestVersion(void);
 int TestRPM(void);
 int TestSpeed(void);
 int TestAnalog(void);
-int TestIgnitionAuto(void);
+int TestIgnitionTestMode(void);
 int TestInjectionTestMode(void);
 int TestIgnition(void);
 int TestStub(void);
 
 int testQty;
 Test_t testList[] = {
-    {TEST_VERSION,      "Version", TestVersion},
-    {TEST_RPM,          "RPM", TestRPM},
-    {TEST_SPEED,        "Vitesse", TestSpeed},
-    {TEST_ANALOG,       "Analog", TestAnalog},
-    {TEST_IGNAUTO,      "AllumageAuto", TestIgnitionAuto},
-    {TEST_INJTESTMODE,  "InjectionTestMode", TestInjectionTestMode},
+    {TEST_VERSION,      "Version",          TestVersion},
+    {TEST_RPM,          "RPM",              TestRPM},
+    {TEST_SPEED,        "Speed",            TestSpeed},
+    {TEST_ANALOG,       "Analog",           TestAnalog},
+    {TEST_IGNTESTMODE,  "IgnitionTest",     TestStub},//TestIgnitionTestMode},
+    {TEST_INJTESTMODE,  "InjectionTest",    TestInjectionTestMode},
 };
 
 /********* Helpers ************/
@@ -613,10 +613,11 @@ int TestInjectionTestMode(void)
     eDataToWrite = eData;
     eDataToWrite.injTestPW     = injDuration;
     eDataToWrite.injTestCycles = injCycles;
+    eDataToWrite.injPolarity   = 1;
     if(WriteConfigRetry() != OK) return FAIL;
    
     // 3. Measure injection signal timing
-    SleepMs(200 * injCycles);
+    SleepMs(20 * injCycles);
     timing_analyzer_result(&timing_analyzer_injection, &result); // read stats
 	V("result.period 			%d\n",result.period);
 	V("result.high_duration 	%d\n",result.high_duration);
@@ -641,16 +642,16 @@ int TestInjectionTestMode(void)
     }
     if(result.count != injCycles)
     {       
-        RED("Nombre d'injection mesure : %d /%d \n", result.count, injCycles);
+        RED("Nombre d'injection mesure : %d / %d \n", result.count, injCycles);
         verdict = FAIL;
     }else{
-        GREEN("Nombre d'injection mesure : %d /%d \n", result.count, injCycles);
+        GREEN("Nombre d'injection mesure : %d / %d \n", result.count, injCycles);
     }
     
     return verdict;
 }
 
-int TestIgnitionAuto(void)
+int TestIgnitionTestMode(void)
 {
     int verdict = PASS;
     const u16 ignDuration = 1000;

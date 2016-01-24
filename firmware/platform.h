@@ -98,7 +98,6 @@ enum
 // Ignition control on PB1/OC1A (pin 13 on 32 pins parts)
 #define IGNITION_PIN  B, 1 
 // Pump control on PD7 (pin 11 on 32 pins parts)
-//#define PUMP_PIN  PORTD, 7 
 #define PUMP_PIN  D, 7 
 // HV supply on PD5 (pin 9 on 32 pins parts)
 #define HV_PIN  D, 5 

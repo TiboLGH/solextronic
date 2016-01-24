@@ -308,7 +308,9 @@ ISR(TIMER2_COMPA_vect)
                 INJ_INT_DISABLE;
                 curInjTiming.start = TCNT1 + nextInjTiming.start;
                 curInjTiming.duration  = nextInjTiming.duration;
-                if(curInjTiming.state == OFF) OCR1B = curInjTiming.start;
+                curInjTiming.state = OFF;
+                PIN_OFF(INJECTOR_PIN, eData.injPolarity);
+                OCR1B = curInjTiming.start;
                 INJ_INT_ENABLE;
             }
             gState.injTestCycles--;        
@@ -394,9 +396,11 @@ ISR(TIMER1_COMPB_vect)
         OCR1B += curInjTiming.duration;
     }else{
         PIN_OFF(INJECTOR_PIN, eData.injPolarity);
-        PIN_OFF(INJECTOR_PIN, eData.injPolarity);
         curInjTiming.state = OFF;
-        OCR1B = curInjTiming.start;
+        if(gState.injTestMode) 
+            INJ_INT_DISABLE;
+        else
+            OCR1B = curInjTiming.start;
     }
 }
 
@@ -623,17 +627,21 @@ ISR(INT0_vect)
     gState.rpm = (60 * 250000) / intState.RPMperiod;
 
     // update injection and ignition timings
-    INJ_INT_DISABLE;
-    curInjTiming.start = latchedTimer1 + nextInjTiming.start;
-    curInjTiming.duration  = nextInjTiming.duration;
-    if(curInjTiming.state == OFF) OCR1B = curInjTiming.start;
-    INJ_INT_ENABLE;
+    if((gState.engineState == M_CRANKING) ||
+       (gState.engineState == M_RUNNING))
+      {
+          INJ_INT_DISABLE;
+          curInjTiming.start = latchedTimer1 + nextInjTiming.start;
+          curInjTiming.duration  = nextInjTiming.duration;
+          if(curInjTiming.state == OFF) OCR1B = curInjTiming.start;
+          INJ_INT_ENABLE;
 
-    IGN_INT_DISABLE;
-    curIgnTiming.start = latchedTimer1 + nextIgnTiming.start;
-    curIgnTiming.duration  = nextIgnTiming.duration;
-    if(curIgnTiming.state == OFF) OCR1A = curIgnTiming.start;
-    IGN_INT_ENABLE;
+          IGN_INT_DISABLE;
+          curIgnTiming.start = latchedTimer1 + nextIgnTiming.start;
+          curIgnTiming.duration  = nextIgnTiming.duration;
+          if(curIgnTiming.state == OFF) OCR1A = curIgnTiming.start;
+          IGN_INT_ENABLE;
+      }
     
     // Flag to compute a new cycle
     intState.newCycle = 1;
@@ -713,11 +721,12 @@ void SetIgnitionTiming(u8 force, u8 advance)
 void InjectorStartTest(void)
 {
     /* Configure waveform generator */
+    IGN_INT_DISABLE;
     INJ_INT_DISABLE;
     /* Configure waveform generator */
     nextInjTiming.start = INJ_TEST_ADV;
-    nextInjTiming.duration  = eData.injTestPW >> 2; // conversion from us to timer step (4us) 
-    intState.ignTestMode = True;
+    nextInjTiming.duration  = eData.injTestPW >> 2; // conversion from us to timer step (4us)
+    gState.injTestCycles--;
     INJ_INT_ENABLE;
     gState.injTestMode = True;
     return;
@@ -732,6 +741,7 @@ void InjectorStartTest(void)
 void IgnitionStartTest(void)
 {
     IGN_INT_DISABLE;
+    INJ_INT_DISABLE;
     /* Configure waveform generator */
     nextIgnTiming.start = IGN_TEST_ADV;
     nextIgnTiming.duration  = eData.ignDuration >> 2; // conversion from us to timer step (4us) 

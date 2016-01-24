@@ -25,7 +25,7 @@ $(TARGET): $(OBJ_FILES)
 	@echo SIM $@ done
 
 run: $(TARGET)
-	LD_LIBRARY_PATH=$(LIBDIR):$(LD_LIBRARY_PATH) ./simMain.exe -v -a ../solextronic.elf
+	LD_LIBRARY_PATH=$(LIBDIR):$(LD_LIBRARY_PATH) ./simMain.exe -w -v -a ../solextronic.elf
 
 .PHONY: clean
 
