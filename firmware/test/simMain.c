@@ -55,13 +55,15 @@
 #include "pulse_input.h"
 #include "analog_input.h"
 #include "timing_analyzer.h"
+#include "sim_helpers.h"
+
 #include "../varDef.h"
 #include "../helper.h"
+#include "../../model/model.h"
 
 const char *ptyName = "/tmp/simavr-uart0";
 #define RPM_QTY 5
 #define SPEED_QTY 5
-#define ANALOG_QTY 4
 #define RETRY_SERIAL 3
 
 #define RED(msg, ...) fprintf(stdout, "\033[31m" msg "\033[0m", ##__VA_ARGS__ )
@@ -83,6 +85,8 @@ enum{
     TEST_ANALOG,
     TEST_IGNTESTMODE,
     TEST_INJTESTMODE,
+    TEST_TIMING,
+    TEST_STARTING,
     TEST_QTY
 };
 
@@ -125,7 +129,7 @@ int TestSpeed(void);
 int TestAnalog(void);
 int TestIgnitionTestMode(void);
 int TestInjectionTestMode(void);
-int TestIgnition(void);
+int TestIgnInjTiming(void);
 int TestStub(void);
 
 int testQty;
@@ -136,19 +140,22 @@ Test_t testList[] = {
     {TEST_ANALOG,       "Analog",           TestAnalog},
     {TEST_IGNTESTMODE,  "IgnitionTest",     TestIgnitionTestMode},
     {TEST_INJTESTMODE,  "InjectionTest",    TestInjectionTestMode},
+    {TEST_INJTESTMODE,  "InjectionTest",    TestInjectionTestMode},
+    {TEST_TIMING,       "Timing",           TestIgnInjTiming},
+    {TEST_STARTING,     "Starting",         TestStub},
 };
 
 /********* Helpers ************/
 static void RPMtoPeriod(const uint32_t rpm, uint32_t *tHigh, uint32_t *tLow)
 {
     *tHigh = 100; /* set high duration to 100us */
-    *tLow  = 1000000 / (rpm / 60) - *tHigh;
+    *tLow  = (uint32_t)(1000000. / (rpm / 60.) - *tHigh);
 }
 
 static void SpeedtoPeriod(const uint32_t speed, uint32_t *tHigh, uint32_t *tLow)
 {
     *tHigh = 1000; /* set high duration to 1ms */
-    *tLow  = 1000000 / (speed / 3.6 / 1.82) - *tHigh;
+    *tLow  = 1000000 / (speed / 3.6 / 1.82) - *tHigh; /* 1.82m : for 19" wheel */
 }
 
 static float BatToVoltage(const float battery)
@@ -208,8 +215,15 @@ static void PrettyPrint(const u8* buffer, const int len)
 static float TimingToAdvance(const uint32_t rpm, const uint32_t timing)
 {
     // timing in us
-    float period = rpm;//1000000 / (rpm / 60);
+    double period = 60e6/rpm; //us
     return (360 - (timing / period) * 360);
+}
+
+static bool CheckTolerance(const float result, const float expected, const float tolerance, float *error)
+{
+    *error = (result-expected);
+    if(*error > tolerance || *error < -tolerance) return false;       
+    return true;
 }
 
 /*********************************************************************/
@@ -515,6 +529,7 @@ int TestSpeed(void)
     return FAIL;
 }
 
+#define ANALOG_QTY 4
 int TestAnalog(void)
 {
     /* This test check the analog inputs capture and conversions for 
@@ -543,7 +558,7 @@ int TestAnalog(void)
     if(WriteConfigRetry() != OK) return FAIL;
 
     // now the requests
-    V("   Battery  |    CLT   |   IAT   |   TPS    |    MAP   | TPSState\n");
+    V("    Battery  |     CLT    |     IAT    |    TPS     |     MAP    |  TPSState\n");
     for (int i = 0; i < ANALOG_QTY; i++)
     {
         /* set new inputs values */
@@ -569,7 +584,7 @@ int TestAnalog(void)
         {
             // error over the ful dynamic
             float error = 100. * (analogResult[j] - analogTable[i][j]) / analogMax[j];
-            sprintf(message, "%s %.0f%% %d %d|", message, error, analogResult[j], rawResult[j]);
+            sprintf(message, "%s %2.0f%% %3d %3d|", message, error, analogResult[j], rawResult[j]);
             if(error < 0) error = -error;
             if(error > tolerance) 
             {
@@ -593,8 +608,7 @@ int TestAnalog(void)
 }
 
 /* Injection test mode
-   Enable injection for 1000 cycles and 
-   open time of 1000us.
+   Enable injection for 20 cycles and open time of 1000us.
    Check that injection occurs every 10ms for 1000us with no advance/open time
 */
 int TestInjectionTestMode(void)
@@ -651,6 +665,10 @@ int TestInjectionTestMode(void)
     return verdict;
 }
 
+/* Ignition test mode
+   Enable ignition with open time of 1000us.
+   Check that ignition occurs every 10ms for 1000us
+*/
 int TestIgnitionTestMode(void)
 {
     int verdict = PASS;
@@ -702,23 +720,47 @@ int TestIgnitionTestMode(void)
     return verdict;
 }
 
-int TestIgnition(void)
+/* Timing test
+   For several RPM and load, check timing of injection and ignition signals
+   versus the model and given injection/ignitions tables
+*/
+#define POINT_QTY 4
+#define CHECK_AND_PRINT(meas, expected, tolerance, text)                                                                    \
+        do{                                                                                                     \
+        result = CheckTolerance((meas), (expected), (tolerance), &error);                                         \
+        snprintf(str, 256, (text), (meas), (expected), error);                                                  \
+        if(result) GREEN("%s", str); else {RED("%s", str); verdict = FAIL;}                                     \
+        }while(0)                                                                                               \
+
+int TestIgnInjTiming(void)
 {
-    /* This test aims to check ignition timings 
-       it tries several RPM values with a given advance table */
-    const float tolerance = 5; //%
-    const u16 ignDuration = 1000;
-    const u8 load = 50; // TODO manage load
     int verdict = PASS;
-    int rpmTable[RPM_QTY] = {500, 2000, 4000, 6000, 10000};
-	timing_analyzer_result_t result;
+    int inputTable[POINT_QTY][6] = {{ 2000, 130, 100, 20,  1,  30},
+                                    { 4000, 120, 100, 25, 50,  50},
+                                    { 6000, 120, 120, 30, 90,  90},
+                                    {10000, 110, 120, 35, 100, 100}}; // RPM, battery, CLT, IAT, TPS, MAP
+	timing_analyzer_result_t ignResult;
+	timing_analyzer_result_t injResult;
+    char str[256];
+    SetVerbosity(_verbose);
     
-    // 1. Set ignition parameters and advance table
+    // 1. Set parameters and tables
     if(ReadConfigRetry() != OK) return FAIL;
     eDataToWrite = eData;
     eDataToWrite.ignTestMode    = 0;
-    eDataToWrite.PMHOffset      = 0;
-    eDataToWrite.ignDuration    = ignDuration;
+    eDataToWrite.PMHOffset      = 0; // TODO : To be tested
+    eDataToWrite.ignDuration    = 1000;
+    eDataToWrite.ignPolarity    = 1;
+    eDataToWrite.injPolarity    = 1;
+    eDataToWrite.battRatio      = 150;
+    eDataToWrite.map0           = 0;
+    eDataToWrite.map5           = 110;
+    eDataToWrite.tpsMin         = 20;
+    eDataToWrite.tpsMax         = 150;
+    eDataToWrite.targetAfr      = 120; // 12
+    // Force running mode
+    eDataToWrite.runTestMode    = 1;
+
     //Fill advance table
     for(int i = 0; i < TABSIZE; i++)
     {
@@ -727,64 +769,75 @@ int TestIgnition(void)
         for(int j = 0; j < TABSIZE; j++)
         {
             eDataToWrite.ignTable[i][j] = 4*i+j;
+            eDataToWrite.injTable[i][j] = 100; // VE set to 100%
         }
     }
     if(WriteConfigRetry() != OK) return FAIL;
 
-    for (int i = 0; i < RPM_QTY; i++)
+    for (int i = 0; i < POINT_QTY; i++)
     {
-        // 2. set new RPM
-        HIGH("RPM a %d tr/min\n", rpmTable[i]);
+        // 2. set new RPM and sensors parameters
+        HIGH("RPM %d tr/min, bat %.1fv, CLT %ddeg, IAT %ddeg, TPS %d%% MAP %dkPa\n",
+                inputTable[i][0], inputTable[i][1]/10., inputTable[i][2], inputTable[i][3], inputTable[i][4], inputTable[i][5]);
         uint32_t high, low;
-        RPMtoPeriod(rpmTable[i], &high, &low);
+        RPMtoPeriod(inputTable[i][0], &high, &low);
         pulse_input_config(&pulse_input_engine, high, low);
+        float voltage[5];
+        voltage[0] = BatToVoltage(inputTable[i][1]);
+        voltage[1] = TempToVoltage(inputTable[i][2], CLT);
+        voltage[2] = TempToVoltage(inputTable[i][3], IAT);
+        voltage[3] = ThrToVoltage(inputTable[i][4]);
+        voltage[4] = MapToVoltage(inputTable[i][5]);
+        for(int j = 0; j < 5; j++)
+            analog_input_set_value(&analog, j, voltage[j]);
+
         SleepMs(1000);
         timing_analyzer_reset(&timing_analyzer_ignition, 5);
-        SleepMs(1000 * 10000/rpmTable[i]);
+        timing_analyzer_reset(&timing_analyzer_injection, 5);
+        SleepMs(2000 * 1000/inputTable[i][0]);
         /* query result */
         QueryState();
 
-        // 3. Measure ignition signal timing
-        timing_analyzer_result(&timing_analyzer_ignition, &result); // read stats
-        float advance = TimingToAdvance(result.period, result.rising_offset);
-        //float advance = TimingToAdvance(rpmTable[i], result.rising_offset);
-        int refAdvance = Interp2D(&(eData.ignTable[0][0]), rpmTable[i], load);
-        V("result.period            %d\n", result.period);
-        V("result.rising_offset     %d\n", result.rising_offset);
-        V("result.falling_offset    %d\n", result.falling_offset);
-        V("result.high_duration     %d\n", result.high_duration);
-        V("result.count             %d\n", result.count);
-        V("advance from pin         %.1f\n", advance);
-        V("ref advance              %d\n", refAdvance);
-        V("advance from module      %d\n", gState.advance);
-        V("RPM from module          %d\n", gState.rpm);
-        V("Load from module         %d\n", gState.load);
+        // 3. Measure signal timing
+        timing_analyzer_result(&timing_analyzer_ignition, &ignResult); // read stats
+        timing_analyzer_result(&timing_analyzer_injection, &injResult); // read stats
+        float ignAdvance = TimingToAdvance(inputTable[i][0], ignResult.rising_offset);
+        float injAdvance = TimingToAdvance(inputTable[i][0], injResult.rising_offset);
+       
+        // 4. Run model and get expected values
+        double computedK = ComputeK(eData.targetAfr, 100);
+        double load = ComputeLoad(eData, gState);
+        res_t ignModel, injModel;
+        ComputeInjection(eData, gState, &injModel);
+        ComputeIgnition(eData, gState, &ignModel);
 
-        // 4. Compare to expected values
-        float error = 100 - (100. * result.period / (high + low));
-        if(error > tolerance || error < -tolerance)
-        {       
-            RED("Periode mesuree : %d us, erreur %.1f %% \n", result.period, error);
-            verdict = FAIL;
-        }else{
-            GREEN("Periode mesuree : %d us, erreur %.1f %% \n", result.period, error);
-        }
-        error = 100 - (100. * result.high_duration / ignDuration);
-        if(error > tolerance || error < -tolerance)
-        {       
-            RED("Temps d'allumage mesure : %d us, erreur %.1f %% \n", result.high_duration, error);
-            verdict = FAIL;
-        }else{
-            GREEN("Temps d'allumage mesure : %d us, erreur %.1f %% \n", result.high_duration, error);
-        }
-        error = advance - refAdvance;
-        if(error > 2 || error < -2)
-        {       
-            RED("Avance mesuree : %.1f deg, erreur %.f deg\n", advance, error);
-            verdict = FAIL;
-        }else{
-            GREEN("Avance mesuree : %.1f deg, erreur %.f deg\n", advance, error);
-        }
+        // 5. Compare to expected values
+        float error = 0; bool result = false;
+        V("General                |  Measured  |  Expected  |  Error |\n");
+        CHECK_AND_PRINT(gState.rpm, inputTable[i][0], 100, "  RPM from module      | %10d | %10d | %5.1f |\n");
+        CHECK_AND_PRINT(gState.load, load, 1, "  Load from module     | %10d | %10.1f | %5.1f |\n");
+        
+        V("Ignition :\n");
+        CHECK_AND_PRINT(ignResult.period, high+low, 100, "  Period (us)          | %10d | %10d | %5.1f |\n");
+        CHECK_AND_PRINT(ignResult.high_duration, ignModel.duration, 10, "  Pulse duration (us)  | %10d | %10d | %5.1f |\n");
+        CHECK_AND_PRINT(ignAdvance, ignModel.advance, 2, "  Advance from pin     | %10.1f | %10.1f | %5.1f |\n");
+        CHECK_AND_PRINT(gState.advance, ignModel.advance, 2, "  Advance from module  | %10d | %10.1f | %5.1f |\n");
+        V("  Count                | %10d |\n", ignResult.count);
+        V("  Result.rising_offset | %10d |\n", ignResult.rising_offset);
+        V("  Result.falling_offset| %10d |\n", ignResult.falling_offset);
+        
+        V("Injection :\n");
+        CHECK_AND_PRINT(gState.injK, computedK, 1, "  K                    | %10d | %10.1f | %5.1f |\n");
+        CHECK_AND_PRINT(gState.injVE, injModel.VE, 1,  "  VE                   | %10d | %10.1f | %5.1f |\n");
+        CHECK_AND_PRINT(injResult.period, high+low, 100, "  Period (us)          | %10d | %10d | %5.1f |\n");
+        CHECK_AND_PRINT(injResult.high_duration, injModel.duration, 10, "  Pulse dur (pin,us)   | %10d | %10d | %5.1f |\n");
+        CHECK_AND_PRINT(gState.injPulseWidth, injModel.duration, 10, "  Pulse dur (module,us)| %10d | %10d | %5.1f |\n");
+        CHECK_AND_PRINT(injAdvance, injModel.advance, 2, "  Start from pin(deg)  | %10.1f | %10.1f | %5.1f |\n");
+        CHECK_AND_PRINT(gState.injStart, injModel.start, 10, "  Start from module(us)| %10d | %10d | %5.1f |\n");
+        V("  Count                | %10d |\n", injResult.count);
+        V("  Result.rising_offset | %10d |\n", injResult.rising_offset);
+        V("  Result.falling_offset| %10d |\n", injResult.falling_offset);
+
     }
     return verdict;
 }
@@ -907,7 +960,11 @@ int main(int argc, char *argv[])
     /*if(_verbose) 
     {   
         avr->log = LOG_TRACE;
-    }*/
+    }
+    for(int i=0; i <f.symbolcount; i++)
+    {
+        V("Symbole %i : addr 0x%x : %s\n", i, f.symbol[i]->addr, f.symbol[i]->symbol);
+    }*/ 
 
     /* External parts connections */
     uart_pty_init(avr, &uart_pty);
@@ -993,17 +1050,17 @@ int main(int argc, char *argv[])
                 1, "IGN");
         avr_vcd_add_signal(&vcd_file, pulse_input_wheel.irq  + IRQ_PULSE_OUT, 1, "Pulse_Wheel");
         avr_vcd_add_signal(&vcd_file,
-                avr_iomem_getirq(avr, 0x89, "OCR1AH", 8), 8, "OCR1AH");
+                helpers_register_16bit_irq(avr, 0x88, "OCR1A"), 16, "OCR1A");
         avr_vcd_add_signal(&vcd_file,
-                avr_iomem_getirq(avr, 0x88, "OCR1AL", 8), 8, "OCR1AL");
+                helpers_register_16bit_irq(avr, 0x8A, "OCR1B"), 16, "OCR1B");
         avr_vcd_add_signal(&vcd_file,
-                avr_iomem_getirq(avr, 0x8B, "OCR1BH", 8), 8, "OCR1BH");
+                helpers_register_16bit_irq(avr, 0x84, "TNCT1"), 16, "TCNT1");
         avr_vcd_add_signal(&vcd_file,
-                avr_iomem_getirq(avr, 0x8A, "OCR1BL", 8), 8, "OCR1BL");
+                helpers_register_debug_irq(avr, 0xFE, "DEBUG1", 16), 16, "period");
         avr_vcd_add_signal(&vcd_file,
-                avr_iomem_getirq(avr, 0x85, "TCNT1H", 8), 8, "TCNT1H");
+                helpers_register_debug_irq(avr, 0xFC, "DEBUG2", 16), 16, "start");
         avr_vcd_add_signal(&vcd_file,
-                avr_iomem_getirq(avr, 0x84, "TCNT1L", 8), 8, "TCNT1L");
+                helpers_register_debug_irq(avr, 0xFA, "DEBUG3", 16), 16, "duration");
         avr_vcd_add_signal(&vcd_file,
                 avr_iomem_getirq(avr, 0x4E, "SPDR", 8), 8, "DEBUG");
         avr_vcd_add_signal(&vcd_file,
@@ -1076,7 +1133,10 @@ int main(int argc, char *argv[])
         if(testPassed == TEST_QTY)
         {
             GREEN("Bravo : tous les tests sont OK !\n");
+        avr_vcd_add_signal(&vcd_file,
+                helpers_register_16bit_irq(avr, 0x84, "TNCT1"), 16, "TCNT1");
         }else{
+
             RED("Seulement %d tests sur %d sont OK :-(\n", testPassed, TEST_QTY);
         }   
     }

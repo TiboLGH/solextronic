@@ -57,21 +57,28 @@ u16 ComputeK(u16 patm)
 	/* K = MMAir.CYL.Patm / AFR.R
 	* MMAir = 28,965338 g·mol-1
 	* CYL = 50cm3 => *1e-6m3
-	* pAtm in hPa => *100Pa
+	* pAtm in kPa => *1000 Pa
 	* AFR no unit
 	* R = 8,3144621 J·mol-1·K-1
 	* Patm, AFR are semi-static meaning it won't change after boot => function can be called once in init (only need a valid MAP measurement) 
-	* K = (MMAir/R).CYL/1e6.PAtm*100/(AFR10/10)
-	* K = 3.48373e-3.CYL.Patm/AFR10
-	* K = 3.484.CYL.Patm/AFR10 with output in mg
+	* K = (MMAir/R).CYL/1e6.PAtm*1000/(AFR10/10)
+	* K = 3.48373e-2.CYL.Patm/AFR10
+	* K = 34.837.CYL.Patm/AFR10 with output in mg
 	*/
-	return  (u16)(3484L * CYL * (u32)patm / (1000 * eData.targetAfr)); 	
+	u32 res = 34837L * CYL * (u32)patm;
+    res /= (1000 * (u32)eData.targetAfr); 	
+    return (u16)res;
+}
+
+u8 ComputeLoad(void)
+{
+    //TODO manage load based on throttle/pressure/whatever. Force to 50% for now
+    gState.load = 50; 
+    return gState.load;
 }
 
 u8 ComputeIgnition(u8 overheat)
 {
-    //TODO manage load based on throttle/pressure/whatever. Force to 50% for now
-    gState.load = 50; 
     // compute advance from table
     gState.advance = Interp2D(&(eData.ignTable[0][0]), gState.rpm, gState.load);
 
@@ -94,8 +101,6 @@ u8 ComputeIgnition(u8 overheat)
 
 u8 ComputeInjection(u8 overheat)
 {
-    //TODO manage load based on throttle/pressure/whatever. Force to 50% for now
-    gState.load = 50; 
     // compute VE from table
     gState.injVE = Interp2D(&(eData.injTable[0][0]), gState.rpm, gState.load);
 	
@@ -124,7 +129,7 @@ u8 ComputeInjection(u8 overheat)
     enrich += gState.injOffset;
     
 	// turn into injector pulse width
-	gState.injPulseWidth = (gState.injQFuel * (100 + enrich)) / (100 * eData.injRate) + eData.injOpen;
+	gState.injPulseWidth = (gState.injQFuel * (100 + enrich)) / (100 * eData.injectorRate) + eData.injectorOpen;
 
     // commit advance for next cycle
     SetInjectionTiming(AUTO, gState.injPulseWidth);
@@ -148,7 +153,7 @@ u8 MainFsm(void)
 				// compute K
 				gState.injK = ComputeK(gState.MAP);
 				gState.advance = eData.ignStarter;
-				gState.injPulseWidth = ((u32)eData.injStarter * (100 + gState.injAfterStartEnrich) / 100) + eData.injOpen;
+				gState.injPulseWidth = ((u32)eData.injStarter * (100 + gState.injAfterStartEnrich) / 100) + eData.injectorOpen;
 				SetIgnitionTiming(AUTO, gState.advance);
 				SetInjectionTiming(AUTO, gState.injPulseWidth);
                 gState.engineState = M_CRANKING;
@@ -179,11 +184,14 @@ u8 MainFsm(void)
 			}
         break;
 
+        case M_TEST_RUN:
         case M_RUNNING: // normal operation: apply formula, recomputed each new cycle
             if(intState.newCycle) 
             {
                 intState.newCycle = 0;
                 u8 overheat = eData.maxTemp ? (gState.CLT > eData.maxTemp) : 0;
+                if(gState.engineState == M_TEST_RUN) gState.injK = ComputeK(100);
+                ComputeLoad();
                 ComputeInjection(overheat);
                 ComputeIgnition(overheat);
             }

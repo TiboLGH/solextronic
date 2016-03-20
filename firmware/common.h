@@ -70,7 +70,8 @@ typedef enum
     M_ERROR     = 1 << 3,
     M_STALLED   = 1 << 4,
     M_TEST_IGN  = 1 << 5,
-    M_TEST_INJ  = 1 << 6
+    M_TEST_INJ  = 1 << 6,
+    M_TEST_RUN  = 1 << 7
 }motor_e;
 
 enum

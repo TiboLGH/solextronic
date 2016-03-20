@@ -248,6 +248,15 @@ static void PostWriteHook(void)
     {
         IgnitionStopTest();
     }
+
+    if(eData.runTestMode && (gState.engineState != M_TEST_RUN))
+    {
+        gState.engineState = M_TEST_RUN;
+    }
+    else if(!eData.runTestMode && (gState.engineState == M_TEST_RUN))
+    {
+        gState.engineState = M_STOP;
+    }
     // next hook
     return;
 }

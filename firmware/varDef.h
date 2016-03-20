@@ -79,10 +79,10 @@ typedef struct __attribute__ ((__packed__)){ // packed for alignment when used i
     u8         ignOverheat;   /* scalar, U08,  xx,      "deg",    1.00000,   0.00000,   0,    20,  0 ;  advance decrease in case of overheating */
     u8         noSparkAtDec;  /* bits,   U08,  xx,  [0:0], "spark at dec", "no spark at dec"         ;  1 to stop ignition when deceleration */
     u8         ignStarter;    /* scalar, U08,  xx,      "deg",    1.00000,   0.00000,   0,   255,  0 ;  advance during crancking */
-    u16        injOpen;       /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  2000, 0 ;  time to open injector */
-    u16        injStart;      /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  2000, 0 ;  injector opening duration */
+    u16        injectorOpen;  /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  2000, 0 ;  time to open injector */
+    u16        injectorStart; /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  2000, 0 ;  injector opening duration */
     u8         holdPWM;       /* scalar, U08,  xx,        "%",    1.00000,   0.00000,   10,   100, 0 ;  PWM ratio during hold time */
-    u16        injRate;       /* scalar, U16,  xx,  "mg/usec",    1.00000,   0.00000,   50,   500, 0 ;  flow rate of injector */
+    u16        injectorRate;  /* scalar, U16,  xx,  "mg/usec",    1.00000,   0.00000,   50,   500, 0 ;  flow rate of injector */
     u8         injAdv;        /* scalar, U08,  xx,      "deg",    1.00000,   0.00000,    0,   255, 0 ;  mean injection advance */
     u8         targetAfr;     /* scalar, U08,  xx,        " ",    0.10000,   0.00000,  7.0,  20.0, 1 ;  target Air Fuel ratio */
     u16        injStarter;    /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  5000, 0 ;  injection duration during crancking */
@@ -92,6 +92,7 @@ typedef struct __attribute__ ((__packed__)){ // packed for alignment when used i
     u16        injTestPW;     /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200, 10000, 0 ;  pulse width of injector test mode */
     u16        injTestCycles; /* scalar, U16,  xx,        " ",    1.00000,   0.00000,    0,  1000, 0 ;  number of cycle of injector test mode. 0 to stop */
     u8         ignTestMode;   /* bits,   U08,  xx,  [0:0], "disable test mode", "Enable test mode"   ;  Enable/disable of ignition test mode */
+    u8         runTestMode;   /* bits,   U08,  xx,  [0:0], "disable test mode", "Enable test mode"   ;  Enable/disable of run test mode */
     u16        rpmBins[TABSIZE]; 			/* array,  U16,  xx, [10],"RPM", 1.00000,   0.00000,    0, 10000, 0 ;  table of RPM indexes */
     u8         loadBins[TABSIZE]; 			/* array,  U08,  xx, [10],  "%", 1.00000,  0.00000,    0,   100, 0 ;  table of load/MAF indexes */
     u8         injTable[TABSIZE][TABSIZE];  /* array,  U08,  xx,[10x10],   "%",    1.00000,   0.00000,  10,   130,  0 ;  table for injection */
@@ -137,6 +138,7 @@ typedef struct  __attribute__ ((__packed__)){ // packed for alignment when used 
                          /* stalled         = bits,   U08,   xx, [4:4] */
                          /* test_ign        = bits,   U08,   xx, [5:5] */
                          /* test_inj        = bits,   U08,   xx, [6:6] */
+                         /* test_run        = bits,   U08,   xx, [7:7] */
    u8  TPSState;         /* scalar,     U08,   xx,    "bit",    1.000,  0.0 ; TPS state */
                          /* idle            = bits,   U08,   xx, [0:0] */
                          /* wot             = bits,   U08,   xx, [1:1] */

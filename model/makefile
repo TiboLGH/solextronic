@@ -1,6 +1,6 @@
 TARGET		= model.exe
 CC		= gcc
-CFLAGS		= -I "lib" -MMD --std=gnu99 -O2 -Wall -g -D$(GIT_VER) -fPIC
+CFLAGS		= -I "lib" -MMD --std=gnu99 -O2 -Wall -g -D$(GIT_VER) -fPIC -DMODEL_STANDALONE=1
 LDFLAGS		= -MMD -fPIC
 GIT_VER		:=VERSION_GIT=0x$(shell git rev-parse --short HEAD)
 

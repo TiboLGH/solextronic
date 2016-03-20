@@ -58,13 +58,13 @@ const PROGMEM eeprom_data_t eeInit = {
     .ignStarter     = 5,
     .ignOverheat    = 2,
     .noSparkAtDec   = 0,
-    .injOpen        = 500,
-    .injRate        = 500, //?
+    .injectorOpen   = 500,
+    .injectorRate   = 500, //?
     .injAdv         = 140, //?
     .injStarter     = 1000,
     .injOverheat    = 3,
     .noInjAtDec     = 0,
-    .injStart       = 500,
+    .injectorStart  = 500,
     .holdPWM        = 50,
     .ignPolarity    = 0,
     .injPolarity    = 0,
@@ -124,10 +124,10 @@ static u32	timerTable[TIMER_QTY];
 static volatile u32 masterClk;
 static volatile u8 count10ms, count100ms;
 static TimeStamp_t     prevTs, newTs;
-static volatile wvf_t curInjTiming = {.state = OFF, .start = 0, .duration = 0};
-static volatile wvf_t nextInjTiming = {.state = OFF, .start = 0, .duration = 0};
-static volatile wvf_t curIgnTiming = {.state = OFF, .start = 0, .duration = 0};
-static volatile wvf_t nextIgnTiming = {.state = OFF, .start = 0, .duration = 0};
+static volatile wvf_t curInjTiming = {.state = OFF, .start = 0, .duration = 0, .pending = 0};
+static volatile wvf_t nextInjTiming = {.state = OFF, .start = 0, .duration = 0, .pending = 0};
+static volatile wvf_t curIgnTiming = {.state = OFF, .start = 0, .duration = 0, .pending = 0};
+static volatile wvf_t nextIgnTiming = {.state = OFF, .start = 0, .duration = 0, .pending = 0};
 
 const u8 adcIndex[] = {1, 3, 6, 2, 7, 255}; 
 
@@ -378,10 +378,12 @@ ISR(TIMER1_COMPA_vect)
     }else{
         PIN_OFF(IGNITION_PIN, eData.ignPolarity);
         curIgnTiming.state = OFF;
-        if(intState.ignTestMode)
-            IGN_INT_DISABLE;
-        else
+        if(curIgnTiming.pending) {
+            curIgnTiming.pending = 0;
             OCR1A = curIgnTiming.start;
+        }else{
+            IGN_INT_DISABLE;
+        }
     }
 }
 
@@ -402,10 +404,12 @@ ISR(TIMER1_COMPB_vect)
     }else{
         PIN_OFF(INJECTOR_PIN, eData.injPolarity);
         curInjTiming.state = OFF;
-        if(gState.injTestMode) 
-            INJ_INT_DISABLE;
-        else
+        if(curInjTiming.pending) {
+            curInjTiming.pending = 0;
             OCR1B = curInjTiming.start;
+        }else{
+            INJ_INT_DISABLE;
+        }
     }
 }
 
@@ -633,18 +637,21 @@ ISR(INT0_vect)
 
     // update injection and ignition timings
     if((gState.engineState == M_CRANKING) ||
-       (gState.engineState == M_RUNNING))
+       (gState.engineState == M_RUNNING)  ||
+       (gState.engineState == M_TEST_RUN))
       {
           INJ_INT_DISABLE;
           curInjTiming.start = latchedTimer1 + nextInjTiming.start;
           curInjTiming.duration  = nextInjTiming.duration;
           if(curInjTiming.state == OFF) OCR1B = curInjTiming.start;
+          curInjTiming.pending = 1;
           INJ_INT_ENABLE;
 
           IGN_INT_DISABLE;
           curIgnTiming.start = latchedTimer1 + nextIgnTiming.start;
           curIgnTiming.duration  = nextIgnTiming.duration;
           if(curIgnTiming.state == OFF) OCR1A = curIgnTiming.start;
+          curIgnTiming.pending = 1;
           IGN_INT_ENABLE;
       }
     
@@ -693,6 +700,7 @@ void SetInjectionTiming(u8 force, u16 duration)
 	// This define the start of injection
     // TODO : use PMHOffset setting
     u16 angleTick = (u32)intState.RPMperiod * (360 - eData.injAdv) / 360;
+    gState.injStart = angleTick << 2;
     nextInjTiming.start = angleTick;
     nextInjTiming.duration  = duration >> 2; // us to 4us unit
     

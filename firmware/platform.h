@@ -127,6 +127,9 @@ enum
 // for simulation only
 #define DEBUG SPDR
 #define PARAM SPSR
+#define DEBUG1	_SFR_IO16(0xFE - 0x20)
+#define DEBUG2	_SFR_IO16(0xFC - 0x20)
+#define DEBUG3	_SFR_IO16(0xFA - 0x20)
 
 /**
  * \struct wvf_t
@@ -138,6 +141,7 @@ typedef struct {
     u8  state;
     u16 start;      // absolute date to next ON period 
     u16 duration;   // duration of on period
+    u8  pending;    // is there a pulse pending ?
 }wvf_t; 
 
 /* USART related functions */

@@ -36,23 +36,28 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#ifdef MODEL_STANDALONE
 #include "iniparser.h"
 #include "gnuplot_i.h"
+#endif
+#include "model.h"
 
 #define RED(msg, ...) fprintf( stdout, "\033[31m" msg "\n\033[0m", ##__VA_ARGS__ )
 #define GREEN(msg, ...) fprintf( stdout, "\033[32m" msg "\n\033[0m", ##__VA_ARGS__ )
 #define HIGH(msg, ...) fprintf( stdout, "\033[1m" msg "\n\033[0m", ##__VA_ARGS__ )
 #define NORMAL(msg, ...) fprintf( stdout, msg, ##__VA_ARGS__ )
-#define DEBUG(msg, ...) if(debugTrace) fprintf( stderr, "\033[1m" msg "\n\033[0m", ##__VA_ARGS__ )
+#define V(msg, ...) if(debugTrace) fprintf( stderr, "\033[1m" msg "\n\033[0m", ##__VA_ARGS__ )
 
 #define TABLE_SIZE	10
 const double R = 8.3144621;
-const double MMair = 28.965338; // g/mol
+const double MMAir = 28.965338; // g/mol
 const double P = 101325; // pression atm
 const double MVfuel = 0.750; // masse volumique essence en g/cm3
+const double CYL = 5e-5; // 50cm3 in m3
 
-bool debugTrace = false;
-bool chartOn = false;
+
+bool debugTrace          = false;
+bool chartOn             = false;
 bool flowrateComputation = false;
     
 typedef struct {
@@ -76,18 +81,175 @@ typedef struct {
 	int CID;
 }Configuration_t;
 
-Configuration_t conf;
+Configuration_t conf; /* from ini file */
+
+eeprom_data_t   eData;  /* firmware config */
+Current_Data_t  gState; /* current state of firmware including sensors values */
 
 /**** Helper ****/
+void SetVerbosity(bool enable)
+{
+    debugTrace = enable;
+}
+
 double DegreeToUs(const double degree, const int RPM)
 {
-	return degree * 60000. / RPM; 
+    double period = 60e6/RPM; //us
+	return (360-degree) * period / 360; 
 }
 
 double UsToDegree(const double us, const int RPM)
 {
-	return us * RPM / 60000.; 
+    double period = 60e6/RPM; //us
+    return (360 - (us / period) * 360);
 }
+
+double Interp2DFloating(uint8_t *table, uint16_t rpm, uint8_t load, uint16_t rpmBins[], uint8_t loadBins[])
+{
+    unsigned int rpmIdx, loadIdx;
+  
+    /****** 1. Step 1 : locate surrounding values in table  *******/
+    /****** 1.1. RPM coordinate lookup *******/
+    // Check for limit
+    if(rpm > rpmBins[TABSIZE-1])
+    {
+        // force to max value, no extrapolation 
+        rpm = rpmBins[TABSIZE-1];
+        rpmIdx = TABSIZE-1;
+    }
+    else if(rpm < rpmBins[0])
+    {
+        rpm = rpmBins[0];
+        rpmIdx = 0;
+    }
+    else // in the table
+    {
+        for(rpmIdx=0; rpmIdx<TABSIZE-1; ++rpmIdx)
+        {
+            if (rpm >= rpmBins[rpmIdx] && rpm <= rpmBins[rpmIdx+1])
+            {
+                break;
+            }
+        }
+    }
+
+    /****** 1.2. Load coordinate lookup *******/
+    // Check for limit
+    if(load > loadBins[TABSIZE-1])
+    {
+        // force to max value, no extrapolation 
+        load = loadBins[TABSIZE-1];
+        loadIdx = TABSIZE-1;
+    }
+    else if(load < loadBins[0])
+    {
+        load = loadBins[0];
+        loadIdx = 0;
+    }
+    else // in the table
+    {
+        for(loadIdx=0; loadIdx<TABSIZE-1; ++loadIdx)
+        {
+            if (load >= loadBins[loadIdx] && load <= loadBins[loadIdx+1])
+            {
+                break;
+            }
+        }
+    }
+  
+    /****** 2. Step 2 : interpolation between points of step 1  *******/
+    unsigned int rpmDelta = rpmBins[rpmIdx+1] - rpmBins[rpmIdx];
+    unsigned int loadDelta = loadBins[loadIdx+1] - loadBins[loadIdx];
+    /****** 2.1. First interpolate along rpm axis  *******/
+    unsigned int valueLow, valueHigh, delta;
+
+    if(!rpmDelta)
+    {
+        valueLow  = table[rpmIdx * TABSIZE + loadIdx];
+        valueHigh = table[rpmIdx * TABSIZE + loadIdx+1];
+    }else{    
+        // Compute value low = interpolation along rpm for lower load
+        delta = table[(rpmIdx+1) * TABSIZE + loadIdx] - table[rpmIdx * TABSIZE + loadIdx];
+        valueLow = table[rpmIdx * TABSIZE + loadIdx] + ((rpm - rpmBins[rpmIdx]) * (long)delta) / rpmDelta;
+        // Compute value high = interpolation along rpm for higher load
+        delta = table[(rpmIdx+1) * TABSIZE + loadIdx+1] - table[rpmIdx * TABSIZE + loadIdx+1];
+        valueHigh = table[rpmIdx * TABSIZE + loadIdx+1] + ((rpm - rpmBins[rpmIdx]) * (long)delta) / rpmDelta;
+    }
+
+    /****** 2.2. Second interpolate along load axis  *******/
+    if(!loadDelta)
+    {
+        return (double)valueLow;
+    }else{
+        delta = valueHigh - valueLow;
+        return (double)(valueLow + ((load - loadBins[loadIdx]) * (long)delta) / (double)loadDelta);
+    }
+}
+
+/******************** Model Implementation ************************/
+
+double ComputeK(double targetAFR, double pAtm)
+{
+	//K = MMAir.CYL.Patm / AFR.R
+	double k = (MMAir * CYL * pAtm*1000) / (targetAFR/10. * R) * 1000;
+	return k;
+}
+
+int ComputeInjection(eeprom_data_t eData, Current_Data_t gState, res_t *result)
+{
+    result->VE = Interp2DFloating(&(eData.injTable[0][0]), gState.rpm, gState.load, &(eData.rpmBins[0]), &(eData.loadBins[0]));   
+	// apply formula, K has been computed before (semi-static). QFuel is in mg
+	double injQFuel = ComputeK(eData.targetAfr, 100) * result->VE / (gState.IAT + 273);
+
+	// add various enrichments
+	int enrich = 0;
+    /*if(overheat)
+    { 
+        enrich += eData.injOverheat;
+    }
+	if(intState.afterStartPeriod)
+	{
+		enrich += gState.injAfterStartEnrich;
+		intState.afterStartPeriod--;
+	}else{
+		gState.injAfterStartEnrich = 0;
+	}*/
+	
+	enrich += gState.injWarmupEnrich;
+    
+	// TODO set adjustement for acceleration
+    
+    // Add runtime offset
+    enrich += gState.injOffset;
+    
+	// turn into injector pulse width
+	double injPulseWidth = (injQFuel * (100 + enrich)) / (100 * eData.injectorRate) + eData.injectorOpen;
+    result->duration = injPulseWidth;
+    result->advance  = eData.injAdv;
+    result->start    = DegreeToUs(result->advance, gState.rpm);
+
+    return 1;
+}
+
+int ComputeIgnition(eeprom_data_t eData, Current_Data_t gState, res_t *result)
+{
+    result->VE = Interp2DFloating(&(eData.injTable[0][0]), gState.rpm, gState.load, &(eData.rpmBins[0]), &(eData.loadBins[0]));   
+    
+    result->duration = eData.ignDuration;
+    result->advance  = Interp2DFloating(&(eData.ignTable[0][0]), gState.rpm, gState.load, &(eData.rpmBins[0]), &(eData.loadBins[0]));   
+    result->start    = DegreeToUs(result->advance, gState.rpm);
+
+    return 1;
+}
+
+double ComputeLoad(eeprom_data_t conf, Current_Data_t state)
+{
+    return 50; // TODO : implement load computation model
+}
+
+/*******************************************************************/
+
+#ifdef MODEL_STANDALONE
 
 /* Affichage de l'aide */
 static void printHelp(FILE *stream, int exitMsg, const char* progName)
@@ -156,13 +318,13 @@ bool readCsvTable(char* key, char* fileName, double table[TABLE_SIZE][TABLE_SIZE
 		fclose(pf);
 		return false;
 	}else{
-		//DEBUG("Fichier %s : cle ok ! %s / %s\n", fileName, &(token[0][0]), key);
+		//V("Fichier %s : cle ok ! %s / %s\n", fileName, &(token[0][0]), key);
 	}
 	index = 1;
 	do{
 		result = strwrd(result, &(token[index][0]), 64, ",");
 	
-		//DEBUG("Token %d : %s\n", index, &(token[index][0]));
+		//V("Token %d : %s\n", index, &(token[index][0]));
 		index++;
 		if(index > TABLE_SIZE + 1)
 		{
@@ -185,7 +347,7 @@ bool readCsvTable(char* key, char* fileName, double table[TABLE_SIZE][TABLE_SIZE
 		do{
 			result = strwrd(result, &(token[index][0]), 64, ",");
 
-			//DEBUG("Token %d : %s\n", index, &(token[index][0]));
+			//V("Token %d : %s\n", index, &(token[index][0]));
 			index++;
 			if(index > TABLE_SIZE + 1)
 			{
@@ -404,13 +566,13 @@ int main(int argc, char *argv[])
 			{
 				/* PV = nRT
 				 * n = PV / (RT)
-				 * Mair = n * MMair
+				 * Mair = n * MMAir
 				 * Mfuel = Mair / AFR
 				 * P : on considere la pression atmospherique 1015hPa
 				 * V : volume = cylindree * remplissage
 				 * T : temperatures min et max sont testees 
 				 */
-				double Mair = MMair * P * injTable[i][j]/100. * (conf.CID/1e6) / (R * (conf.tempMax + 273)); // en gramme
+				double Mair = MMAir * P * injTable[i][j]/101. * (conf.CID/1e6) / (R * (conf.tempMax + 273)); // en gramme
 				fuel[i][j] = Mair / conf.targetAFR;
 			}
 		}
@@ -486,3 +648,4 @@ int main(int argc, char *argv[])
 	}
 
 }
+#endif //MODEL_STANDALONE
