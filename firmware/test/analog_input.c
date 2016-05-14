@@ -35,6 +35,9 @@
 #include "avr_adc.h"
 #include "analog_input.h"
 
+//#define V(msg, ...) do{fprintf(stdout, "Analog_input: "); fprintf(stdout, msg, ##__VA_ARGS__ )}while(0)
+#define V(msg, ...) do{}while(0)
+
 
 static const char * irq_names[IRQ_ANALOG_INPUT_COUNT] = {
 		[IRQ_ANALOG_INPUT_VALUE] 		 = "<analog_input.value",
@@ -48,11 +51,18 @@ void analog_input_hook(struct avr_irq_t * irq, uint32_t value, void * param)
 	analog_input_t *p = (analog_input_t*)param;
     avr_adc_mux_t mux;
     memcpy(&mux, &value, sizeof(mux));
-    //printf("index %d\n", mux.src);
     for(int i = 0; i < p->nb_inputs; i++)
     {
         if(mux.src == p->adc_irq_index[i]){
-            //printf("index %d, value %.0f\n", mux.src, p->value[i]*1000);
+            if(p->ramp[i]){
+                p->progress[i] = p->avr->cycle - p->initTime[i];
+                if(p->progress[i] > p->ramp[i]){ // ramp is done
+                    p->value[i] = p->targetValue[i];
+                }else{ // ramp in progress
+                    p->value[i] = p->progress[i] *(int)(p->targetValue[i] - p->initValue[i]) / p->ramp[i] + p->initValue[i];
+                }
+            } 
+            V("index %d, value %.0f\n", mux.src, p->value[i]*1000);
             avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_ADC_GETIRQ, mux.src), (int)(p->value[i]*1000));
             return;
         }
@@ -70,11 +80,13 @@ analog_input_init(
     if(nb_input > MAX_ADC) return;
     p->avr = avr;
     p->nb_inputs = nb_input;
-    for(int i = 0; i < nb_input;i++)
+    for(int i = 0; i < nb_input; i++)
     {
         p->adc_irq_index[i] = adc_irq_index[i];
         p->value[i] = value[i];
-        //printf("index %d, adc %d, value %f\n", i, p->adc_irq_index[i], p->value[i]*1000);
+        p->ramp[i] = 0;
+        p->progress[i] = 0;
+        V("index %d, adc %d, value %f\n", i, p->adc_irq_index[i], p->value[i]*1000);
     }
 	p->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_ANALOG_INPUT_COUNT, irq_names);
     avr_irq_t * i_adc = avr_io_getirq(avr, AVR_IOCTL_ADC_GETIRQ, ADC_IRQ_OUT_TRIGGER);
@@ -85,13 +97,23 @@ void
 analog_input_set_value(
 		analog_input_t *p,
         const int adc_index,
-		const float value)
+		const float value,
+        const uint32_t ramp)
 {
     if(adc_index >= p->nb_inputs)
     {
         printf("ADC setting out of range\n");
         return;
     }
-	p->value[adc_index] = value;
-    //printf("Index %d = %f\n", adc_index, p->value[adc_index]);
+    V("Index %d = %f, ramp %u\n", adc_index, p->value[adc_index], p->ramp[adc_index]);
+    p->ramp[adc_index] = ramp;
+    if(!p->ramp[adc_index]) // immediate application
+    {
+        p->value[adc_index] = value;
+    }else{ // linear ramping from current value to target one
+        p->progress[adc_index] = 0;
+        p->targetValue[adc_index] = value;
+        p->initValue[adc_index] = p->value[adc_index];
+        p->initTime[adc_index] = p->avr->cycle;
+    }
 }

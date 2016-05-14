@@ -107,7 +107,7 @@ typedef struct{
 
 
 avr_t * avr = NULL;
-avr_vcd_t vcd_file;
+avr_vcd_t vcd_file; 
 uart_pty_t uart_pty;
 pulse_input_t pulse_input_engine;
 pulse_input_t pulse_input_wheel;
@@ -139,7 +139,6 @@ Test_t testList[] = {
     {TEST_SPEED,        "Speed",            TestSpeed},
     {TEST_ANALOG,       "Analog",           TestAnalog},
     {TEST_IGNTESTMODE,  "IgnitionTest",     TestIgnitionTestMode},
-    {TEST_INJTESTMODE,  "InjectionTest",    TestInjectionTestMode},
     {TEST_INJTESTMODE,  "InjectionTest",    TestInjectionTestMode},
     {TEST_TIMING,       "Timing",           TestIgnInjTiming},
     {TEST_STARTING,     "Starting",         TestStub},
@@ -467,7 +466,7 @@ int TestRPM(void)
         HIGH("RPM a %d tr/min\n", rpmTable[i]);
         uint32_t high, low;
         RPMtoPeriod(rpmTable[i], &high, &low);
-        pulse_input_config(&pulse_input_engine, high, low);
+        pulse_input_config(&pulse_input_engine, high, low, 0);
         SleepMs(5000);
         /* query result */
         QueryState();
@@ -506,7 +505,7 @@ int TestSpeed(void)
         /* set new speed */
         uint32_t high, low;
         SpeedtoPeriod(speedTable[i], &high, &low);
-        pulse_input_config(&pulse_input_wheel, high, low);
+        pulse_input_config(&pulse_input_wheel, high, low, 0);
         SleepMs(5000);
         /* query result */
         QueryState();
@@ -558,7 +557,7 @@ int TestAnalog(void)
     if(WriteConfigRetry() != OK) return FAIL;
 
     // now the requests
-    V("    Battery  |     CLT    |     IAT    |    TPS     |     MAP    |  TPSState\n");
+    V("   Battery  |     CLT    |     IAT    |    TPS     |     MAP    |  TPSState\n");
     for (int i = 0; i < ANALOG_QTY; i++)
     {
         /* set new inputs values */
@@ -569,7 +568,7 @@ int TestAnalog(void)
         voltage[3] = ThrToVoltage(analogTable[i][3]);
         voltage[4] = MapToVoltage(analogTable[i][4]);
         for(int j = 0; j < 5; j++)
-            analog_input_set_value(&analog, j, voltage[j]);
+            analog_input_set_value(&analog, j, voltage[j], 0);
         SleepMs(1000);
         /* query result */
         QueryState();
@@ -618,7 +617,7 @@ int TestInjectionTestMode(void)
     const u16 injCycles   = 20;
     const float tolerance = 5; //%
     // 1. Disable RPM generator
-    pulse_input_config(&pulse_input_engine, 0, 1000);
+    pulse_input_config(&pulse_input_engine, 0, 1000, 0);
     SleepMs(100);
 	timing_analyzer_result_t result;
     timing_analyzer_result(&timing_analyzer_injection, &result); // reset stats
@@ -675,7 +674,7 @@ int TestIgnitionTestMode(void)
     const u16 ignDuration = 1000;
     const float tolerance = 5; //%
     // 1. Disable RPM generator
-    pulse_input_config(&pulse_input_engine, 0, 1000);
+    pulse_input_config(&pulse_input_engine, 0, 1000, 0);
     SleepMs(1000);
 	timing_analyzer_result_t result;
     timing_analyzer_reset(&timing_analyzer_ignition, 5); //reset stats, discard 5 1st cycles
@@ -781,7 +780,7 @@ int TestIgnInjTiming(void)
                 inputTable[i][0], inputTable[i][1]/10., inputTable[i][2], inputTable[i][3], inputTable[i][4], inputTable[i][5]);
         uint32_t high, low;
         RPMtoPeriod(inputTable[i][0], &high, &low);
-        pulse_input_config(&pulse_input_engine, high, low);
+        pulse_input_config(&pulse_input_engine, high, low, 0);
         float voltage[5];
         voltage[0] = BatToVoltage(inputTable[i][1]);
         voltage[1] = TempToVoltage(inputTable[i][2], CLT);
@@ -789,7 +788,7 @@ int TestIgnInjTiming(void)
         voltage[3] = ThrToVoltage(inputTable[i][4]);
         voltage[4] = MapToVoltage(inputTable[i][5]);
         for(int j = 0; j < 5; j++)
-            analog_input_set_value(&analog, j, voltage[j]);
+            analog_input_set_value(&analog, j, voltage[j], 0);
 
         SleepMs(1000);
         timing_analyzer_reset(&timing_analyzer_ignition, 5);
@@ -993,7 +992,7 @@ int main(int argc, char *argv[])
         if(_wave)
         {
             /* VCD files */
-            avr_vcd_init(avr, "wave.vcd", &vcd_file, 100 /* usec */);
+            avr_vcd_init(avr, "wave.vcd", &vcd_file, 1000 /* usec */);
             avr_vcd_add_signal(&vcd_file,
                     avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 5),
                     1 /* bits */, "LED");
@@ -1017,15 +1016,15 @@ int main(int argc, char *argv[])
             {
                 adc_value[j] += 0.1; 
                 if(adc_value[j] > 5) adc_value[j] = 0.0;
-                analog_input_set_value(&analog, j, adc_value[j]);
+                analog_input_set_value(&analog, j, adc_value[j], 0);
             }
             uint32_t high, low;
             if(speed++ > 100) speed = 0;
             SpeedtoPeriod(speed, &high, &low);
-            pulse_input_config(&pulse_input_wheel, high, low);
+            pulse_input_config(&pulse_input_wheel, high, low, 0);
             if((rpm += 100) > 10000) rpm = 1000;
             RPMtoPeriod(rpm, &high, &low);
-            pulse_input_config(&pulse_input_engine, high, low);
+            pulse_input_config(&pulse_input_engine, high, low, 0);
         }
         return 0;
     }
@@ -1066,6 +1065,7 @@ int main(int argc, char *argv[])
         avr_vcd_add_signal(&vcd_file,
                 avr_iomem_getirq(avr, 0x4D, "SPSR", 8), 8, "PARAM");
         avr_vcd_start(&vcd_file);
+        
     }
     
     pthread_t run;
@@ -1133,14 +1133,12 @@ int main(int argc, char *argv[])
         if(testPassed == TEST_QTY)
         {
             GREEN("Bravo : tous les tests sont OK !\n");
-        avr_vcd_add_signal(&vcd_file,
-                helpers_register_16bit_irq(avr, 0x84, "TNCT1"), 16, "TCNT1");
         }else{
 
             RED("Seulement %d tests sur %d sont OK :-(\n", testPassed, TEST_QTY);
         }   
     }
-
+    avr_vcd_stop(&vcd_file);
     SerialClose(fd);
     return 0;
 }

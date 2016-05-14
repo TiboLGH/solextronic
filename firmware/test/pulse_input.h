@@ -47,6 +47,13 @@ typedef struct pulse_input_t {
     char name[64];
     uint32_t high;
     uint32_t low;
+    uint32_t ramp;
+    uint32_t progress;
+    uint64_t initTime;
+    uint32_t initHigh;
+    uint32_t initLow;
+    uint32_t targetHigh;
+    uint32_t targetLow;
 } pulse_input_t;
 
 void 
@@ -60,5 +67,6 @@ pulse_input_init(
 void pulse_input_config(
         pulse_input_t *b, 
         const uint32_t tHigh, 
-        const uint32_t tLow);
+        const uint32_t tLow,
+        const uint32_t ramp);
 #endif
