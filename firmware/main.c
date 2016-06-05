@@ -45,7 +45,7 @@
 #include "chrono.h"
 
 volatile eeprom_data_t    eData;
-volatile Current_Data_t   gState;
+volatile current_data_t   gState;
 volatile intState_t       intState;
 volatile u16 toto = 0;
 

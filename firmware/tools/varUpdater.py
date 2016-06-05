@@ -1,9 +1,10 @@
 #!/usr/bin/python
 
-# This script is used to produces tuner software INI config file and wiki documentation from source code varDef.h
+# This script is used to produces tuner software INI config file, wiki documentation and description header file from source code varDef.h
 # To comply with Megasquirt serial protocol and use associated tuner software, a INI config file shall be used to described mapping of config and monitoring data buffers. 
 # This INI file also described how the tuner interface is linked to variables (panel contents, min/max, gauges...). This part is directly part of this script (don't want to have another config file), so you have to change the definition directly in the script source code (not a perfect solution but allow to have everything in the same file)
 # The documentation page output produces a wiki page compliant with Markdown format describing the data structure. It is basically a "pretty-print" of the varDef.h file.
+# The description file is a C header file used by simultation to trace structure content in VCD file. 
 
 # Warning ! The varDef.h file has to be correctly formatted ! This script aims to be fairly robust but it is just a script ;-)
 
@@ -15,6 +16,7 @@ license = """;/*****************************************************************
 ; *   Copyright (C) 2015 by Thibault Bouttevin                              *
 ; *   thibault.bouttevin@gmail.com                                          *
 ; *   www.legalethurlant.fr.st                                              *
+; *   https://github.com/TiboLGH/solextronic                                *
 ; *                                                                         *
 ; *   This file is part of SolexTronic                                      *
 ; *                                                                         *
@@ -386,30 +388,6 @@ class TunerFile(OutputFile):
         self.outputChannelSize = 0
         self.outputChannelSection = []
 
-    def computeSize(self, lineContent, sectionType):
-        size = 0
-        if (lineContent['class'] =='scalar') or (lineContent['class'] =='bits' and sectionType == 'eeprom'):
-            typeMember = re.sub("[a-zA-Z]", "", lineContent['type'])
-            if(typeMember.isdigit()):
-                size = int(typeMember) / 8
-            else:
-                FATAL("Type is wrong ! %s" % lineContent) 
-        elif (lineContent['class'] == 'array'):
-            typeMember = re.sub("[a-zA-Z]", "", lineContent['type'])
-            if(typeMember.isdigit()):
-                size = int(typeMember) / 8
-                shapeMember = re.sub("\[|\]", "", lineContent['shape'])
-                shapeList = shapeMember.split("x")  
-                for item in shapeList:
-                    if(item.isdigit()):
-                        size *= int(item)
-                    else:
-                        FATAL("Shape is wrong ! %s" % lineContent)
-            else:
-                FATAL("Type is wrong ! %s" % lineContent) 
-
-        return size
-
     def addEepromLine(self, lineContent):
         if (lineContent['class'] == 'scalar'):
             self.eepromSection.append("\t%-12s\t= %s,\t%s,\t%d,\t\t\"%s\",\t%.5f,\t%.5f,\t%.2f,\t%.2f,\t%d ;\t%s" % (lineContent['name'], lineContent['class'], lineContent['type'], self.eepromSize, lineContent['units'], lineContent['scale'], lineContent['translate'], lineContent['lo'], lineContent['hi'], lineContent['digits'], lineContent['comment']))
@@ -422,7 +400,7 @@ class TunerFile(OutputFile):
         else:
             FATAL("EEPROM class not supported %s" % lineContent)
 
-        self.eepromSize += self.computeSize(lineContent, 'eeprom')
+        self.eepromSize += lineContent['size'] 
     
     def addOutputChannelLine(self, lineContent):
         if (lineContent['class'] == 'scalar'):
@@ -436,7 +414,7 @@ class TunerFile(OutputFile):
         else:
             FATAL("Output Channel class not supported %s" % lineContent)
 
-        self.outputChannelSize += self.computeSize(lineContent, 'outputChannel')
+        self.outputChannelSize += lineContent['size']
 
     def close(self):
         # Assemble and update sections to output buffer
@@ -506,6 +484,97 @@ class DocFile(OutputFile):
     def __init__(self, filename=None):
         OutputFile.__init__(self,filename)
 
+#################################
+## Descripton file => C format 
+## with field description
+#################################
+class DescFile(OutputFile):
+    def __init__(self, filename=None):
+        OutputFile.__init__(self,filename)
+        self.eepromSize = 0
+        self.eepromQty  = 0
+        self.eepromSection = []
+        self.outputChannelSize = 0
+        self.outputChannelQty  = 0
+        self.outputChannelSection = []
+        self.total = 0
+
+    def addEepromLine(self, lineContent):
+        if(lineContent['class'] != 'bits'):
+            alias = ''
+            if(self.total < 90):
+                alias = chr(ord('#') + self.total)
+                if(alias == '\\'):
+                    alias = "\\\\"
+                    print alias
+            else:
+                alias = '%c#' % (self.total - 90 + ord('#'))
+            self.total += 1
+
+            if(lineContent['class'] == 'array'):
+                self.eepromSection.append("\t{\"%s\", %d, \"%s\", %d, \"%s\", 0, 0}," % (lineContent['name'], -1, alias, self.eepromSize, "array"))
+            else:
+                self.eepromSection.append("\t{\"%s\", %d, \"%s\", %d, \"%s\", 0, 0}," % (lineContent['name'], lineContent['size']*8, alias, self.eepromSize, lineContent['type']))
+            self.eepromSize += lineContent['size']
+            self.eepromQty += 1
+    
+    def addOutputChannelLine(self, lineContent):
+        if(lineContent['class'] != 'bits'):
+            alias = ''
+            if(self.total < 90):
+                alias = chr(ord('#') + self.total)
+                if(alias == '\\'):
+                    alias = "\\\\"
+            else:
+                alias = '%c#' % (self.total - 90 + ord('#'))
+            self.total += 1
+            if(lineContent['class'] == 'array'):
+                self.outputChannelSection.append("\t{\"%s\", %d, \"%s\", %d, \"%s\", 0, 0}," % (lineContent['name'], -1, alias, self.outputChannelSize, "array"))
+            else:
+                self.outputChannelSection.append("\t{\"%s\", %d, \"%s\", %d, \"%s\", 0, 0}," % (lineContent['name'], lineContent['size']*8, alias, self.outputChannelSize, lineContent['type']))
+            self.outputChannelSize += lineContent['size']
+            self.outputChannelQty += 1
+
+    def close(self):
+        # Assemble and update sections to output buffer
+        # Header
+        self.output.append("""/* Autogenerated file : do not edit manually ! */
+        
+#ifndef VARDESC_H
+#define VARDESC_H
+#include <stdint.h>
+#include "trace_writer.h"
+""")
+
+        # update EEPROM size in eepromHeaderSection (called "Constants" in TunerStudio)
+        eepromHeader = """/* EEPROM description table */
+#define EEPROM_QTY %d
+desc_t eeprom_desc[] = { """ % self.eepromQty
+        self.output.append(eepromHeader)
+        # EEPROM content
+        for item in self.eepromSection:
+            self.output.append(item)
+        # EEPROM footer
+        self.output.append("""};
+        """)
+        
+        # Output channel header : update size of the block
+        outputChannelHeader = """/* output channel/ current data description table */
+#define CURDATA_QTY %d
+desc_t curData_desc[] = { """ % self.outputChannelQty
+        self.output.append(outputChannelHeader)
+        # Output channel content
+        for item in self.outputChannelSection:
+            self.output.append(item)
+        # output channel footer
+        self.output.append("""};
+        """)
+
+        # file footer
+        self.output.append("#endif")
+        # Actual write to file
+        OutputFile.close(self)
+
 
 #################################
 ## Source file => C header format
@@ -550,6 +619,30 @@ class SourceFile:
         else:
             # TODO
             return 10
+    
+    def computeSize(self, lineContent, sectionType):
+        size = 0
+        if (lineContent['class'] =='scalar') or (lineContent['class'] =='bits' and sectionType == 'eeprom'):
+            typeMember = re.sub("[a-zA-Z]", "", lineContent['type'])
+            if(typeMember.isdigit()):
+                size = int(typeMember) / 8
+            else:
+                FATAL("Type is wrong ! %s" % lineContent) 
+        elif (lineContent['class'] == 'array'):
+            typeMember = re.sub("[a-zA-Z]", "", lineContent['type'])
+            if(typeMember.isdigit()):
+                size = int(typeMember) / 8
+                shapeMember = re.sub("\[|\]", "", lineContent['shape'])
+                shapeList = shapeMember.split("x")  
+                for item in shapeList:
+                    if(item.isdigit()):
+                        size *= int(item)
+                    else:
+                        FATAL("Shape is wrong ! %s" % lineContent)
+            else:
+                FATAL("Type is wrong ! %s" % lineContent) 
+
+        return size
 
     def processEeprom(self):
         # Search for EEPROM section: start contains "typedef struct", end contains "}eeprom_data_t;"
@@ -574,6 +667,8 @@ class SourceFile:
                 if mo:
                     # affect the values
                     decodedLine = {'name' : mo.group("name"), 'class' : "scalar", 'type' : mo.group("type"), 'offset' : 0, 'shape' : "", 'units' : mo.group("units"), 'scale' : float(mo.group("scale")), 'translate' : float(mo.group("translate")), 'lo' : float(mo.group("lo")), 'hi' : float(mo.group("hi")), 'digits' : int(mo.group("digits")), 'comment' :mo.group("comment")};
+                    # compute size in memory
+                    decodedLine['size'] = self.computeSize(decodedLine, 'eeprom')
                     self.eepromContent.append(decodedLine)
                 else:
                     FATAL("Line not decodable %s" % line) 
@@ -589,10 +684,14 @@ class SourceFile:
                 if mo:
                     # affect the values
                     decodedLine = {'name' : mo.group("name"), 'class' : "array", 'type' : mo.group("type"), 'offset' : 0, 'shape' : mo.group("shape"), 'units' : mo.group("units"), 'scale' : float(mo.group("scale")), 'translate' : float(mo.group("translate")), 'lo' : float(mo.group("lo")), 'hi' : float(mo.group("hi")), 'digits' : int(mo.group("digits")), 'comment' :mo.group("comment")};
+                    # compute size in memory
+                    decodedLine['size'] = self.computeSize(decodedLine, 'eeprom')
                     self.eepromContent.append(decodedLine)
                 elif moDual:
                     # affect the values
                     decodedLine = {'name' : moDual.group("name"), 'class' : "array", 'type' : moDual.group("type"), 'offset' : 0, 'shape' : moDual.group("shape"), 'units' : moDual.group("units"), 'scale' : float(moDual.group("scale")), 'translate' : float(moDual.group("translate")), 'lo' : float(moDual.group("lo")), 'hi' : float(moDual.group("hi")), 'digits' : int(moDual.group("digits")), 'comment' :moDual.group("comment")};
+                    # compute size in memory
+                    decodedLine['size'] = self.computeSize(decodedLine, 'eeprom')
                     self.eepromContent.append(decodedLine)
                 else:
                     FATAL("Line not decodable %s" % line) 
@@ -605,6 +704,8 @@ class SourceFile:
                 if mo:
                     # affect the values
                     decodedLine = {'name' : mo.group("name"), 'class' : "bits", 'type' : mo.group("type"), 'offset' : 0, 'start' : int(mo.group("start")), 'stop' : int(mo.group("stop")), 'state0': mo.group("state0"), 'state1': mo.group("state1"),  'comment' :mo.group("comment")};
+                    # compute size in memory
+                    decodedLine['size'] = self.computeSize(decodedLine, 'eeprom')
                     self.eepromContent.append(decodedLine)
                 else:
                     FATAL("Line not decodable %s" % line) 
@@ -616,13 +717,13 @@ class SourceFile:
 
 
     def processOutputChannel(self):
-        # Search for output channel section: start contains "typedef struct", end contains "}Current_Data_t;"
+        # Search for output channel section: start contains "typedef struct", end contains "}current_data_t;"
         startList = []
         outcBound = {}
         for i,line in enumerate(self.content):
             if "typedef struct" in line: #we will have several match
                 startList.append(i)
-            elif "}Current_Data_t" in line:
+            elif "}current_data_t" in line:
                 print "end !"
                 if len(startList) == 0:
                     FATAL("Output Channel/current Data section malformed")
@@ -638,6 +739,8 @@ class SourceFile:
                 if mo:
                     # affect the values
                     decodedLine = {'name' : mo.group("name"), 'class' : "scalar", 'type' : mo.group("type"), 'offset' : 0, 'shape' : "", 'units' : mo.group("units"), 'scale' : float(mo.group("scale")), 'translate' : float(mo.group("translate")), 'comment' :mo.group("comment")};
+                    # compute size in memory
+                    decodedLine['size'] = self.computeSize(decodedLine, 'outputChannel')
                     self.outputChannelContent.append(decodedLine)
                 else:
                     FATAL("Line not decodable %s" % line) 
@@ -649,6 +752,8 @@ class SourceFile:
                 if mo:
                     # affect the values
                     decodedLine = {'name' : mo.group("name"), 'class' : "array", 'type' : mo.group("type"), 'offset' : 0, 'shape' : mo.group("shape"), 'units' : mo.group("units"), 'scale' : float(mo.group("scale")), 'translate' : float(mo.group("translate")), 'comment' :mo.group("comment")}
+                    # compute size in memory
+                    decodedLine['size'] = self.computeSize(decodedLine, 'outputChannel')
                     self.outputChannelContent.append(decodedLine)
                 else:
                     FATAL("Line not decodable %s" % line) 
@@ -661,12 +766,16 @@ class SourceFile:
                 if mo:
                     # affect the values
                     decodedLine = {'name' : mo.group("name"), 'class' : "bits", 'type' : mo.group("type"), 'offset' : 0, 'start' : int(mo.group("start")), 'stop' : int(mo.group("stop"))}
+                    # compute size in memory
+                    decodedLine['size'] = self.computeSize(decodedLine, 'outputChannel')
                     self.outputChannelContent.append(decodedLine)
                 else:
                     FATAL("Line not decodable %s" % line) 
 
             elif "bit" in line: # description : keep the full line, set class as 'bit' (without 's')
                 decodedLine = {'class' : "bit", 'comment' : str(line)}
+                # compute size in memory
+                decodedLine['size'] = self.computeSize(decodedLine, 'outputChannel')
                 self.outputChannelContent.append(decodedLine)
             else:
                 FATAL("Line not decodable %s" % line) 
@@ -684,21 +793,23 @@ def main(argv):
     varDefFile = SourceFile(argv[0])
     tunerFile = TunerFile("solextronic.ini")
     docFile = DocFile("commands.wiki")
+    descFile = DescFile("varDescription.h")
 
     # Process EEPROM memory structure
-    lineContent = {'name' : "toto", 'class' : "scalar", 'type' : "U08", 'offset' : 0, 'shape' : "", 'units' : "%", 'scale' : 1.0, 'translate' : 0.0, 'lo' : 0, 'hi' : 255, 'digits' : 0, 'comment' :"un super exemple"};
     for item in varDefFile.eepromContent:
         tunerFile.addEepromLine(item)
+        descFile.addEepromLine(item)
 
     # Process outputchannel structure
     for item in varDefFile.outputChannelContent:
         tunerFile.addOutputChannelLine(item)
+        descFile.addOutputChannelLine(item)
 
     # close files : this will actually write to output files
     varDefFile.close()
     tunerFile.close()
     docFile.close()
-
+    descFile.close()
 
 # Starting point
 if __name__ == "__main__":

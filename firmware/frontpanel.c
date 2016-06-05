@@ -54,7 +54,7 @@
 
 /*** System variables ***/
 extern eeprom_data_t    eData;
-extern Current_Data_t   gState;
+extern current_data_t   gState;
 extern intState_t       intState;
 extern const char       signature[];
 

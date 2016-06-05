@@ -108,7 +108,7 @@ typedef struct __attribute__ ((__packed__)){ // packed for alignment when used i
 }eeprom_data_t;
 
 /**
- * \struct Current_Data_t
+ * \struct current_data_t
  * \brief Store current parameters of the system
  *
  * Current_data stores variable of system
@@ -161,5 +161,5 @@ typedef struct  __attribute__ ((__packed__)){ // packed for alignment when used 
    u16 debug1;           /* scalar,     U16,  xx,  "%",     1.000,  0.0 ; debug for user */
    u16 debug2;           /* scalar,     U16,  xx,  "%",     1.000,  0.0 ; debug for user */
    u16 debug3;           /* scalar,     U16,  xx,  "%",     1.000,  0.0 ; debug for user */
-}Current_Data_t;
+}current_data_t;
 #endif

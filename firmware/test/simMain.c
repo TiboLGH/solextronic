@@ -56,6 +56,7 @@
 #include "analog_input.h"
 #include "timing_analyzer.h"
 #include "sim_helpers.h"
+#include "trace_writer.h"
 
 #include "../varDef.h"
 #include "../helper.h"
@@ -107,7 +108,8 @@ typedef struct{
 
 
 avr_t * avr = NULL;
-avr_vcd_t vcd_file; 
+avr_vcd_t vcd_file;
+trace_writer_t vcd_trace;
 uart_pty_t uart_pty;
 pulse_input_t pulse_input_engine;
 pulse_input_t pulse_input_wheel;
@@ -118,7 +120,7 @@ volatile uint8_t    display_pwm = 0;
 int fd = 0; /* access to serial port */
 
 eeprom_data_t    eData, eDataToWrite;
-Current_Data_t   gState;
+current_data_t   gState;
 bool             _verbose = false;
 bool             _wave    = false;
 
@@ -365,6 +367,7 @@ static int QueryState(void)
         write(fd, "a", 1);
         res = ReadFromSerial(sizeof(gState), (u8*)&gState);
     }while((res != OK) && (i <= RETRY_SERIAL));
+    if(res == OK) trace_writer_update_curData(&vcd_trace, &gState); // trace changes
     return (res != OK)?FAIL:OK;  
 }
 
@@ -396,7 +399,11 @@ static int WriteConfigRetry()
     for(retry=0; retry < 3;retry++)
     {
         res = WriteConfig();
-        if(res == OK) return OK;
+        if(res == OK) 
+        {
+            trace_writer_update_eeprom(&vcd_trace, &eData); // trace changes
+            return OK;
+        }
     }
     return FAIL;
 }
@@ -1065,7 +1072,10 @@ int main(int argc, char *argv[])
         avr_vcd_add_signal(&vcd_file,
                 avr_iomem_getirq(avr, 0x4D, "SPSR", 8), 8, "PARAM");
         avr_vcd_start(&vcd_file);
-        
+
+        // trace file : to trace eData and curData
+        trace_writer_init(avr, "trace.vcd", &vcd_trace, 1000, NULL, 0);
+        trace_writer_start(&vcd_trace, &eData, &gState);  
     }
     
     pthread_t run;
@@ -1139,6 +1149,7 @@ int main(int argc, char *argv[])
         }   
     }
     avr_vcd_stop(&vcd_file);
+    trace_writer_stop(&vcd_trace);
     SerialClose(fd);
     return 0;
 }

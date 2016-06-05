@@ -109,7 +109,7 @@ const PROGMEM eeprom_data_t eeInit = {
 };
 
 extern volatile eeprom_data_t    eData;
-extern volatile Current_Data_t   gState;
+extern volatile current_data_t   gState;
 extern volatile intState_t       intState;
 
 extern u8 *bufTx;

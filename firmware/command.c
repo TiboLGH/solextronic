@@ -46,8 +46,8 @@ const char protocol[3] = "001";
 
 /*** Commands ***/
 extern eeprom_data_t    eData;
-extern Current_Data_t   gState;
-static Current_Data_t   outputChannel;
+extern current_data_t   gState;
+static current_data_t   outputChannel;
 extern intState_t       intState;
 
 

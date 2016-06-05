@@ -84,7 +84,7 @@ typedef struct {
 Configuration_t conf; /* from ini file */
 
 eeprom_data_t   eData;  /* firmware config */
-Current_Data_t  gState; /* current state of firmware including sensors values */
+current_data_t  gState; /* current state of firmware including sensors values */
 
 /**** Helper ****/
 void SetVerbosity(bool enable)
@@ -195,7 +195,7 @@ double ComputeK(double targetAFR, double pAtm)
 	return k;
 }
 
-int ComputeInjection(eeprom_data_t eData, Current_Data_t gState, res_t *result)
+int ComputeInjection(eeprom_data_t eData, current_data_t gState, res_t *result)
 {
     result->VE = Interp2DFloating(&(eData.injTable[0][0]), gState.rpm, gState.load, &(eData.rpmBins[0]), &(eData.loadBins[0]));   
 	// apply formula, K has been computed before (semi-static). QFuel is in mg
@@ -231,7 +231,7 @@ int ComputeInjection(eeprom_data_t eData, Current_Data_t gState, res_t *result)
     return 1;
 }
 
-int ComputeIgnition(eeprom_data_t eData, Current_Data_t gState, res_t *result)
+int ComputeIgnition(eeprom_data_t eData, current_data_t gState, res_t *result)
 {
     result->VE = Interp2DFloating(&(eData.injTable[0][0]), gState.rpm, gState.load, &(eData.rpmBins[0]), &(eData.loadBins[0]));   
     
@@ -242,7 +242,7 @@ int ComputeIgnition(eeprom_data_t eData, Current_Data_t gState, res_t *result)
     return 1;
 }
 
-double ComputeLoad(eeprom_data_t conf, Current_Data_t state)
+double ComputeLoad(eeprom_data_t conf, current_data_t state)
 {
     return 50; // TODO : implement load computation model
 }
