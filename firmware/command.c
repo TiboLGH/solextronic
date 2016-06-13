@@ -102,6 +102,7 @@ void ProcessCommand(void)
                     case 'a':
                     case 'A': // send back the internal state stored in gState
                         outputChannel = gState; // copy in outputChannel to avoid change during transfert
+                        GetTime(&(outputChannel.second));
                         SendToUsart((u8 *)&outputChannel, sizeof(gState));
                         break;
 
