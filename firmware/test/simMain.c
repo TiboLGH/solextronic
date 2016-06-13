@@ -105,7 +105,14 @@ typedef struct{
     int (*testFunction)(void);
 }Test_t;
 
-
+/*********************************
+ * Thread architecture
+ * 
+ * 3 threads are used:
+ *  1/ main fct as main thread driving the tests
+ *  2/ simavr core simulation running in avr_run_thread() function
+ *  3/ UART access tread running in uart_thread() function
+ */
 
 avr_t * avr = NULL;
 avr_vcd_t vcd_file;
@@ -118,9 +125,44 @@ timing_analyzer_t timing_analyzer_ignition;
 analog_input_t analog;
 volatile uint8_t    display_pwm = 0;
 int fd = 0; /* access to serial port */
+/* Thread messaging structure and shared variables */
+typedef struct 
+{
+    eeprom_data_t    eData, eDataToWrite;
+    current_data_t   gState;
+    u8               signature[32];
+    u8               revision[20];
 
-eeprom_data_t    eData, eDataToWrite;
-current_data_t   gState;
+    bool edata_read_request;
+    bool edata_write_request;
+    bool curdata_read_request;
+    bool signature_read_request;
+    bool continuous_mode;
+    int status;
+
+    pthread_mutex_t mutex_edata;
+    pthread_cond_t  cond_uart_request;
+    pthread_cond_t  cond_read_current_data;
+    pthread_cond_t  cond_read_signature;
+    pthread_cond_t  cond_write_edata;
+    pthread_cond_t  cond_read_edata;
+}uart_com_t;
+static uart_com_t uart_com =
+{
+    .edata_read_request         = false,
+    .edata_write_request        = false,
+    .continuous_mode            = false,
+    .curdata_read_request       = false,
+    .signature_read_request     = false,
+    .status                     = OK,   
+    .mutex_edata                = PTHREAD_MUTEX_INITIALIZER,
+    .cond_uart_request          = PTHREAD_COND_INITIALIZER,
+    .cond_read_current_data     = PTHREAD_COND_INITIALIZER,
+    .cond_read_signature        = PTHREAD_COND_INITIALIZER,
+    .cond_write_edata           = PTHREAD_COND_INITIALIZER,
+    .cond_read_edata            = PTHREAD_COND_INITIALIZER,
+};
+
 bool             _verbose = false;
 bool             _wave    = false;
 
@@ -166,14 +208,14 @@ static float BatToVoltage(const float battery)
 
 enum {IAT = 0, CLT};
 
-static float TempToVoltage(const float degree, int type) // 0 IAT, 1 CLT
+static float TempToVoltage(const float degree, int type, eeprom_data_t *eData) // 0 IAT, 1 CLT
 {
     // Reverse table to get adc value vs temp
     volatile u8 tempTable[TABSIZE][2];
     for(int i=0; i < TABSIZE; i++)
     {
-        tempTable[TABSIZE-1 - i][0] = (type == IAT) ? eData.iatCal[i][1] : eData.cltCal[i][1];
-        tempTable[TABSIZE-1 - i][1] = (type == IAT) ? eData.iatCal[i][0] : eData.cltCal[i][0];
+        tempTable[TABSIZE-1 - i][0] = (type == IAT) ? eData->iatCal[i][1] : eData->cltCal[i][1];
+        tempTable[TABSIZE-1 - i][1] = (type == IAT) ? eData->iatCal[i][0] : eData->cltCal[i][0];
     }
     u8 adc = Interp1D(tempTable, (u8)degree);
     //u8 temp = Interp1D(eData.iatCal, adc);
@@ -182,15 +224,15 @@ static float TempToVoltage(const float degree, int type) // 0 IAT, 1 CLT
     return (adc * 5 / 256.);
 }
 
-static float MapToVoltage(const float kpa) // considering linear based on min/max
+static float MapToVoltage(const float kpa, eeprom_data_t *eData) // considering linear based on min/max
 {
-    float voltage = (kpa + eData.map0) * 5 / (eData.map5 - eData.map0) ;
+    float voltage = (kpa + eData->map0) * 5 / (eData->map5 - eData->map0) ;
     return voltage;
 }
 
-static float ThrToVoltage(const float TPS) // TPS in %
+static float ThrToVoltage(const float TPS, eeprom_data_t *eData) // TPS in %
 {
-    float adc = (eData.tpsMax - eData.tpsMin) * TPS / 100. + eData.tpsMin;
+    float adc = (eData->tpsMax - eData->tpsMin) * TPS / 100. + eData->tpsMin;
     float voltage = adc * 5/256.;
     return voltage;
 }
@@ -273,6 +315,22 @@ static int SleepMs(const int delayms)
     return OK;
 }
 
+/******************************************************
+ * UART Access functions
+ * UART thread is running in loop with 2 modes:
+ *  - on request : current_data are read on demand (through QueryState fct)
+ *  - contnuous : current_data are read in loop (and traced if enabled), 
+ *  QueryState fct return the last cached value
+ * eData read/write access are done on request only
+ * ****************************************************/
+
+static void SetUartMode(uart_com_t *uart, bool continuous)
+{
+    pthread_mutex_lock(&uart->mutex_edata);
+    uart->continuous_mode = continuous;
+    pthread_mutex_unlock(&uart->mutex_edata);
+}
+
 static int ReadFromSerial(const int nbToRead, u8 *dst)
 {
     int res, nbRead = 0;
@@ -305,119 +363,209 @@ static int ReadFromSerial(const int nbToRead, u8 *dst)
     return OK;
 }
 
-// read config set into eData global
-static int ReadConfig(void)
+// read config set into toRead
+static int ReadConfig(uart_com_t *uart, eeprom_data_t *toRead)
 {
     int res;
 
-    const u8 toRead[] = {'r', 0, 0, (u8)(sizeof(eData)%256), (u8)(sizeof(eData)/256)};
-    V(">> read conf\n");
-    PrintArray(toRead, 5);
-    write(fd, toRead, 5);
-    res = ReadFromSerial(sizeof(eData), (u8*)&eData);
+    pthread_mutex_lock(&(uart->mutex_edata));
+    // set flag and wait for reply 
+    uart->edata_read_request = true;
+    pthread_cond_signal(&(uart->cond_uart_request));
+    pthread_cond_wait(&(uart->cond_read_edata), &(uart->mutex_edata));
+    res = uart->status;
+    if(res == OK)
+    {
+        memcpy(toRead, &(uart->eData), sizeof(eeprom_data_t));
+    }
+    pthread_mutex_unlock(&(uart->mutex_edata));
     if(res != OK) return FAIL;
     return OK;
 }
 
-// write config set in eDataToWrite, then read back result to eData
-static int WriteConfig(void)
+// write config set in toWrite
+static int WriteConfig(uart_com_t *uart, eeprom_data_t *toWrite)
 {
     int res;
-    eeprom_data_t eDataTmp;
-
-    //write new config
-    const u8 toWrite[] = {'w', 0, 0, (u8)(sizeof(eData)%256), (u8)(sizeof(eData)/256)};
-    V(">> write new conf\n");
-    PrintArray(toWrite, 5);
-    write(fd, toWrite, 5);
-    // Need to slow down writing to avoid buffer overflow
-    int i;
-    for(i=0; i < sizeof(eDataToWrite) - 5; i+=5)
-    {
-        write(fd, (u8*)&eDataToWrite+i, 5);
-        SleepMs(50);
-    }
-    write(fd, (u8*)&eDataToWrite+i, sizeof(eDataToWrite) - i);
-    SleepMs(50);
-
-    // read back and compare 
-    const u8 toRead[] = {'r', 0, 0, (u8)(sizeof(eData)%256), (u8)(sizeof(eData)/256)};
-    write(fd, toRead, 5);
-    res = ReadFromSerial(sizeof(eDataTmp), (u8*)&eDataTmp);
+    pthread_mutex_lock(&(uart->mutex_edata));
+    // set flag and wait for reply
+    memcpy(&(uart->eDataToWrite), toWrite, sizeof(eeprom_data_t)); 
+    uart->edata_write_request = true;
+    pthread_cond_signal(&(uart->cond_uart_request));
+    pthread_cond_wait(&(uart->cond_write_edata), &(uart->mutex_edata));
+    res = uart->status;
+    pthread_mutex_unlock(&(uart->mutex_edata));
     if(res != OK) return FAIL;
-    // use memcmp as structures are byte aligned (no padding)
-    if(memcmp(&eDataTmp, &eDataToWrite, sizeof(eDataTmp)))
-    {
-        //TODO investigate
-        //RED("Read back eData are corrupted !");
-        //return FAIL;
-    }
-    memcpy(&eData, &eDataTmp, sizeof(eData));
     return OK;
 }
 
-static int QueryState(void)
+static void *uart_thread(void * param)
 {
-    int res, i = 0;
+    uart_com_t *uart = (uart_com_t*) param;
 
-    /* send command */
-    do{
-        i++;
-        //V("\n>> a\n");
-        write(fd, "a", 1);
-        res = ReadFromSerial(sizeof(gState), (u8*)&gState);
-    }while((res != OK) && (i <= RETRY_SERIAL));
-    if(res == OK) trace_writer_update_curData(&vcd_trace, &gState); // trace changes
-    return (res != OK)?FAIL:OK;  
+    while(1)
+    {
+        // wait for external request
+        pthread_mutex_lock(&(uart->mutex_edata));
+        if(!uart->continuous_mode) pthread_cond_wait(&(uart->cond_uart_request), &(uart->mutex_edata));
+        //V("UART: Request to thread\n");
+        if(uart->curdata_read_request || uart->continuous_mode)
+        {
+            //V("get current data\n");
+            write(fd, "a", 1);
+            uart->status = ReadFromSerial(sizeof(current_data_t), (u8*)&(uart->gState));
+            if(uart->status == OK) trace_writer_update_curData(&vcd_trace, &(uart->gState)); // trace changes
+            if(uart->curdata_read_request)
+            {   
+                uart->curdata_read_request = false;
+                pthread_cond_signal(&(uart->cond_read_current_data));
+            }
+        }
+
+        if(uart->signature_read_request)
+        {
+            //V("get signature\n");
+            //V(">> S\n");
+            write(fd, "S", 1);
+            uart->status = ReadFromSerial(32, uart->signature);
+            if(uart->status == OK)
+            {
+                //V(">> Q\n");
+                write(fd, "Q", 1);
+                uart->status = ReadFromSerial(20, uart->revision);
+            }
+            uart->signature_read_request = false;
+            pthread_cond_signal(&(uart->cond_read_signature));
+        }
+
+        if(uart->edata_read_request)
+        { 
+            //V("UART : get eData\n");
+            const u8 toRead[] = {'r', 0, 0, (u8)(sizeof(eeprom_data_t)%256), (u8)(sizeof(eeprom_data_t)/256)};
+            //V(">> read conf\n");
+            write(fd, toRead, 5);
+            uart->status = ReadFromSerial(sizeof(eeprom_data_t), (u8*)&(uart->eData));
+            uart->edata_read_request = false;
+            pthread_cond_signal(&(uart->cond_read_edata));
+        }
+        
+        if(uart->edata_write_request)
+        { 
+            //V("UART : write eData\n");
+            const u8 toWrite[] = {'w', 0, 0, (u8)(sizeof(eeprom_data_t)%256), (u8)(sizeof(eeprom_data_t)/256)};
+            //V(">> write new conf\n");
+            write(fd, toWrite, 5);
+            // Need to slow down writing to avoid buffer overflow
+            int i;
+            for(i=0; i < sizeof(eeprom_data_t) - 5; i+=5)
+            {
+                write(fd, (u8*)&(uart->eDataToWrite)+i, 5);
+                SleepMs(50);
+            }
+            write(fd, (u8*)&(uart->eDataToWrite)+i, sizeof(eeprom_data_t) - i);
+            // read back and compare 
+            /*
+            const u8 toRead[] = {'r', 0, 0, (u8)(sizeof(eeprom_data_t)%256), (u8)(sizeof(eeprom_data_t)/256)};
+            write(fd, toRead, 5);
+            res = ReadFromSerial(sizeof(eDataTmp), (u8*)&eDataTmp);
+            if(res != OK) return FAIL;
+            // use memcmp as structures are byte aligned (no padding)
+            if(memcmp(&eDataTmp, &eDataToWrite, sizeof(eDataTmp)))
+              {
+            //TODO investigate
+            RED("Read back eData are corrupted !");
+            return FAIL;
+            }*/
+            uart->edata_write_request = false;
+            pthread_cond_signal(&(uart->cond_write_edata));
+        }
+
+        
+        pthread_mutex_unlock(&(uart->mutex_edata));
+        if(uart->continuous_mode) usleep(5000);
+    }
+
+    return NULL;
 }
 
-static int QuerySignature(u8 *signature, u8 *revision)
+/***** Access functions *****/
+
+static int QueryState(uart_com_t *uart, current_data_t *gState)
+{
+    int res = 0;
+
+    for(int i=0; i<RETRY_SERIAL; i++)
+    {
+        pthread_mutex_lock(&(uart->mutex_edata));
+        // set flag and wait for reply 
+        uart->curdata_read_request = true;
+        pthread_cond_signal(&(uart->cond_uart_request));
+        pthread_cond_wait(&(uart->cond_read_current_data), &(uart->mutex_edata));
+        res = uart->status;
+        if(res == OK)
+        {
+            memcpy(gState, &(uart->gState), sizeof(current_data_t));
+            pthread_mutex_unlock(&(uart->mutex_edata));
+            return OK;
+        }
+        pthread_mutex_unlock(&(uart->mutex_edata));
+        V("Retry read gState\n");
+    }
+    if(res != OK) return FAIL;
+    return OK;
+}
+
+static int QuerySignature(uart_com_t *uart, u8 *signature, u8 *revision)
 {
     int res;
 
-    /* send command */
-    V("\n>> S\n");
-    write(fd, "S", 1);
-    res = ReadFromSerial(32, signature);
-    V("%s\n", signature);
+    pthread_mutex_lock(&(uart->mutex_edata));
+    // set flag and wait for reply 
+    uart->signature_read_request = true;
+    pthread_cond_signal(&(uart->cond_uart_request));
+    pthread_cond_wait(&(uart->cond_read_signature), &(uart->mutex_edata));
+    res = uart->status;
+    if(res == OK)
+    {
+        memcpy(signature, uart->signature, 32);
+        memcpy(revision, uart->revision, 20);
+    }
+    pthread_mutex_unlock(&(uart->mutex_edata));
     if(res != OK) return FAIL;
-
-    /* send command */
-    V("\n>> Q\n");
-    write(fd, "Q", 1);
-    res = ReadFromSerial(20, revision);
-    V("%s\n", revision);
-    if(res != OK) return FAIL;
-
     return OK;
 }
 
 // Read/Write retry, simulation is not 100% reliable
-static int WriteConfigRetry()
+static int WriteConfigRetry(uart_com_t *uart, eeprom_data_t *toWrite)
 {
     int retry, res;
-    for(retry=0; retry < 3;retry++)
+    for(retry=0; retry < RETRY_SERIAL;retry++)
     {
-        res = WriteConfig();
+        res = WriteConfig(uart, toWrite);
         if(res == OK) 
         {
-            trace_writer_update_eeprom(&vcd_trace, &eData); // trace changes
+            trace_writer_update_eeprom(&vcd_trace, toWrite); // trace changes
             return OK;
         }
+        V("Write config retry\n");
     }
     return FAIL;
 }
 
-static int ReadConfigRetry()
+static int ReadConfigRetry(uart_com_t *uart, eeprom_data_t *toRead)
 {
     int retry, res;
-    for(retry=0; retry < 3;retry++)
+    for(retry=0; retry < RETRY_SERIAL;retry++)
     {
-        res = ReadConfig();
+        res = ReadConfig(uart, toRead);
         if(res == OK) return OK;
+        V("Read config retry\n");
     }
     return FAIL;
 }
+
+/***********************************************************
+ ***********************************************************/
 
 /****** Tests Cases *******/
 int TestStub(void)
@@ -434,7 +582,7 @@ int TestVersion(void)
     char signature[33];
     char revision[21];
 
-    int result = QuerySignature((u8*)signature, (u8*)revision);
+    int result = QuerySignature(&uart_com, (u8*)signature, (u8*)revision);
     revision[20] = '\0';
     signature[32] = '\0';
 
@@ -465,6 +613,7 @@ int TestRPM(void)
     const float tolerance = 5; //%
     int subTestPassed = 0;
     int rpmTable[RPM_QTY] = {500, 2000, 4000, 6000, 10000};
+    current_data_t gState;
 
 
     for (int i = 0; i < RPM_QTY; i++)
@@ -476,7 +625,7 @@ int TestRPM(void)
         pulse_input_config(&pulse_input_engine, high, low, 0);
         SleepMs(5000);
         /* query result */
-        QueryState();
+        QueryState(&uart_com, &gState);
 
         float error = 100 - (100. * gState.rpm / (float)rpmTable[i]);
 
@@ -505,6 +654,7 @@ int TestSpeed(void)
     const float tolerance = 5; //%
     int subTestPassed = 0;
     int speedTable[SPEED_QTY] = {10, 20, 40, 60, 90};
+    current_data_t gState;
 
     for (int i = 0; i < SPEED_QTY; i++)
     {
@@ -515,7 +665,7 @@ int TestSpeed(void)
         pulse_input_config(&pulse_input_wheel, high, low, 0);
         SleepMs(5000);
         /* query result */
-        QueryState();
+        QueryState(&uart_com, &gState);
 
         float error = 100 - (100. * (gState.speed / 10.) / (float)speedTable[i]);
 
@@ -549,19 +699,20 @@ int TestAnalog(void)
                                         {150, 180, 35, 100, 100}}; // battery, CLT, IAT, TPS, MAP
 
     const float analogMax[5] = { 150, 150, 40,  100, 110}; // battery, CLT, IAT, TPS, MAP
+    current_data_t gState;
     // Update config
-    if(ReadConfigRetry() != OK) 
+    eeprom_data_t eDataToWrite;
+    if(ReadConfigRetry(&uart_com, &eDataToWrite) != OK) 
     {
         RED("Impossible de lire la configuration");
         return FAIL;
     }
-    eDataToWrite = eData;
     eDataToWrite.battRatio  = 150;
     eDataToWrite.map0       = 0;
     eDataToWrite.map5       = 110;
     eDataToWrite.tpsMin     = 20;
     eDataToWrite.tpsMax     = 150;
-    if(WriteConfigRetry() != OK) return FAIL;
+    if(WriteConfigRetry(&uart_com, &eDataToWrite) != OK) return FAIL;
 
     // now the requests
     V("   Battery  |     CLT    |     IAT    |    TPS     |     MAP    |  TPSState\n");
@@ -570,15 +721,15 @@ int TestAnalog(void)
         /* set new inputs values */
         float voltage[5];
         voltage[0] = BatToVoltage(analogTable[i][0]);
-        voltage[1] = TempToVoltage(analogTable[i][1], CLT);
-        voltage[2] = TempToVoltage(analogTable[i][2], IAT);
-        voltage[3] = ThrToVoltage(analogTable[i][3]);
-        voltage[4] = MapToVoltage(analogTable[i][4]);
+        voltage[1] = TempToVoltage(analogTable[i][1], CLT, &eDataToWrite);
+        voltage[2] = TempToVoltage(analogTable[i][2], IAT, &eDataToWrite);
+        voltage[3] = ThrToVoltage(analogTable[i][3], &eDataToWrite);
+        voltage[4] = MapToVoltage(analogTable[i][4], &eDataToWrite);
         for(int j = 0; j < 5; j++)
             analog_input_set_value(&analog, j, voltage[j], 0);
         SleepMs(1000);
         /* query result */
-        QueryState();
+        QueryState(&uart_com, &gState);
 
         /* criteria : values are correct */
         float maxError = 0.;
@@ -629,12 +780,12 @@ int TestInjectionTestMode(void)
 	timing_analyzer_result_t result;
     timing_analyzer_result(&timing_analyzer_injection, &result); // reset stats
     // 2. Set injection parameters
-    if(ReadConfigRetry() != OK) return FAIL;
-    eDataToWrite = eData;
+    eeprom_data_t eDataToWrite;
+    if(ReadConfigRetry(&uart_com, &eDataToWrite) != OK) return FAIL;
     eDataToWrite.injTestPW     = injDuration;
     eDataToWrite.injTestCycles = injCycles;
     eDataToWrite.injPolarity   = 1;
-    if(WriteConfigRetry() != OK) return FAIL;
+    if(WriteConfigRetry(&uart_com, &eDataToWrite) != OK) return FAIL;
    
     // 3. Measure injection signal timing
     SleepMs(20 * injCycles);
@@ -686,14 +837,14 @@ int TestIgnitionTestMode(void)
 	timing_analyzer_result_t result;
     timing_analyzer_reset(&timing_analyzer_ignition, 5); //reset stats, discard 5 1st cycles
     // 2. Set ignition test mode
-    if(ReadConfigRetry() != OK) return FAIL;
-    eDataToWrite = eData;
+    eeprom_data_t eDataToWrite;
+    if(ReadConfigRetry(&uart_com, &eDataToWrite) != OK) return FAIL;
     eDataToWrite.PMHOffset      = 0;
     eDataToWrite.ignDuration    = ignDuration;
     eDataToWrite.ignTestMode    = 1;
     eDataToWrite.ignPolarity    = 1;
     SleepMs(100);
-    if(WriteConfigRetry() != OK) return FAIL;
+    if(WriteConfigRetry(&uart_com, &eDataToWrite) != OK) return FAIL;
    
     // 3. Measure ignition signal timing
     SleepMs(2000);
@@ -719,9 +870,8 @@ int TestIgnitionTestMode(void)
     }else{
         GREEN("Temps d'allumage mesure : %d us, erreur %.1f %% \n", result.high_duration, error);
     }
-    eDataToWrite = eData;
     eDataToWrite.ignTestMode    = 0;
-    if(WriteConfigRetry() != OK) return FAIL;
+    if(WriteConfigRetry(&uart_com, &eDataToWrite) != OK) return FAIL;
     
     return verdict;
 }
@@ -748,11 +898,11 @@ int TestIgnInjTiming(void)
 	timing_analyzer_result_t ignResult;
 	timing_analyzer_result_t injResult;
     char str[256];
-    SetVerbosity(_verbose);
+    current_data_t gState;
     
     // 1. Set parameters and tables
-    if(ReadConfigRetry() != OK) return FAIL;
-    eDataToWrite = eData;
+    eeprom_data_t eDataToWrite;
+    if(ReadConfigRetry(&uart_com, &eDataToWrite) != OK) return FAIL;
     eDataToWrite.ignTestMode    = 0;
     eDataToWrite.PMHOffset      = 0; // TODO : To be tested
     eDataToWrite.ignDuration    = 1000;
@@ -778,8 +928,9 @@ int TestIgnInjTiming(void)
             eDataToWrite.injTable[i][j] = 100; // VE set to 100%
         }
     }
-    if(WriteConfigRetry() != OK) return FAIL;
+    if(WriteConfigRetry(&uart_com, &eDataToWrite) != OK) return FAIL;
 
+    SetUartMode(&uart_com, true);
     for (int i = 0; i < POINT_QTY; i++)
     {
         // 2. set new RPM and sensors parameters
@@ -790,10 +941,10 @@ int TestIgnInjTiming(void)
         pulse_input_config(&pulse_input_engine, high, low, 0);
         float voltage[5];
         voltage[0] = BatToVoltage(inputTable[i][1]);
-        voltage[1] = TempToVoltage(inputTable[i][2], CLT);
-        voltage[2] = TempToVoltage(inputTable[i][3], IAT);
-        voltage[3] = ThrToVoltage(inputTable[i][4]);
-        voltage[4] = MapToVoltage(inputTable[i][5]);
+        voltage[1] = TempToVoltage(inputTable[i][2], CLT, &eDataToWrite);
+        voltage[2] = TempToVoltage(inputTable[i][3], IAT, &eDataToWrite);
+        voltage[3] = ThrToVoltage(inputTable[i][4], &eDataToWrite);
+        voltage[4] = MapToVoltage(inputTable[i][5], &eDataToWrite);
         for(int j = 0; j < 5; j++)
             analog_input_set_value(&analog, j, voltage[j], 0);
 
@@ -802,7 +953,7 @@ int TestIgnInjTiming(void)
         timing_analyzer_reset(&timing_analyzer_injection, 5);
         SleepMs(2000 * 1000/inputTable[i][0]);
         /* query result */
-        QueryState();
+        QueryState(&uart_com, &gState);
 
         // 3. Measure signal timing
         timing_analyzer_result(&timing_analyzer_ignition, &ignResult); // read stats
@@ -811,11 +962,11 @@ int TestIgnInjTiming(void)
         float injAdvance = TimingToAdvance(inputTable[i][0], injResult.rising_offset);
        
         // 4. Run model and get expected values
-        double computedK = ComputeK(eData.targetAfr, 100);
-        double load = ComputeLoad(eData, gState);
+        double computedK = ComputeK(eDataToWrite.targetAfr, 100);
+        double load = ComputeLoad(eDataToWrite, gState);
         res_t ignModel, injModel;
-        ComputeInjection(eData, gState, &injModel);
-        ComputeIgnition(eData, gState, &ignModel);
+        ComputeInjection(eDataToWrite, gState, &injModel);
+        ComputeIgnition(eDataToWrite, gState, &ignModel);
 
         // 5. Compare to expected values
         float error = 0; bool result = false;
@@ -861,6 +1012,7 @@ static void *avr_run_thread(void * oaram)
     }
     return NULL;
 }
+/************** End Core thread **********************/
 
 /* Print help an exit with exit code exit_msg */
 static void printHelp(FILE *stream, int exitMsg, const char* progName)
@@ -1012,8 +1164,9 @@ int main(int argc, char *argv[])
             avr_vcd_start(&vcd_file);
         }
 
-        pthread_t run;
+        pthread_t run, uart;
         pthread_create(&run, NULL, avr_run_thread, NULL);
+        pthread_create(&uart, NULL, uart_thread, (void*)&uart_com);
         int speed = 0, rpm = 1000;
         
         while(1)
@@ -1075,11 +1228,12 @@ int main(int argc, char *argv[])
 
         // trace file : to trace eData and curData
         trace_writer_init(avr, "trace.vcd", &vcd_trace, 1000, NULL, 0);
-        trace_writer_start(&vcd_trace, &eData, &gState);  
+        trace_writer_start(&vcd_trace, &(uart_com.eData), &(uart_com.gState));  
     }
     
-    pthread_t run;
+    pthread_t run, uart;
     pthread_create(&run, NULL, avr_run_thread, NULL);
+    pthread_create(&uart, NULL, uart_thread, (void*)&uart_com);
     SleepMs(1000); 
     // Connection to serial port
     fd = SerialOpen();

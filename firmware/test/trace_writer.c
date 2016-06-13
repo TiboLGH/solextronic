@@ -134,14 +134,14 @@ int trace_writer_update_eeprom(trace_writer_t * vcd, eeprom_data_t *eData)
     {
         if(cache[i] != new[i])
         {
-            V("EEPROM : byte #%d changed !\n", i);
+            //V("EEPROM : byte #%d changed !\n", i);
             // retrieve corresponding member
             int j;
             for(j = 0; j < EEPROM_QTY; j++)
             {
                 if(i < vcd->eeprom_desc_p[j].offset) break;
             }
-            if(already_seen == (j-1)) break;
+            if(already_seen == (j-1)) continue;
             already_seen = j-1;
             desc_t *signal = &(vcd->eeprom_desc_p[j-1]);
             // raise signal change
@@ -174,7 +174,7 @@ int trace_writer_update_curData(trace_writer_t * vcd, current_data_t *curData)
             {
                 if(i < vcd->curData_desc_p[j].offset) break;
             }
-            if(already_seen == (j-1)) break;
+            if(already_seen == (j-1)) continue;
             already_seen = j-1;
             desc_t *signal = &(vcd->curData_desc_p[j-1]);
             // raise signal change
@@ -185,8 +185,6 @@ int trace_writer_update_curData(trace_writer_t * vcd, current_data_t *curData)
         }
     }
     memcpy(&(vcd->cached_curData), curData, sizeof(current_data_t));
-
-    // fast_mode ? if yes, relaunch a query
 
     return 0;
 }
@@ -241,7 +239,7 @@ static void trace_writer_flush_log(trace_writer_t * vcd)
             
 			oldbase = base;
 		}
-		fprintf(vcd->output_vcd, "%s\n", _trace_writer_get_signal_text(l->signal, out, l->value));
+		if(l->signal->size != -1) fprintf(vcd->output_vcd, "%s\n", _trace_writer_get_signal_text(l->signal, out, l->value));
 	}
 	vcd->logindex = 0;
 }
