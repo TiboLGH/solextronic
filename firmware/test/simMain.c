@@ -26,7 +26,7 @@
  * \author Thibault Bouttevin
  * \date June 2013
  *
- * This file includes main function and main loop
+ * This file includes the test scheduler and simaulation core based on simavr
  *
  */
 
@@ -57,6 +57,7 @@
 #include "timing_analyzer.h"
 #include "sim_helpers.h"
 #include "trace_writer.h"
+#include "push_button.h"
 
 #include "../varDef.h"
 #include "../helper.h"
@@ -123,6 +124,7 @@ pulse_input_t pulse_input_wheel;
 timing_analyzer_t timing_analyzer_injection;
 timing_analyzer_t timing_analyzer_ignition;
 analog_input_t analog;
+button_t cranking;
 volatile uint8_t    display_pwm = 0;
 int fd = 0; /* access to serial port */
 /* Thread messaging structure and shared variables */
@@ -174,6 +176,7 @@ int TestAnalog(void);
 int TestIgnitionTestMode(void);
 int TestInjectionTestMode(void);
 int TestIgnInjTiming(void);
+int TestStarting(void);
 int TestStub(void);
 
 int testQty;
@@ -185,7 +188,7 @@ Test_t testList[] = {
     {TEST_IGNTESTMODE,  "IgnitionTest",     TestIgnitionTestMode},
     {TEST_INJTESTMODE,  "InjectionTest",    TestInjectionTestMode},
     {TEST_TIMING,       "Timing",           TestIgnInjTiming},
-    {TEST_STARTING,     "Starting",         TestStub},
+    {TEST_STARTING,     "Starting",         TestStarting},
 };
 
 /********* Helpers ************/
@@ -568,6 +571,13 @@ static int ReadConfigRetry(uart_com_t *uart, eeprom_data_t *toRead)
  ***********************************************************/
 
 /****** Tests Cases *******/
+#define CHECK_AND_PRINT(meas, expected, tolerance, text)                                                                    \
+        do{                                                                                                     \
+        result = CheckTolerance((meas), (expected), (tolerance), &error);                                       \
+        snprintf(str, 256, (text), (meas), (expected), error);                                                  \
+        if(result) GREEN("%s", str); else {RED("%s", str); verdict = FAIL;}                                     \
+        }while(0)                                                                                               \
+
 int TestStub(void)
 {
     HIGH("Test bidon !\n");
@@ -881,12 +891,6 @@ int TestIgnitionTestMode(void)
    versus the model and given injection/ignitions tables
 */
 #define POINT_QTY 4
-#define CHECK_AND_PRINT(meas, expected, tolerance, text)                                                                    \
-        do{                                                                                                     \
-        result = CheckTolerance((meas), (expected), (tolerance), &error);                                         \
-        snprintf(str, 256, (text), (meas), (expected), error);                                                  \
-        if(result) GREEN("%s", str); else {RED("%s", str); verdict = FAIL;}                                     \
-        }while(0)                                                                                               \
 
 int TestIgnInjTiming(void)
 {
@@ -998,6 +1002,62 @@ int TestIgnInjTiming(void)
     }
     return verdict;
 }
+
+/* Starting test
+ * =============
+ * For several RPM and load, check timing of injection and ignition signals
+ * versus the model and given injection/ignitions tables.
+ * Test procedure :
+   1/ Set configuration and check inputs
+   2/ Push on cranking button + start RPM generator at 300RPM : check HV enable and pump, check cranking state : advance and injection
+   3/ After 5sec, set RPM at 1500RPM and check injection/advance + enrich linked to CLT and afterstart
+   4/ Check engine running at idle for 30sec
+   5/ Open TPS quickly and check transient behavior
+   6/ Close TPS to idle quickly and check transient behavior 
+*/
+
+int TestStarting(void)
+{
+    int verdict = PASS;
+	timing_analyzer_result_t ignResult;
+	timing_analyzer_result_t injResult;
+    char str[256];
+    current_data_t gState;
+    
+    // 1. Set parameters and tables
+    eeprom_data_t eDataToWrite;
+    if(ReadConfigRetry(&uart_com, &eDataToWrite) != OK) return FAIL;
+    eDataToWrite.ignTestMode    = 0;
+    eDataToWrite.PMHOffset      = 0; // TODO : To be tested
+    eDataToWrite.ignDuration    = 1000;
+    eDataToWrite.ignPolarity    = 1;
+    eDataToWrite.injPolarity    = 1;
+    eDataToWrite.battRatio      = 150;
+    eDataToWrite.map0           = 0;
+    eDataToWrite.map5           = 110;
+    eDataToWrite.tpsMin         = 20;
+    eDataToWrite.tpsMax         = 150;
+    eDataToWrite.targetAfr      = 120; // 12
+    // Force running mode
+    eDataToWrite.runTestMode    = 1;
+
+    //Fill advance and injection tables
+    for(int i = 0; i < TABSIZE; i++)
+    {
+        eDataToWrite.rpmBins[i]  = 1000 * (i+1);
+        eDataToWrite.loadBins[i] = 10 * (i+1);
+        for(int j = 0; j < TABSIZE; j++)
+        {
+            eDataToWrite.ignTable[i][j] = 4*i+j;
+            eDataToWrite.injTable[i][j] = 100; // VE set to 100%
+        }
+    }
+    if(WriteConfigRetry(&uart_com, &eDataToWrite) != OK) return FAIL;
+
+    SetUartMode(&uart_com, true);
+}
+
+
 
 /************** Core thread **********************/
 static void *avr_run_thread(void * oaram)
@@ -1143,6 +1203,7 @@ int main(int argc, char *argv[])
     timing_analyzer_init(avr, &timing_analyzer_ignition, "Ignition");
     avr_connect_irq(avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 2), timing_analyzer_ignition.irq + IRQ_TIMING_ANALYZER_REF_IN);
     avr_connect_irq(avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 1), timing_analyzer_ignition.irq + IRQ_TIMING_ANALYZER_IN);
+    button_init(avr, &cranking, "Crancking_btn");
     
     
     /**** Manual mode ****/
