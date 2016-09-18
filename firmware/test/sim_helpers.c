@@ -35,8 +35,8 @@
 #include "sim_helpers.h"
 
 
-#define V(msg, ...) do{fprintf(stdout, "Helper: "); fprintf(stdout, msg, ##__VA_ARGS__ );}while(0)
-//#define V(msg, ...) do{}while(0)
+//#define V(msg, ...) do{fprintf(stdout, "Helper: "); fprintf(stdout, msg, ##__VA_ARGS__ );}while(0)
+#define V(msg, ...) do{}while(0)
 
 #define MAX_16BIT_IRQ 16
 typedef struct {
