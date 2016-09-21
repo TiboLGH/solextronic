@@ -27,7 +27,7 @@
  * \date June 2016
  *
  * This push button simulation is based on Simavr button.h/c
- * Add set state function and imput polarity for flexibility
+ * Add set state function and input polarity for flexibility
  *
  */
 #ifndef __BUTTON_H__
@@ -40,24 +40,43 @@ enum {
 	IRQ_BUTTON_COUNT
 };
 
+enum {
+    BUTTON_RELEASED = 0,
+    BUTTON_PRESSED,
+};
+
+enum {
+    BUTTON_NORMAL = 0,
+    BUTTON_REVERSE
+};
+
 typedef struct button_t {
 	avr_irq_t * irq;	// output irq
 	struct avr_t * avr;
+    char name[64];
 	uint8_t value;
+    uint8_t polarity;
 } button_t;
 
 void
 button_init(
 		struct avr_t * avr,
 		button_t * b,
+        uint8_t polarity, /* 0 : normal, 1 : reverse */
 		const char * name);
 
 void
 button_press(
-		button_t * b,
-		uint32_t duration_usec,
-        uint8_t direction);
+		button_t * b);
 
+void
+button_release(
+		button_t * b);
+
+void
+button_press_mom(
+		button_t * b,
+		uint32_t duration_usec);
 void
 button_set_state(
 		button_t * b,

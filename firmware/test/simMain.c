@@ -124,7 +124,7 @@ pulse_input_t pulse_input_wheel;
 timing_analyzer_t timing_analyzer_injection;
 timing_analyzer_t timing_analyzer_ignition;
 analog_input_t analog;
-button_t cranking;
+button_t button_cranking;
 volatile uint8_t    display_pwm = 0;
 int fd = 0; /* access to serial port */
 /* Thread messaging structure and shared variables */
@@ -235,11 +235,53 @@ static float MapToVoltage(const float kpa, eeprom_data_t *eData) // considering 
 
 static float ThrToVoltage(const float TPS, eeprom_data_t *eData) // TPS in %
 {
+    // note that TPS min and max are in ADC unit, not in %
     float adc = (eData->tpsMax - eData->tpsMin) * TPS / 100. + eData->tpsMin;
     float voltage = adc * 5/256.;
     return voltage;
 }
 
+typedef struct {
+    unsigned int ledPin  : 1; // PB5
+    unsigned int auxPin  : 1; // PB0
+    unsigned int injPin  : 1; // PB2
+    unsigned int ignPin  : 1; // PB1
+    unsigned int pumpPin : 1; // PD7
+    unsigned int hvPin   : 1; // PD5
+}output_t;
+
+// Get outputs states and return it as a bitfield
+// if bug is not null, format a pretty print (need at least 256 bytes)
+static output_t GetOutputState(char* buf)
+{
+    output_t state;
+	avr_ioport_state_t iostate;
+    // port B
+    avr_ioctl(avr, AVR_IOCTL_IOPORT_GETSTATE('B'), &iostate);
+    state.ledPin = (iostate.pin >> 5) & 0x1;
+    state.auxPin = (iostate.pin >> 0) & 0x1;
+    state.injPin = (iostate.pin >> 2) & 0x1;
+    state.ignPin = (iostate.pin >> 1) & 0x1;
+    // port D
+    avr_ioctl(avr, AVR_IOCTL_IOPORT_GETSTATE('D'), &iostate);
+    state.pumpPin = (iostate.pin >> 7) & 0x1;
+    state.hvPin   = (iostate.pin >> 5) & 0x1;
+    
+    if(buf) // for pretty print
+    {
+        snprintf(buf, 256, "Led %s, Aux %s, Inj %s, Ign %s, Pump %s, HV %s", state.ledPin?"ON":"OFF",
+                                                                             state.auxPin?"ON":"OFF",
+                                                                             state.injPin?"ON":"OFF",
+                                                                             state.ignPin?"ON":"OFF",
+                                                                             state.pumpPin?"ON":"OFF",
+                                                                             state.hvPin?"ON":"OFF"); 
+    }
+
+
+    return state;
+}
+
+#if 0
 static void PrintArray(const u8* buffer, const int len)
 {
     char str[1024];
@@ -257,6 +299,7 @@ static void PrettyPrint(const u8* buffer, const int len)
     V("%s\n", str);
     return;
 }
+#endif
 
 static float TimingToAdvance(const uint32_t rpm, const uint32_t timing)
 {
@@ -577,6 +620,21 @@ static int ReadConfigRetry(uart_com_t *uart, eeprom_data_t *toRead)
         snprintf(str, 256, (text), (meas), (expected), error);                                                  \
         if(result) GREEN("%s", str); else {RED("%s", str); verdict = FAIL;}                                     \
         }while(0)                                                                                               \
+
+#define CHECK_STATE_AND_PRINT(meas, expected, text)                                                                    \
+        do{                                                                                                     \
+        result = (meas == expected);                                       \
+        snprintf(str, 256, (text), (meas));                                                  \
+        if(result) GREEN("%s", str); else {RED("%s", str); verdict = FAIL;}                                     \
+        }while(0)                                                                                               \
+
+#define CHECK_PIN_AND_PRINT(meas, expected, text)                                                                    \
+        do{                                                                                                     \
+        result = (meas == expected);                                       \
+        snprintf(str, 256, (text), (meas)?"ON":"OFF");                                                  \
+        if(result) GREEN("%s", str); else {RED("%s", str); verdict = FAIL;}                                     \
+        }while(0)                                                                                               \
+
 
 int TestStub(void)
 {
@@ -1009,11 +1067,13 @@ int TestIgnInjTiming(void)
  * versus the model and given injection/ignitions tables.
  * Test procedure :
    1/ Set configuration and check inputs
-   2/ Push on cranking button + start RPM generator at 300RPM : check HV enable and pump, check cranking state : advance and injection
+   2/ Push on cranking button + start RPM generator at 500RPM : check HV enable and pump, check cranking state : advance and injection
    3/ After 5sec, set RPM at 1500RPM and check injection/advance + enrich linked to CLT and afterstart
    4/ Check engine running at idle for 30sec
    5/ Open TPS quickly and check transient behavior
    6/ Close TPS to idle quickly and check transient behavior 
+   7/ Check for overheat protection : increase CLT to high value and check ignition retard + injection enrich
+   8/ Check for RPM limitation : check for ignition retard if RPM goes higher than limitation 
 */
 
 int TestStarting(void)
@@ -1024,7 +1084,8 @@ int TestStarting(void)
     char str[256];
     current_data_t gState;
     
-    // 1. Set parameters and tables
+    HIGH("Step 1 : set configuration and check inputs and outputs...\n");
+    // 1.1. Set parameters and tables
     eeprom_data_t eDataToWrite;
     if(ReadConfigRetry(&uart_com, &eDataToWrite) != OK) return FAIL;
     eDataToWrite.ignTestMode    = 0;
@@ -1032,14 +1093,14 @@ int TestStarting(void)
     eDataToWrite.ignDuration    = 1000;
     eDataToWrite.ignPolarity    = 1;
     eDataToWrite.injPolarity    = 1;
+    eDataToWrite.pumpPolarity   = 1;
+    eDataToWrite.targetAfr      = 120; // 12, best power
     eDataToWrite.battRatio      = 150;
     eDataToWrite.map0           = 0;
     eDataToWrite.map5           = 110;
     eDataToWrite.tpsMin         = 20;
     eDataToWrite.tpsMax         = 150;
-    eDataToWrite.targetAfr      = 120; // 12
-    // Force running mode
-    eDataToWrite.runTestMode    = 1;
+    eDataToWrite.runTestMode    = 0;
 
     //Fill advance and injection tables
     for(int i = 0; i < TABSIZE; i++)
@@ -1054,7 +1115,78 @@ int TestStarting(void)
     }
     if(WriteConfigRetry(&uart_com, &eDataToWrite) != OK) return FAIL;
 
+    // 1.2. Set external sensor and check inputs measurements
+    // Battery : 12v, CLT : 20d, IAT 20d, TPS : 0%, MAP : 100kPa, RPM : 0, speed 0km/h
+    float voltage[5];
+    voltage[0] = BatToVoltage(120);
+    voltage[1] = TempToVoltage(20, CLT, &eDataToWrite);
+    voltage[2] = TempToVoltage(20, IAT, &eDataToWrite);
+    voltage[3] = ThrToVoltage(0, &eDataToWrite);
+    voltage[4] = MapToVoltage(100, &eDataToWrite);
+    for(int j = 0; j < 5; j++)
+        analog_input_set_value(&analog, j, voltage[j], 0);
+    
+    uint32_t high, low;
+    SpeedtoPeriod(0, &high, &low);
+    pulse_input_config(&pulse_input_wheel, high, low, 0);
+    RPMtoPeriod(0, &high, &low);
+    pulse_input_config(&pulse_input_engine, high, low, 0);
+    SleepMs(1000);
+    /* query result */
+    QueryState(&uart_com, &gState);
+
+    float error = 0; bool result = false;
+    CHECK_AND_PRINT(gState.battery, 120, 2, "Battery : %5dv   | %5dv   | %5.1f \n");
+    CHECK_AND_PRINT(gState.CLT, 20, 2,      "CLT     : %5dd   | %5dd   | %5.1f \n");
+    CHECK_AND_PRINT(gState.IAT, 20, 2,      "IAT     : %5dd   | %5dd   | %5.1f \n");
+    CHECK_AND_PRINT(gState.TPS,  0, 2,      "TPS     : %5d%%   | %5d%%   | %5.1f \n");
+    CHECK_AND_PRINT(gState.MAP,100, 5,      "MAP     : %5dkPa | %5dkPa | %5.1f \n");
+    CHECK_AND_PRINT(gState.rpm,  0, 1,      "RPM     : %5drpm | %5drpm | %5.1f \n");
+    CHECK_AND_PRINT(gState.speed,0, 1,      "Speed   : %4dkm/h | %4dkm/h | %5.1f \n");
+    CHECK_STATE_AND_PRINT(gState.engineState, 0x0, "EngineState : 0x%X \n");
+
+    // Pump (PD7), HV (PD5), ignition (PB1), injector (PB2) states : they shall be off
+    output_t state = GetOutputState(NULL);
+    CHECK_PIN_AND_PRINT(state.pumpPin, 0, "Pump      : %s\n");
+    CHECK_PIN_AND_PRINT(state.hvPin,   0, "HV        : %s\n");
+    CHECK_PIN_AND_PRINT(state.ignPin,  0, "Ignition  : %s\n");
+    CHECK_PIN_AND_PRINT(state.injPin,  0, "Injection : %s\n");
+   
+    if(verdict == FAIL) return verdict; 
+
+    // 2. Push on cranking button + start RPM generator at 500RPM : check HV enable and pump, check cranking state : advance and injection
+    HIGH("Step 2 : Start cranking. Check pump/injection/ignition behavior\n");
+    button_press(&button_cranking);
+    RPMtoPeriod(500, &high, &low);
+    pulse_input_config(&pulse_input_engine, high, low, 0);
+    SleepMs(1000);
+    
+    QueryState(&uart_com, &gState);
+    CHECK_AND_PRINT(gState.rpm,  500, 20,      "RPM     : %5drpm | %5drpm | %5.1f \n");
+    CHECK_STATE_AND_PRINT(gState.engineState, 0x1, "EngineState : 0x%X \n");
+    state = GetOutputState(NULL);
+    CHECK_PIN_AND_PRINT(state.pumpPin, 1, "Pump      : %s\n");
+    CHECK_PIN_AND_PRINT(state.hvPin,   1, "HV        : %s\n");
+
+    if(verdict == FAIL) return verdict; 
+    
+    // 3. After 5sec, set RPM at 1500RPM and check injection/advance + enrich linked to CLT and afterstart
+    // 4. Check engine running at idle for 30sec
+    // 5. Open TPS quickly and check transient behavior
+    // 6. Close TPS to idle quickly and check transient behavior 
+    // 7. Check for overheat protection : increase CLT to high value and check ignition retard + injection enrich
+    // 8. Check for RPM limitation : check for ignition retard if RPM goes higher than limitation 
+
     SetUartMode(&uart_com, true);
+
+    button_press(&button_cranking);
+    SleepMs(800);
+    button_release(&button_cranking);
+    SleepMs(1000);
+    button_press_mom(&button_cranking, 500000);
+
+    SleepMs(2000);
+    return verdict;
 }
 
 
@@ -1171,7 +1303,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "%s: AVR '%s' not known\n", argv[0], f.mmcu);
         exit(1);
     }
-    V("firmware %s f=%d mmcu=%s\n", fname, (int) f.frequency, f.mmcu);
+    //V("firmware %s f=%d mmcu=%s\n", fname, (int) f.frequency, f.mmcu);
 
     avr_init(avr);
     avr_load_firmware(avr, &f);
@@ -1185,12 +1317,13 @@ int main(int argc, char *argv[])
     }*/ 
 
     /* External parts connections */
+    V("Initialize external parts simulation...\n");
     uart_pty_init(avr, &uart_pty);
     uart_pty_connect(&uart_pty, '0');
     uint32_t tHigh, tLow;
-    RPMtoPeriod(6000, &tHigh, &tLow);
+    RPMtoPeriod(0, &tHigh, &tLow);
     pulse_input_init(avr, &pulse_input_engine, "Engine", 0/*tHigh*/, tLow);
-    SpeedtoPeriod(40, &tHigh, &tLow);
+    SpeedtoPeriod(0, &tHigh, &tLow);
     pulse_input_init(avr, &pulse_input_wheel, "Wheel", tHigh, tLow);
     avr_connect_irq(pulse_input_engine.irq + IRQ_PULSE_OUT, avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 2));
     avr_connect_irq(pulse_input_wheel.irq  + IRQ_PULSE_OUT, avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 3));
@@ -1203,7 +1336,8 @@ int main(int argc, char *argv[])
     timing_analyzer_init(avr, &timing_analyzer_ignition, "Ignition");
     avr_connect_irq(avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 2), timing_analyzer_ignition.irq + IRQ_TIMING_ANALYZER_REF_IN);
     avr_connect_irq(avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 1), timing_analyzer_ignition.irq + IRQ_TIMING_ANALYZER_IN);
-    button_init(avr, &cranking, "Crancking_btn");
+    button_init(avr, &button_cranking, BUTTON_NORMAL, "Crancking_btn");
+    avr_connect_irq(button_cranking.irq + IRQ_BUTTON_OUT, avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 4));
     
     
     /**** Manual mode ****/
@@ -1268,6 +1402,9 @@ int main(int argc, char *argv[])
         avr_vcd_add_signal(&vcd_file,
                 avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('B'), 1),
                 1, "IGN");
+        avr_vcd_add_signal(&vcd_file,
+                avr_io_getirq(avr, AVR_IOCTL_IOPORT_GETIRQ('D'), 4),
+                1, "BTN");
         avr_vcd_add_signal(&vcd_file, pulse_input_wheel.irq  + IRQ_PULSE_OUT, 1, "Pulse_Wheel");
         avr_vcd_add_signal(&vcd_file,
                 helpers_register_16bit_irq(avr, 0x88, "OCR1A"), 16, "OCR1A");

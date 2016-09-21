@@ -563,8 +563,13 @@ void ADCProcessing(void)
     // Conversion and filtering
     gState.battery = (eData.battRatio * (u16)gState.rawBattery) / 256 + 7; // + 0.7v for the diode     
     gState.CLT = Interp1D(eData.cltCal, gState.rawClt);     
-    gState.IAT = Interp1D(eData.iatCal, gState.rawIat);     
-    gState.TPS = 100 * (u16)(gState.rawTps - eData.tpsMin) / (eData.tpsMax - eData.tpsMin); 
+    gState.IAT = Interp1D(eData.iatCal, gState.rawIat); 
+    if(gState.rawTps <= eData.tpsMin) 
+        gState.TPS = 0; 
+    else if(gState.rawTps >= eData.tpsMax) 
+        gState.TPS = 100;
+    else
+        gState.TPS = 100 * (u16)(gState.rawTps - eData.tpsMin) / (eData.tpsMax - eData.tpsMin); 
     gState.TPSVariation = lastTps - gState.TPS;
     lastTps = gState.TPS;    
     if(gState.TPS > 97) gState.TPSState = T_WOT;

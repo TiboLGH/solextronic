@@ -98,7 +98,7 @@ pulse_input_init(
     b->ramp = 0;
     b->progress = 0;
 	avr_cycle_timer_register_usec(avr, b->low, switch_auto, b);
-	//V("pulse_input_init period %duS, duty cycle %.1f%%\n", tHigh+tLow, 100*(float)tHigh/(tHigh+tLow));
+	V("pulse_input_init period %duS, duty cycle %.1f%%\n", tHigh+tLow, 100*(float)tHigh/(tHigh+tLow));
 }
 
 void pulse_input_config(
@@ -120,5 +120,5 @@ void pulse_input_config(
         b->progress   = 0;
         b->initTime   = b->avr->cycle; 
     }
-	//V("pulse_input_init period %duS, duty cycle %.1f%%, ramp\n", tHigh+tLow, 100*(float)tHigh/(tHigh+tLow), ramp);
+	V("pulse_input_init period %duS, duty cycle %.1f%%, ramp\n", tHigh+tLow, 100*(float)tHigh/(tHigh+tLow), ramp);
 }

@@ -35,7 +35,7 @@
 #include "avr_adc.h"
 #include "analog_input.h"
 
-//#define V(msg, ...) do{fprintf(stdout, "Analog_input: "); fprintf(stdout, msg, ##__VA_ARGS__ )}while(0)
+//#define V(msg, ...) do{fprintf(stdout, "Analog_input: "); fprintf(stdout, msg, ##__VA_ARGS__ );}while(0)
 #define V(msg, ...) do{}while(0)
 
 
@@ -62,7 +62,7 @@ void analog_input_hook(struct avr_irq_t * irq, uint32_t value, void * param)
                     p->value[i] = p->progress[i] *(int)(p->targetValue[i] - p->initValue[i]) / p->ramp[i] + p->initValue[i];
                 }
             } 
-            V("index %d, value %.0f\n", mux.src, p->value[i]*1000);
+            //V("index %d, value %.0f\n", mux.src, p->value[i]*1000);
             avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_ADC_GETIRQ, mux.src), (int)(p->value[i]*1000));
             return;
         }
@@ -105,7 +105,6 @@ analog_input_set_value(
         printf("ADC setting out of range\n");
         return;
     }
-    V("Index %d = %f, ramp %u\n", adc_index, p->value[adc_index], p->ramp[adc_index]);
     p->ramp[adc_index] = ramp;
     if(!p->ramp[adc_index]) // immediate application
     {
@@ -116,4 +115,5 @@ analog_input_set_value(
         p->initValue[adc_index] = p->value[adc_index];
         p->initTime[adc_index] = p->avr->cycle;
     }
+    V("Index %d = %f, ramp %u\n", adc_index, p->value[adc_index], p->ramp[adc_index]);
 }
