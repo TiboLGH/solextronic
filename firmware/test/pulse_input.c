@@ -36,8 +36,8 @@
 #include "sim_time.h"
 #include "pulse_input.h"
 
-//#define V(msg, ...) do{fprintf(stdout, "Pulse_input: "); fprintf(stdout, msg, ##__VA_ARGS__ );}while(0)
-#define V(msg, ...) do{}while(0)
+#define V(msg, ...) do{fprintf(stdout, "Pulse_input: "); fprintf(stdout, msg, ##__VA_ARGS__ );}while(0)
+//#define V(msg, ...) do{}while(0)
 
 static avr_cycle_count_t
 switch_auto(
@@ -107,6 +107,7 @@ void pulse_input_config(
         const uint32_t tLow,
         const uint32_t ramp)
 {
+    int isStopped = (!(b->high) || !(b->low));
     b->ramp = ramp;
     if(!b->ramp) // immediate application
     {
@@ -120,5 +121,15 @@ void pulse_input_config(
         b->progress   = 0;
         b->initTime   = b->avr->cycle; 
     }
-	V("pulse_input_init period %duS, duty cycle %.1f%%, ramp\n", tHigh+tLow, 100*(float)tHigh/(tHigh+tLow), ramp);
+    if(!tLow || !tHigh) // stop generator, set ouput to low
+    {
+        avr_cycle_timer_cancel(b->avr, switch_auto, b);
+        b->value = 0;
+        avr_raise_irq(b->irq + IRQ_PULSE_OUT, b->value);
+        V("Generator %s stopped\n", b->name);
+    }else{
+        V("pulse_input_init period %duS, duty cycle %.1f%%, ramp %d\n", tHigh+tLow, 100*(float)tHigh/(tHigh+tLow), ramp);
+        if(isStopped) // generator was stopped, explicitely restart timer
+            avr_cycle_timer_register_usec(b->avr, b->low, switch_auto, b);
+    }
 }
