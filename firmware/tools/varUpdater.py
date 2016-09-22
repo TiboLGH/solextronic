@@ -500,23 +500,24 @@ class DescFile(OutputFile):
         self.total = 0
 
     def addEepromLine(self, lineContent):
-        if(lineContent['class'] != 'bits'):
-            alias = ''
-            if(self.total < 90):
-                alias = chr(ord('#') + self.total)
-                if(alias == '\\'):
-                    alias = "\\\\"
-                    print alias
-            else:
-                alias = '%c#' % (self.total - 90 + ord('#'))
-            self.total += 1
+        alias = ''
+        if(self.total < 90):
+            alias = chr(ord('#') + self.total)
+            if(alias == '\\'):
+                alias = "\\\\"
+                print alias
+        else:
+            alias = '%c#' % (self.total - 90 + ord('#'))
+        self.total += 1
 
-            if(lineContent['class'] == 'array'):
-                self.eepromSection.append("\t{\"%s\", %d, \"%s\", %d, \"%s\", 0, 0}," % (lineContent['name'], -1, alias, self.eepromSize, "array"))
-            else:
-                self.eepromSection.append("\t{\"%s\", %d, \"%s\", %d, \"%s\", 0, 0}," % (lineContent['name'], lineContent['size']*8, alias, self.eepromSize, lineContent['type']))
-            self.eepromSize += lineContent['size']
-            self.eepromQty += 1
+        if(lineContent['class'] == 'array'):
+            self.eepromSection.append("\t{\"%s\", %d, \"%s\", %d, \"%s\", 0, 0}," % (lineContent['name'], -1, alias, self.eepromSize, "array"))
+        elif(lineContent['class'] == 'bits'):
+            self.eepromSection.append("\t{\"%s\", %d, \"%s\", %d, \"%s\", 0, 0}," % (lineContent['name'], lineContent['size']*8, alias, self.eepromSize, lineContent['type']))
+        else:
+            self.eepromSection.append("\t{\"%s\", %d, \"%s\", %d, \"%s\", 0, 0}," % (lineContent['name'], lineContent['size']*8, alias, self.eepromSize, lineContent['type']))
+        self.eepromSize += lineContent['size']
+        self.eepromQty += 1
     
     def addOutputChannelLine(self, lineContent):
         if(lineContent['class'] != 'bits'):
