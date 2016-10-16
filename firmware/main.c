@@ -146,7 +146,8 @@ u8 MainFsm(void)
             SetInjectionTiming(FORCEOFF, 0);
             PIN_OFF(PUMP_PIN, eData.pumpPolarity);
             PIN_OFF(HV_PIN, HV_POLARITY);
-            if(!PIN_READ(CRANKING_PIN))
+            intState.rpmCycles = 0;
+            if(PIN_READ(CRANKING_PIN))
             {
 				// latch CLT to compute afterstart enrich
 				gState.injAfterStartEnrich = Interp1D(eData.injAfterStartTbl, gState.CLT);
@@ -173,7 +174,7 @@ u8 MainFsm(void)
         case M_CRANKING: // someone is pushing ! force inj/ign to crancking values until we reach 1000rpm
             PIN_ON(PUMP_PIN, eData.pumpPolarity);
             PIN_ON(HV_PIN, HV_POLARITY);
-            if(PIN_READ(CRANKING_PIN))
+            if(!PIN_READ(CRANKING_PIN))
             {
                 gState.engineState = M_STOP;
             }
@@ -209,7 +210,8 @@ u8 MainFsm(void)
             SetInjectionTiming(FORCEOFF, 0);
             PIN_OFF(PUMP_PIN, eData.pumpPolarity);
             PIN_OFF(HV_PIN, HV_POLARITY);
-            if(!PIN_READ(CRANKING_PIN))
+            intState.rpmCycles = 0;
+            if(PIN_READ(CRANKING_PIN))
             {
                 gState.engineState = M_CRANKING;
             }

@@ -55,7 +55,7 @@ const PROGMEM eeprom_data_t eeInit = {
     .maxTemp        = 150,
     .minBat         = 110,
     .ignDuration    = 1000,
-    .ignStarter     = 5,
+    .ignStarter     = 0,
     .ignOverheat    = 2,
     .noSparkAtDec   = 0,
     .injectorOpen   = 500,
@@ -229,7 +229,7 @@ void InitIOs(void)
     DDRB  = 0b00100110;
     PORTB = 0b00000000;
     DDRD  = 0b11100010;
-    PORTD = 0b00010000;
+    PORTD = 0b00000000;
 
     EICRA = (1 << ISC11) | (1 << ISC10) | (1 << ISC01) | (1 << ISC00);
     EIMSK = (1 << INT1) | (1 << INT0);
@@ -636,6 +636,13 @@ ISR(INT0_vect)
 
 	intState.RPMperiod = intState.period_1 * 2 - intState.period_2;
     intState.period_2 = intState.period_1;
+
+    if(intState.rpmCycles < 4) // RPM measurement and timing are not reliable yet
+    {
+        intState.rpmCycles++;
+        gState.rpm = 0;
+        return;
+    }   
 
     // compute RPM : tick is 4us
     gState.rpm = (60 * 250000) / intState.RPMperiod;

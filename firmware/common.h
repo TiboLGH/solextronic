@@ -112,6 +112,7 @@ typedef struct {
     u8  adcDone;
     u8  afterStartPeriod;
 	u8  mapMeasureReady;
+    u8  rpmCycles;
 }intState_t; 
 
 #endif
