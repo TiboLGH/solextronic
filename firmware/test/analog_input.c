@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "sim_avr.h"
+#include "sim_time.h"
 #include "avr_adc.h"
 #include "analog_input.h"
 
@@ -56,13 +57,16 @@ void analog_input_hook(struct avr_irq_t * irq, uint32_t value, void * param)
         if(mux.src == p->adc_irq_index[i]){
             if(p->ramp[i]){
                 p->progress[i] = p->avr->cycle - p->initTime[i];
-                if(p->progress[i] > p->ramp[i]){ // ramp is done
+                //if(p->adc_irq_index[i] == ADC_IRQ_ADC3) V("progress %u, target %u\n", p->progress[i], avr_usec_to_cycles(p->avr, p->ramp[i]));
+                if(p->progress[i] > avr_usec_to_cycles(p->avr, p->ramp[i])){ // ramp is done
                     p->value[i] = p->targetValue[i];
+                    p->ramp[i] = 0;
                 }else{ // ramp in progress
-                    p->value[i] = p->progress[i] *(int)(p->targetValue[i] - p->initValue[i]) / p->ramp[i] + p->initValue[i];
+                    p->value[i] = (double)p->progress[i] *(p->targetValue[i] - p->initValue[i]) / avr_usec_to_cycles(p->avr, p->ramp[i]) + p->initValue[i];
+                    //if(p->adc_irq_index[i] == ADC_IRQ_ADC3) V("value/init/target %.3f/%.3f/%.3f\n", p->value[i], p->initValue[i], p->targetValue[i]);
                 }
             } 
-            //V("index %d, value %.0f\n", mux.src, p->value[i]*1000);
+            //if(p->adc_irq_index[i] == ADC_IRQ_ADC3) V("index %d, value %.0f\n", mux.src, p->value[i]*1000);
             avr_raise_irq(avr_io_getirq(p->avr, AVR_IOCTL_ADC_GETIRQ, mux.src), (int)(p->value[i]*1000));
             return;
         }
@@ -105,7 +109,7 @@ analog_input_set_value(
         printf("ADC setting out of range\n");
         return;
     }
-    p->ramp[adc_index] = ramp;
+    p->ramp[adc_index] = ramp*1000; // computation are in us
     if(!p->ramp[adc_index]) // immediate application
     {
         p->value[adc_index] = value;
@@ -115,5 +119,5 @@ analog_input_set_value(
         p->initValue[adc_index] = p->value[adc_index];
         p->initTime[adc_index] = p->avr->cycle;
     }
-    V("Index %d = %f, ramp %u\n", adc_index, p->value[adc_index], p->ramp[adc_index]);
+    V("Index %d = %f, target %f, ramp %u\n", adc_index, p->value[adc_index], p->targetValue[adc_index], p->ramp[adc_index]);
 }

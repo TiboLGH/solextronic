@@ -49,7 +49,7 @@ typedef struct analog_input_t {
     int       nb_inputs;              // number of inputs 
 	float	  value[MAX_ADC];		  // value in v
 	int 	  adc_irq_index[MAX_ADC]; // adc channel
-    uint32_t  ramp[MAX_ADC];          // ramp duration
+    uint32_t  ramp[MAX_ADC];          // ramp duration in us
     uint32_t  progress[MAX_ADC];      // current progress in ramp
     uint64_t  initTime[MAX_ADC];      // start time for ramp
 	float	  initValue[MAX_ADC];	  // initial value of ramp in v
@@ -68,7 +68,7 @@ void
 analog_input_set_value(
 		analog_input_t *p,
         const int adc_index,
-		const float value,
-        const uint32_t ramp);
+		const float value,      // in v
+        const uint32_t ramp);   // in ms
 
 #endif
