@@ -157,6 +157,7 @@ u8 MainFsm(void)
 				gState.injPulseWidth = ((u32)eData.injStarter * (100 + gState.injAfterStartEnrich) / 100) + eData.injectorOpen;
 				SetIgnitionTiming(AUTO, gState.advance);
 				SetInjectionTiming(AUTO, gState.injPulseWidth);
+                intState.ovfCount = 0;
                 gState.engineState = M_CRANKING;
             }
         break;

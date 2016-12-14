@@ -113,6 +113,7 @@ typedef struct {
     u8  afterStartPeriod;
 	u8  mapMeasureReady;
     u8  rpmCycles;
+    u8  ovfCount;
 }intState_t; 
 
 #endif

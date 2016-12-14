@@ -350,14 +350,18 @@ void startAdc(void)
 
 /**
  * \fn ISR(TIMER1_OVF_vect)
- * \brief FIXME Interrupt on overflow of Timer1 : engine is stalled
+ * \brief Engine is considered as stalled if there is 2 consecutive OVF without RPM pulse.
  *
  * \param none
  * \return none
  */
 ISR(TIMER1_OVF_vect)
 {
-    if(gState.engineState == M_RUNNING) gState.engineState = M_STALLED;
+    if(((intState.ovfCount++) > 2) && ((gState.engineState == M_CRANKING) ||
+                                      (gState.engineState == M_RUNNING)))
+    {
+        gState.engineState = M_STALLED;
+    }
 }
 
 
@@ -636,6 +640,7 @@ ISR(INT0_vect)
 
 	intState.RPMperiod = intState.period_1 * 2 - intState.period_2;
     intState.period_2 = intState.period_1;
+    intState.ovfCount = 0;
 
     if(intState.rpmCycles < 4) // RPM measurement and timing are not reliable yet
     {
