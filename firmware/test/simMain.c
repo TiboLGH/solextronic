@@ -195,13 +195,19 @@ Test_t testList[] = {
 static void RPMtoPeriod(const uint32_t rpm, uint32_t *tHigh, uint32_t *tLow)
 {
     *tHigh = 100; /* set high duration to 100us */
-    *tLow  = (uint32_t)(1000000. / (rpm / 60.) - *tHigh);
+    if(rpm == 0)
+        *tLow =0;
+    else
+        *tLow  = (uint32_t)(1000000. / (rpm / 60.) - *tHigh);
 }
 
 static void SpeedtoPeriod(const uint32_t speed, uint32_t *tHigh, uint32_t *tLow)
 {
     *tHigh = 1000; /* set high duration to 1ms */
-    *tLow  = 1000000 / (speed / 3.6 / 1.82) - *tHigh; /* 1.82m : for 19" wheel */
+    if(speed == 0)
+        *tLow =0;
+    else
+        *tLow  = 1000000 / (speed / 3.6 / 1.82) - *tHigh; /* 1.82m : for 19" wheel */
 }
 
 static float BatToVoltage(const float battery)
@@ -279,6 +285,51 @@ static output_t GetOutputState(char* buf)
 
 
     return state;
+}
+
+// Engine state pretty print (need to be resynchronize with FW sometimes)
+// buffer shall be at least 64 bytes
+enum
+{
+    M_STOP      = 0,
+    M_CRANKING  = 1 << 0,
+    M_RUNNING   = 1 << 1,
+    M_OVERHEAT  = 1 << 2,
+    M_ERROR     = 1 << 3,
+    M_STALLED   = 1 << 4,
+    M_TEST_IGN  = 1 << 5,
+    M_TEST_INJ  = 1 << 6,
+    M_TEST_RUN  = 1 << 7
+};
+const char* engineStr[] = {
+    "CRANKING",
+    "RUNNING",
+    "OVERHEAT",
+    "ERROR",
+    "STALLED",
+    "TEST_IGN",
+    "TEST_INJ",
+    "TEST_RUN",
+};
+static void EnginePrettyPrint(u8 state, char* buf)
+{
+    if(state == M_STOP)
+    {
+        snprintf(buf, 64, "STOP");
+    }else{
+        // can have several bits active
+        buf[0] = '\0';
+        for(int i=0;i<8;i++)
+        {
+            if(buf[0] == '\0')
+            {
+                if((state >> i) & 1) sprintf(buf, "%s", engineStr[i]);
+            }else{
+                if((state >> i) & 1) sprintf(buf, "%s | %s", buf, engineStr[i]);
+            }
+        }
+    }
+    return;
 }
 
 #if 0
@@ -614,24 +665,26 @@ static int ReadConfigRetry(uart_com_t *uart, eeprom_data_t *toRead)
  ***********************************************************/
 
 /****** Tests Cases *******/
-#define CHECK_AND_PRINT(meas, expected, tolerance, text)                                                                    \
+#define CHECK_AND_PRINT(meas, expected, tolerance, text)                                                        \
         do{                                                                                                     \
         result = CheckTolerance((meas), (expected), (tolerance), &error);                                       \
         snprintf(str, 256, (text), (meas), (expected), error);                                                  \
         if(result) GREEN("%s", str); else {RED("%s", str); verdict = FAIL;}                                     \
         }while(0)                                                                                               \
 
-#define CHECK_STATE_AND_PRINT(meas, expected, text)                                                                    \
+#define CHECK_STATE_AND_PRINT(meas, expected)                                                                   \
         do{                                                                                                     \
-        result = (meas == expected);                                       \
-        snprintf(str, 256, (text), (meas));                                                  \
+        result = (meas == expected);                                                                            \
+        char bufState[64];                                                                                      \
+        EnginePrettyPrint((meas), bufState);                                                                    \
+        snprintf(str, 256, "Engine state : 0x%X (%s)\n", (meas), bufState);                                     \
         if(result) GREEN("%s", str); else {RED("%s", str); verdict = FAIL;}                                     \
         }while(0)                                                                                               \
 
-#define CHECK_PIN_AND_PRINT(meas, expected, text)                                                                    \
+#define CHECK_PIN_AND_PRINT(meas, expected, text)                                                               \
         do{                                                                                                     \
-        result = (meas == expected);                                       \
-        snprintf(str, 256, (text), (meas)?"ON":"OFF");                                                  \
+        result = (meas == expected);                                                                            \
+        snprintf(str, 256, (text), (meas)?"ON":"OFF");                                                          \
         if(result) GREEN("%s", str); else {RED("%s", str); verdict = FAIL;}                                     \
         }while(0)                                                                                               \
 
@@ -1095,6 +1148,9 @@ int TestStarting(void)
     eDataToWrite.injPolarity    = 1;
     eDataToWrite.pumpPolarity   = 1;
     eDataToWrite.targetAfr      = 120; // 12, best power
+    eDataToWrite.ignStarter     = 0;
+    eDataToWrite.injStarter     = 1000;
+    eDataToWrite.injectorOpen   = 500;
     eDataToWrite.battRatio      = 150;
     eDataToWrite.map0           = 0;
     eDataToWrite.map5           = 110;
@@ -1143,7 +1199,7 @@ int TestStarting(void)
     CHECK_AND_PRINT(gState.MAP,100, 5,      "MAP     : %5dkPa | %5dkPa | %5.1f \n");
     CHECK_AND_PRINT(gState.rpm,  0, 1,      "RPM     : %5drpm | %5drpm | %5.1f \n");
     CHECK_AND_PRINT(gState.speed,0, 1,      "Speed   : %4dkm/h | %4dkm/h | %5.1f \n");
-    CHECK_STATE_AND_PRINT(gState.engineState, 0x0, "EngineState : 0x%X \n");
+    CHECK_STATE_AND_PRINT(gState.engineState, 0x0);
 
     // Pump (PD7), HV (PD5), ignition (PB1), injector (PB2) states : they shall be off
     output_t state = GetOutputState(NULL);
@@ -1162,13 +1218,45 @@ int TestStarting(void)
     SleepMs(1000);
     
     QueryState(&uart_com, &gState);
-    CHECK_AND_PRINT(gState.rpm,  500, 20,      "RPM     : %5drpm | %5drpm | %5.1f \n");
-    CHECK_STATE_AND_PRINT(gState.engineState, 0x1, "EngineState : 0x%X \n");
+    CHECK_STATE_AND_PRINT(gState.engineState, 0x1);
     state = GetOutputState(NULL);
     CHECK_PIN_AND_PRINT(state.pumpPin, 1, "Pump      : %s\n");
     CHECK_PIN_AND_PRINT(state.hvPin,   1, "HV        : %s\n");
+    timing_analyzer_reset(&timing_analyzer_ignition, 5);
+    timing_analyzer_reset(&timing_analyzer_injection, 5);
+    //SleepMs(5000);
+    /* query result */
+    QueryState(&uart_com, &gState);
 
-    if(verdict == FAIL) return verdict; 
+    // 3. Measure signal timing
+    timing_analyzer_result(&timing_analyzer_ignition, &ignResult); // read stats
+    timing_analyzer_result(&timing_analyzer_injection, &injResult); // read stats
+    float ignAdvance = TimingToAdvance(500, ignResult.rising_offset);
+    float injAdvance = TimingToAdvance(500, injResult.rising_offset);
+    double computedK = ComputeK(eDataToWrite.targetAfr, gState.MAP);
+    V("General                |  Measured  |  Expected  |  Error |\n");
+    CHECK_AND_PRINT(gState.rpm, 500, 20, "  RPM from module      | %10d | %10d | %5.1f |\n");
+    CHECK_AND_PRINT(gState.load, 0, 1, "  Load from module     | %10d | %10.1f | %5.1f |\n");
+
+    V("Ignition :\n");
+    CHECK_AND_PRINT(ignResult.high_duration, eDataToWrite.ignDuration, 10, "  Pulse duration (us)  | %10d | %10d | %5.1f |\n");
+    CHECK_AND_PRINT(ignAdvance, eDataToWrite.ignStarter, 2, "  Advance from pin     | %10.1f | %10.1f | %5.1f |\n");
+    CHECK_AND_PRINT(gState.advance, eDataToWrite.ignStarter, 2, "  Advance from module  | %10d | %10.1f | %5.1f |\n");
+    V("  Count                | %10d |\n", ignResult.count);
+    V("  Result.rising_offset | %10d |\n", ignResult.rising_offset);
+    V("  Result.falling_offset| %10d |\n", ignResult.falling_offset);
+
+    V("Injection :\n");
+    CHECK_AND_PRINT(gState.injK, computedK, 10, "  K                    | %10d | %10.1f | %5.1f |\n");
+    CHECK_AND_PRINT(injResult.high_duration, eDataToWrite.injectorOpen+eDataToWrite.injStarter, 10, "  Pulse dur (pin,us)   | %10d | %10d | %5.1f |\n");
+    CHECK_AND_PRINT(gState.injPulseWidth, eDataToWrite.injectorOpen+eDataToWrite.injStarter, 10, "  Pulse dur (module,us)| %10d | %10d | %5.1f |\n");
+    CHECK_AND_PRINT(injAdvance, eDataToWrite.injAdv, 2., "  Start from pin(deg)  | %10.1f | %10.1f | %5.1f |\n");
+    CHECK_AND_PRINT(gState.injStart, eDataToWrite.injAdv, 10, "  Start from module(us)| %10d | %10d | %5.1f |\n");
+    V("  Count                | %10d |\n", injResult.count);
+    V("  Result.rising_offset | %10d |\n", injResult.rising_offset);
+    V("  Result.falling_offset| %10d |\n", injResult.falling_offset);
+
+    //if(verdict == FAIL) return verdict; 
     
     // 3. After 5sec, set RPM at 1500RPM and check injection/advance + enrich linked to CLT and afterstart
     // 4. Check engine running at idle for 30sec
@@ -1177,15 +1265,16 @@ int TestStarting(void)
     // 7. Check for overheat protection : increase CLT to high value and check ignition retard + injection enrich
     // 8. Check for RPM limitation : check for ignition retard if RPM goes higher than limitation 
 
-    SetUartMode(&uart_com, true);
+    analog_input_set_value(&analog, 1, TempToVoltage(120, CLT, &eDataToWrite), 5000);
+    RPMtoPeriod(1500, &high, &low);
+    pulse_input_config(&pulse_input_engine, high, low, 5000);
+    for(int i=0; i<50; i++)
+    {
+        SleepMs(100);
+        QueryState(&uart_com, &gState);
+        V("CLT : %d, RPM : %d\n", gState.CLT, gState.rpm);
+    }
 
-    button_press(&button_cranking);
-    SleepMs(800);
-    button_release(&button_cranking);
-    SleepMs(1000);
-    button_press_mom(&button_cranking, 500000);
-
-    SleepMs(2000);
     return verdict;
 }
 
@@ -1413,11 +1502,11 @@ int main(int argc, char *argv[])
         avr_vcd_add_signal(&vcd_file,
                 helpers_register_16bit_irq(avr, 0x84, "TNCT1"), 16, "TCNT1");
         avr_vcd_add_signal(&vcd_file,
-                helpers_register_debug_irq(avr, 0xFE, "DEBUG1", 16), 16, "period");
+                helpers_register_debug_irq(avr, 0xFE, "DEBUG1", 16), 16, "DEBUG1");
         avr_vcd_add_signal(&vcd_file,
-                helpers_register_debug_irq(avr, 0xFC, "DEBUG2", 16), 16, "start");
+                helpers_register_debug_irq(avr, 0xFC, "DEBUG2", 16), 16, "DEBUG2");
         avr_vcd_add_signal(&vcd_file,
-                helpers_register_debug_irq(avr, 0xFA, "DEBUG3", 16), 16, "duration");
+                helpers_register_debug_irq(avr, 0xFA, "DEBUG3", 16), 16, "DEBUG3");
         avr_vcd_add_signal(&vcd_file,
                 avr_iomem_getirq(avr, 0x4E, "SPDR", 8), 8, "DEBUG");
         avr_vcd_add_signal(&vcd_file,
@@ -1435,6 +1524,8 @@ int main(int argc, char *argv[])
     SleepMs(1000); 
     // Connection to serial port
     fd = SerialOpen();
+    button_release(&button_cranking);
+    avr_raise_irq(avr_iomem_getirq(avr, 0x4E, "SPDR", 8), 0xBB);
     
     SleepMs(1000);
     if(mode == ONE_TEST)
