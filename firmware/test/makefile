@@ -7,7 +7,7 @@ GIT_VER		:=VERSION_GIT=0x$(shell git rev-parse --short HEAD)
 
 DEPS		= ../varDef.h ../helper.h ../../model/model.h
 C_SRCS		= $(wildcard *.c) ../helper.c ../../model/model.c
-OBJ_FILES	= simMain.o uart_pty.o pulse_input.o analog_input.o timing_analyzer.o HT_supply.o sim_helpers.o trace_writer.o helper.o model.o push_button.o 
+OBJ_FILES	= simMain.o uart_pty.o pulse_input.o analog_input.o timing_analyzer.o HT_supply.o sim_helpers.o trace_writer.o helper.o model.o push_button.o logger.o
 SIMAVR		= /home/tibo/Projets/simavr/simavr
 
 all:	$(TARGET)

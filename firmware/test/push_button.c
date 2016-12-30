@@ -34,10 +34,9 @@
 #include <stdio.h>
 #include <string.h>
 #include "sim_avr.h"
+#include "logger.h"
 #include "push_button.h"
 
-#define V(msg, ...) do{fprintf(stdout, "Push_button: "); fprintf(stdout, msg, ##__VA_ARGS__ );}while(0)
-//#define V(msg, ...) do{}while(0)
 
 static avr_cycle_count_t
 button_auto_release(
@@ -49,7 +48,7 @@ button_auto_release(
     b->value = (b->value?0:1);
     b->value = BUTTON_RELEASED;
 	avr_raise_irq(b->irq + IRQ_BUTTON_OUT, ((b->polarity==BUTTON_REVERSE)?(!b->value):b->value));
-	V("button %s auto_release\n", b->name);
+	DBG(b->logHandle, "button %s auto_release\n", b->name);
 	return 0;
 }
 
@@ -65,7 +64,7 @@ button_press_mom(
 	avr_cycle_timer_cancel(b->avr, button_auto_release, b);
     b->value = BUTTON_PRESSED;
 	avr_raise_irq(b->irq + IRQ_BUTTON_OUT, ((b->polarity==BUTTON_REVERSE)?(!b->value):b->value));
-	V("button %s pressed with auto release in %d us\n", b->name, duration_usec);
+	DBG(b->logHandle, "button %s pressed with auto release in %d us\n", b->name, duration_usec);
 	// register the auto-release
 	avr_cycle_timer_register_usec(b->avr, duration_usec, button_auto_release, b);
 }
@@ -79,7 +78,7 @@ button_press(
 {
     b->value = BUTTON_PRESSED;
 	avr_raise_irq(b->irq + IRQ_BUTTON_OUT, ((b->polarity==BUTTON_REVERSE)?(!b->value):b->value));
-	V("button %s pressed\n", b->name);
+	DBG(b->logHandle, "button %s pressed\n", b->name);
 }
 
 /*
@@ -91,7 +90,7 @@ button_release(
 {
     b->value = BUTTON_RELEASED;
 	avr_raise_irq(b->irq + IRQ_BUTTON_OUT, ((b->polarity==BUTTON_REVERSE)?(!b->value):b->value));
-	V("button %s released\n", b->name);
+	DBG(b->logHandle, "button %s released\n", b->name);
 }
 
 /*
@@ -115,12 +114,13 @@ button_init(
 {
     strncpy(b->name, name, 64);
     b->name[63] = 0;
+    b->logHandle = logger_register(b->name, COLOR_AUTO, LOGGER_DBG);
     const char *pName = &(b->name[0]);
 	b->irq = avr_alloc_irq(&avr->irq_pool, 0, IRQ_BUTTON_COUNT, &pName);
 	b->avr = avr;
     b->polarity = polarity?BUTTON_REVERSE:BUTTON_NORMAL; 
     b->value = BUTTON_RELEASED;
 	avr_raise_irq(b->irq + IRQ_BUTTON_OUT, ((b->polarity==BUTTON_REVERSE)?(!b->value):b->value));
-    V("btn %s initialized : polarity %s, state %s\n", name, (b->polarity?"REVERSE":"NORMAL"), (b->value?"PRESSED":"RELEASED"));
+    INFO(b->logHandle, "btn %s initialized : polarity %s, state %s\n", name, (b->polarity?"REVERSE":"NORMAL"), (b->value?"PRESSED":"RELEASED"));
 }
 

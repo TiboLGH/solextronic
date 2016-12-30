@@ -41,10 +41,20 @@
 typedef enum{
 	COLOR_AUTO = 0,
 	COLOR_WHITE,
-	COLOR_BLUE,
 	COLOR_RED,
+	COLOR_GREEN,
 	COLOR_YELLOW,
+	COLOR_BLUE,
+	COLOR_MAGENTA,
 	COLOR_CYAN,
+	COLOR_LIGHT_GREY,
+	COLOR_DARK_GREY,
+	COLOR_LIGHT_RED,
+	COLOR_LIGHT_GREEN,
+	COLOR_LIGHT_YELLOW,
+	COLOR_LIGHT_BLUE,
+	COLOR_LIGHT_MAGENTA,
+	COLOR_LIGHT_CYAN,
 	COLOR_QTY
 } e_color;
 
@@ -66,14 +76,11 @@ int logger_register(char *name, e_color color, e_level level);
 /* Verbosity control : */
 int logger_level(char *name, e_level level); // level = LOGGER_DBG, LOGGER_INFO, LOGGER_WARN, LOGGER_ERROR
 /* Log : */
-int logger_error(int handle, char *msg, args);
-int logger_warn(int handle, char *msg, args);
-int logger_info(int handle, char *msg, args);
-int logger_dbg(int handle, char *msg, args);
-#define ERROR(logHandle, msg, ...) do{logger_error(logHandle, msg, ##__VA_ARGS__ )}while(0)
-#define WARN(logHandle, msg, ...) do{logger_warn(logHandle, msg, ##__VA_ARGS__ )}while(0)
-#define INFO(logHangle, msg, ...) do{logger_info(logHandle, msg, ##__VA_ARGS__ )}while(0)
-#define DBG(logHandle, msg, ...) do{logger_dbg(logHandle, msg, ##__VA_ARGS__ )}while(0)
+int logger_log(e_level level, int handle, char *msg, ...);
+#define ERROR(LOGhANDLE, mSg, ...) do{logger_log(LOGGER_ERROR, LOGhANDLE, mSg, ##__VA_ARGS__ );}while(0)
+#define WARN(LOGhANDLE, mSg, ...) do{logger_log(LOGGER_WARN, LOGhANDLE, mSg, ##__VA_ARGS__ );}while(0)
+#define INFO(LOGhANDLE, mSg, ...) do{logger_log(LOGGER_INFO, LOGhANDLE, mSg, ##__VA_ARGS__ );}while(0)
+#define DBG(LOGhANDLE, mSg, ...) do{logger_log(LOGGER_DBG, LOGhANDLE, mSg, ##__VA_ARGS__ );}while(0)
 
 /* Explicit flush : */
 int logger_flush(void);

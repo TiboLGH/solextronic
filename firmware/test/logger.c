@@ -27,15 +27,38 @@
  * \date December 2016
  *
  */
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <string.h>
 #include "logger.h" 
 
 typedef struct{
 	int handle;
 	char name[32];
 	e_level level;
-	e_color color;
+	int color;
 } loghandler_t;
+
+static int colorCode[COLOR_QTY] = {
+0, //COLOR_AUTO = 0,
+97, //COLOR_WHITE,
+31, //COLOR_RED,
+32, //COLOR_GREEN,
+33, //COLOR_YELLOW,
+34, //COLOR_BLUE,
+35, //COLOR_MAGENTA,
+36, //COLOR_CYAN,
+37, //COLOR_LIGHT_GREY,
+90, //COLOR_DARK_GREY,
+91, //COLOR_LIGHT_RED,
+92, //COLOR_LIGHT_GREEN,
+93, //COLOR_LIGHT_YELLOW,
+94, //COLOR_LIGHT_BLUE,
+95, //COLOR_LIGHT_MAGENTA,
+96, //COLOR_LIGHT_CYAN,
+};
 
 #define MAX_LOG (16)
 static loghandler_t logHandlers[MAX_LOG];
@@ -55,37 +78,38 @@ int logger_init(int options, char *filename)
 	
 	if(options & TO_FILE)
 	{
-		if(fileName)
+		if(filename)
 		{
-			if(pf = fopen(filename, "wb"))
+			if((pf = fopen(filename, "wb")))
 			{
 				toFile = true;
 			}else{
 				printf("File creation failed !\n");
 				return -1;
 			}
-			print("No filename ! \n")
+			printf("No filename ! \n");
 			return -1;
 		}
+    }
 	return 0;
 }
 
 /* Client registration : */
 int logger_register(char *name, e_color color, e_level level)
 {
-	if(logQty < (MAX_LOG-1))
+	if(logQty > (MAX_LOG-1))
 	{
 		printf("Max log qty !");
 		return -1;
 	}
 
-	logQty++;
-	logHandlers[logQty].handle 	= logQty + 1;
+	logHandlers[logQty].handle 	= logQty;
 	logHandlers[logQty].level 	= level;
-	logHandlers[logQty].color 	= (color == COLOR_AUTO) ? logQty : color;
+	logHandlers[logQty].color 	= colorCode[(color == COLOR_AUTO) ? (logQty+1) % COLOR_QTY : color];
 	strncpy(logHandlers[logQty].name, name, 32);
 	if(strlen(name) > longuestName) longuestName = strlen(name);
-	return 0;
+	logQty++;
+	return (logQty-1);
 }
 
 /* Verbosity control : */
@@ -102,27 +126,46 @@ int logger_level(char *name, e_level level)
 	}
 	if(index != -1)
 	{
-		logHandlers[index].level 	= level;
+		logHandlers[index].level = level;
 		return 0;
-	}else{
-		return -1;
 	}
+    return -1;
 }	
+
 /* Log : */
-int logger_error(int handle, char *msg, args);
-int logger_warn(int handle, char *msg, args);
-int logger_info(int handle, char *msg, args);
-int logger_dbg(int handle, char *msg, args);
-#define ERROR(logHandle, msg, ...) do{logger_error(logHandle, msg, ##__VA_ARGS__ )}while(0)
-#define WARN(logHandle, msg, ...) do{logger_warn(logHandle, msg, ##__VA_ARGS__ )}while(0)
-#define INFO(logHangle, msg, ...) do{logger_info(logHandle, msg, ##__VA_ARGS__ )}while(0)
-#define DBG(logHandle, msg, ...) do{logger_dbg(logHandle, msg, ##__VA_ARGS__ )}while(0)
+int logger_log(e_level level, int handle, char *msg, ... )
+{
+    if(handle > logQty) return -1;
+    if(logHandlers[handle].level < level) return 0;
+
+    char buf[256];
+    va_list ap;
+    va_start(ap, msg);
+    vsnprintf(buf, 256, msg, ap);
+    va_end(ap);
+
+    if(toFile)
+    {
+        fprintf(pf, "%s > %s", logHandlers[handle].name, buf);
+    }
+    if(toStdout)
+    {
+        fprintf(stdout, "\033[%dm%s \033[0m> %s", 
+                logHandlers[handle].color,
+                logHandlers[handle].name, 
+                buf);
+    }
+    return 0;
+}
 
 /*Explicit flush : */
 int logger_flush(void)
 {
-
+    if(toFile) fflush(pf);
+    if(toStdout) fflush(stdout);
+    return 0;
 }
+
 int logger_close(void)
 {
 	if(pf)
@@ -132,3 +175,4 @@ int logger_close(void)
 	}
 	return 0;
 }
+

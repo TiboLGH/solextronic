@@ -54,6 +54,7 @@ typedef struct button_t {
 	avr_irq_t * irq;	// output irq
 	struct avr_t * avr;
     char name[64];
+    int logHandle;
 	uint8_t value;
     uint8_t polarity;
 } button_t;

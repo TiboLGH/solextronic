@@ -58,6 +58,7 @@
 #include "sim_helpers.h"
 #include "trace_writer.h"
 #include "push_button.h"
+#include "logger.h"
 
 #include "../varDef.h"
 #include "../helper.h"
@@ -118,6 +119,7 @@ typedef struct{
 avr_t * avr = NULL;
 avr_vcd_t vcd_file;
 trace_writer_t vcd_trace;
+int logHandle = -1;
 uart_pty_t uart_pty;
 pulse_input_t pulse_input_engine;
 pulse_input_t pulse_input_wheel;
@@ -606,7 +608,7 @@ static int QueryState(uart_com_t *uart, current_data_t *gState)
             return OK;
         }
         pthread_mutex_unlock(&(uart->mutex_edata));
-        V("Retry read gState\n");
+        WARN(logHandle, "Retry read gState\n");
     }
     if(res != OK) return FAIL;
     return OK;
@@ -644,7 +646,7 @@ static int WriteConfigRetry(uart_com_t *uart, eeprom_data_t *toWrite)
             trace_writer_update_eeprom(&vcd_trace, toWrite); // trace changes
             return OK;
         }
-        V("Write config retry\n");
+        WARN(logHandle, "Write config retry\n");
     }
     return FAIL;
 }
@@ -656,7 +658,7 @@ static int ReadConfigRetry(uart_com_t *uart, eeprom_data_t *toRead)
     {
         res = ReadConfig(uart, toRead);
         if(res == OK) return OK;
-        V("Read config retry\n");
+        WARN(logHandle, "Read config retry\n");
     }
     return FAIL;
 }
@@ -836,7 +838,7 @@ int TestAnalog(void)
     if(WriteConfigRetry(&uart_com, &eDataToWrite) != OK) return FAIL;
 
     // now the requests
-    V("   Battery  |     CLT    |     IAT    |    TPS     |     MAP    |  TPSState\n");
+    INFO(logHandle, "   Battery  |     CLT    |     IAT    |    TPS     |     MAP    |  TPSState\n");
     for (int i = 0; i < ANALOG_QTY; i++)
     {
         /* set new inputs values */
@@ -911,9 +913,9 @@ int TestInjectionTestMode(void)
     // 3. Measure injection signal timing
     SleepMs(20 * injCycles);
     timing_analyzer_result(&timing_analyzer_injection, &result); // read stats
-	V("result.period 			%d\n",result.period);
-	V("result.high_duration 	%d\n",result.high_duration);
-	V("result.count 			%d\n",result.count);
+	INFO(logHandle, "result.period 			%d\n",result.period);
+	INFO(logHandle, "result.high_duration 	%d\n",result.high_duration);
+	INFO(logHandle, "result.count 			%d\n",result.count);
 
     // 4. Compare to expected values
     float error = 100 - (100. * result.period / 10000);
@@ -1272,7 +1274,7 @@ int TestStarting(void)
     {
         SleepMs(100);
         QueryState(&uart_com, &gState);
-        V("CLT : %d, RPM : %d\n", gState.CLT, gState.rpm);
+        DBG(logHandle, "CLT : %d, RPM : %d\n", gState.CLT, gState.rpm);
     }
 
     return verdict;
@@ -1376,7 +1378,9 @@ int main(int argc, char *argv[])
         printHelp(stderr, EXIT_FAILURE, argv[0]);
     }
     strncpy(elfName, argv[optind], 256);
-
+    
+    logger_init(TO_STDOUT, NULL);
+    logHandle = logger_register("Main", COLOR_AUTO, LOGGER_DBG);
 
     elf_firmware_t f;
     const char * fname = "../solextronic.elf";
@@ -1392,7 +1396,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "%s: AVR '%s' not known\n", argv[0], f.mmcu);
         exit(1);
     }
-    //V("firmware %s f=%d mmcu=%s\n", fname, (int) f.frequency, f.mmcu);
+    DBG(logHandle, "firmware %s f=%d mmcu=%s\n", fname, (int) f.frequency, f.mmcu);
 
     avr_init(avr);
     avr_load_firmware(avr, &f);
@@ -1402,11 +1406,11 @@ int main(int argc, char *argv[])
     }
     for(int i=0; i <f.symbolcount; i++)
     {
-        V("Symbole %i : addr 0x%x : %s\n", i, f.symbol[i]->addr, f.symbol[i]->symbol);
+        DBG(logHandle, "Symbole %i : addr 0x%x : %s\n", i, f.symbol[i]->addr, f.symbol[i]->symbol);
     }*/ 
 
     /* External parts connections */
-    V("Initialize external parts simulation...\n");
+    INFO(logHandle, "Initialize external parts simulation...\n");
     uart_pty_init(avr, &uart_pty);
     uart_pty_connect(&uart_pty, '0');
     uint32_t tHigh, tLow;
