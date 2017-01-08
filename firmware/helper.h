@@ -40,6 +40,7 @@
 
 u16 Interp2D(volatile u8 *table, u16 rpm, u8 load);
 u8  Interp1D(volatile u8 table[TABSIZE][2], u8 adcVal);
+u16 Interp2points(u8 x, u8 x1, u8 x2, u16 y1, u16 y2);
 
 
 #endif

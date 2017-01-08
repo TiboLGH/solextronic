@@ -61,7 +61,8 @@ const PROGMEM eeprom_data_t eeInit = {
     .injectorOpen   = 500,
     .injectorRate   = 500, //?
     .injAdv         = 140, //?
-    .injStarter     = 1000,
+    .injStarterCold = 4000,
+    .injStarterWarm = 1000,
     .injOverheat    = 3,
     .noInjAtDec     = 0,
     .injectorStart  = 500,
@@ -309,6 +310,7 @@ ISR(TIMER2_COMPA_vect)
                 curInjTiming.start = TCNT1 + nextInjTiming.start;
                 curInjTiming.duration  = nextInjTiming.duration;
                 curInjTiming.state = OFF;
+                DEBUG2 = 0x99;
                 PIN_OFF(INJECTOR_PIN, eData.injPolarity);
                 OCR1B = curInjTiming.start;
                 INJ_INT_ENABLE;
@@ -327,6 +329,7 @@ ISR(TIMER2_COMPA_vect)
             OCR1A = curIgnTiming.start;
             IGN_INT_ENABLE;
         }
+        if(intState.afterStartPeriod) intState.afterStartPeriod--;
 
         // start ADC acquisition
         startAdc();
@@ -402,10 +405,12 @@ ISR(TIMER1_COMPB_vect)
 {
     if(curInjTiming.state == OFF)
     {
+        DEBUG2 = 0x44;
         PIN_ON(INJECTOR_PIN, eData.injPolarity);
         curInjTiming.state = ON;
         OCR1B += curInjTiming.duration;
     }else{
+        DEBUG2 = 0x55;
         PIN_OFF(INJECTOR_PIN, eData.injPolarity);
         curInjTiming.state = OFF;
         if(curInjTiming.pending) {
@@ -641,6 +646,7 @@ ISR(INT0_vect)
 	intState.RPMperiod = intState.period_1 * 2 - intState.period_2;
     intState.period_2 = intState.period_1;
     intState.ovfCount = 0;
+    DEBUG2 = 0x11;
 
     if(intState.rpmCycles < 4) // RPM measurement and timing are not reliable yet
     {
@@ -651,14 +657,17 @@ ISR(INT0_vect)
 
     // compute RPM : tick is 4us
     gState.rpm = (60 * 250000) / intState.RPMperiod;
+    DEBUG2 = 0x22;
 
     // update injection and ignition timings
     if((gState.engineState == M_CRANKING) ||
        (gState.engineState == M_RUNNING)  ||
        (gState.engineState == M_TEST_RUN))
       {
+          DEBUG2 = 0x33;
           INJ_INT_DISABLE;
           curInjTiming.start = latchedTimer1 + nextInjTiming.start;
+          if(!nextInjTiming.start) curInjTiming.start += 100;
           curInjTiming.duration  = nextInjTiming.duration;
           if(curInjTiming.state == OFF) OCR1B = curInjTiming.start;
           curInjTiming.pending = 1;
@@ -666,6 +675,7 @@ ISR(INT0_vect)
 
           IGN_INT_DISABLE;
           curIgnTiming.start = latchedTimer1 + nextIgnTiming.start;
+          if(!nextIgnTiming.start) curIgnTiming.start += 100;
           curIgnTiming.duration  = nextIgnTiming.duration;
           if(curIgnTiming.state == OFF) OCR1A = curIgnTiming.start;
           curIgnTiming.pending = 1;

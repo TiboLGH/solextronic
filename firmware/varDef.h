@@ -82,11 +82,12 @@ typedef struct __attribute__ ((__packed__)){ // packed for alignment when used i
     u16        injectorOpen;  /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  2000, 0 ;  time to open injector */
     u16        injectorStart; /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  2000, 0 ;  injector opening duration */
     u8         holdPWM;       /* scalar, U08,  xx,        "%",    1.00000,   0.00000,   10,   100, 0 ;  PWM ratio during hold time */
-    u16        injectorRate;  /* scalar, U16,  xx,  "mg/usec",    1.00000,   0.00000,   50,   500, 0 ;  flow rate of injector */
+    u16        injectorRate;  /* scalar, U16,  xx,  "ug/msec",    1.00000,   0.00000,   50, 50000, 0 ;  flow rate of injector */
     u8         injAdv;        /* scalar, U08,  xx,      "deg",    1.00000,   0.00000,    0,   255, 0 ;  mean injection advance */
     u8         targetAfr;     /* scalar, U08,  xx,        " ",    0.10000,   0.00000,  7.0,  20.0, 1 ;  target Air Fuel ratio */
-    u16        injStarter;    /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  5000, 0 ;  injection duration during crancking */
-    u16        injAfterStartDur;    /* scalar, U16,  xx,       " ",    1.00000,   0.00000,  0,  65536, 0 ;  duration of afterstart enrich in engine cycles */
+    u16        injStarterCold;    /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  5000, 0 ;  injection duration during crancking for 0deg CLT */
+    u16        injStarterWarm;    /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200,  5000, 0 ;  injection duration during crancking for 100deg CLT */
+    u16        injAfterStartDur;    /* scalar, U16,  xx,       "ms",    10.0000,   0.00000,  0,  65536, 0 ;  duration of afterstart enrich in engine cycles */
     u8         injOverheat;   /* scalar, U08,  xx,        "%",    1.00000,   0.00000,    0,    50, 0 ;  injection increase in case of overheating */
     u8         noInjAtDec;    /* bits,   U08,  xx,  [0:0], "inj at dec", "no inj at dec"             ;  1 to stop injection when deceleration */
     u16        injTestPW;     /* scalar, U16,  xx,       "us",    1.00000,   0.00000,  200, 10000, 0 ;  pulse width of injector test mode */
@@ -145,13 +146,14 @@ typedef struct  __attribute__ ((__packed__)){ // packed for alignment when used 
                          /* opening         = bits,   U08,   xx, [2:2] */
                          /* closing         = bits,   U08,   xx, [3:3] */
    u16 injK;			 /* scalar,     U16,  xx,  " ",     1.000,  0.0 ; constant and pseudo-constant factor for injection*/
-   u16 injQFuel;		 /* scalar,     U16,  xx, "mg",     1.000,  0.0 ; fuel quantity to inject */
+   u16 injQFuel;		 /* scalar,     U16,  xx, "ug",     3.000,  0.0 ; fuel quantity to inject */
    u16 injPulseWidth;    /* scalar,     U16,  xx,  "us",    1.000,  0.0 ; Injector active time */
    u16 injStart;         /* scalar,     U16,  xx, "deg",    1.000,  0.0 ; Injector start time before PMH */
    s16 injOffset;        /* scalar,     S16,  xx,  "us",    1.000,  0.0 ; injection duration offset adjustable runtime */
    s8  injStartOffset;   /* scalar,     S08,  xx,  "deg",   1.000,  0.0 ; injection start offset adjustable runtime */
    u8  injAfterStartEnrich;   /* scalar,     U08,  xx,  "%",   1.000,  0.0 ; injection after start enrich */
    u8  injWarmupEnrich;  /* scalar,     U08,  xx,  "%",     1.000,  0.0 ; injection warmup enrich */
+   u16 injTotalEnrich;   /* scalar,     U16,  xx,  "%",     1.000,  0.0 ; injection total enrich */
    u8  injVE; 			 /* scalar,     U08,  xx,  "%",     1.000,  0.0 ; Volumetric efficiency from table */
    u8  advance;          /* scalar,     U08,  xx, "deg",    1.000,  0.0 ; Spark advance in deg before PMH */
    s8  ignOffset;        /* scalar,     S08,  xx,  "deg",   1.000,  0.0 ; ignition offset adjustable runtime */

@@ -206,8 +206,8 @@ int ComputeInjection(eeprom_data_t eData, current_data_t gState, res_t *result)
     /*if(overheat)
     { 
         enrich += eData.injOverheat;
-    }
-	if(intState.afterStartPeriod)
+    }*/
+	/*if(intState.afterStartPeriod)
 	{
 		enrich += gState.injAfterStartEnrich;
 		intState.afterStartPeriod--;

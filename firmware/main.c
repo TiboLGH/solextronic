@@ -104,34 +104,38 @@ u8 ComputeInjection(u8 overheat)
     // compute VE from table
     gState.injVE = Interp2D(&(eData.injTable[0][0]), gState.rpm, gState.load);
 	
-	// apply formula, K has been computed before (semi-static). QFuel is in mg
-	gState.injQFuel = gState.injK * gState.injVE / (gState.IAT + 273);
+	// apply formula, K has been computed before (semi-static). QFuel is in ug
+	gState.injQFuel = ((u32)gState.injK * 1000 * gState.injVE) / ((u32)100*(gState.IAT + 273));
 
 	// add various enrichments
-	u16 enrich = 0;
+	gState.injTotalEnrich = 0;
     if(overheat)
     { 
-        enrich += eData.injOverheat;
+        gState.injTotalEnrich += eData.injOverheat;
     }
 	if(intState.afterStartPeriod)
 	{
-		enrich += gState.injAfterStartEnrich;
-		intState.afterStartPeriod--;
+		gState.injTotalEnrich += gState.injAfterStartEnrich;
 	}else{
 		gState.injAfterStartEnrich = 0;
 	}
 	
-	enrich += gState.injWarmupEnrich;
+    gState.injWarmupEnrich = Interp1D(eData.injWarmupTbl, gState.CLT);
+	gState.injTotalEnrich += gState.injWarmupEnrich;
     
 	// TODO set adjustement for acceleration
     
     // Add runtime offset
-    enrich += gState.injOffset;
+    gState.injTotalEnrich += gState.injOffset;
+    
+    // Compute actual QFuel with enrich
+    gState.injQFuel = ((gState.injTotalEnrich + 100) * (u32)gState.injQFuel) / 100;
     
 	// turn into injector pulse width
-	gState.injPulseWidth = (gState.injQFuel * (100 + enrich)) / (100 * eData.injectorRate) + eData.injectorOpen;
+	gState.injPulseWidth = (u32)gState.injQFuel * 1000 / (eData.injectorRate) + eData.injectorOpen;
 
     // commit advance for next cycle
+    DEBUG1 = gState.injPulseWidth;
     SetInjectionTiming(AUTO, gState.injPulseWidth);
 
     return OK;
@@ -149,14 +153,15 @@ u8 MainFsm(void)
             intState.rpmCycles = 0;
             if(PIN_READ(CRANKING_PIN))
             {
-				// latch CLT to compute afterstart enrich
-				gState.injAfterStartEnrich = Interp1D(eData.injAfterStartTbl, gState.CLT);
+                u16 pulse = Interp2points(gState.CLT, 0, 100, eData.injStarterCold, eData.injStarterWarm);
 				// compute K
 				gState.injK = ComputeK(gState.MAP);
 				gState.advance = eData.ignStarter;
-				gState.injPulseWidth = ((u32)eData.injStarter * (100 + gState.injAfterStartEnrich) / 100) + eData.injectorOpen;
+				gState.injPulseWidth = pulse + eData.injectorOpen;
+                DEBUG1 = 0x11;
 				SetIgnitionTiming(AUTO, gState.advance);
 				SetInjectionTiming(AUTO, gState.injPulseWidth);
+                DEBUG1 = gState.injPulseWidth;
                 intState.ovfCount = 0;
                 gState.engineState = M_CRANKING;
             }
@@ -175,13 +180,16 @@ u8 MainFsm(void)
         case M_CRANKING: // someone is pushing ! force inj/ign to crancking values until we reach 1000rpm
             PIN_ON(PUMP_PIN, eData.pumpPolarity);
             PIN_ON(HV_PIN, HV_POLARITY);
+            DEBUG1 = 0x22;
             if(!PIN_READ(CRANKING_PIN))
             {
                 gState.engineState = M_STOP;
             }
 			if(gState.rpm > 1000)
 			{
+                DEBUG1 = 0x33;
 				intState.afterStartPeriod = eData.injAfterStartDur;
+                gState.injAfterStartEnrich = Interp1D(eData.injAfterStartTbl, gState.CLT);
 				gState.engineState = M_RUNNING;
 			}
         break;
@@ -278,7 +286,7 @@ int main(void)
         }
         
         // Compute ignition and injection
-        MainFsm();
+        DEBUG = MainFsm();
 	}
 
 	return(0);

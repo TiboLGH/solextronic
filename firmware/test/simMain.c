@@ -1151,8 +1151,12 @@ int TestStarting(void)
     eDataToWrite.pumpPolarity   = 1;
     eDataToWrite.targetAfr      = 120; // 12, best power
     eDataToWrite.ignStarter     = 0;
-    eDataToWrite.injStarter     = 1000;
+    eDataToWrite.injStarterCold = 9000;
+    eDataToWrite.injStarterWarm = 7000;
     eDataToWrite.injectorOpen   = 500;
+    eDataToWrite.injectorRate   = 1400; //ug/msec
+    eDataToWrite.injAdv         = 60;
+    eDataToWrite.injAfterStartDur = 100; // 1000ms
     eDataToWrite.battRatio      = 150;
     eDataToWrite.map0           = 0;
     eDataToWrite.map5           = 110;
@@ -1160,7 +1164,7 @@ int TestStarting(void)
     eDataToWrite.tpsMax         = 150;
     eDataToWrite.runTestMode    = 0;
 
-    //Fill advance and injection tables
+    //Fill advance and injection tables, as well as afterstart and warmup tables
     for(int i = 0; i < TABSIZE; i++)
     {
         eDataToWrite.rpmBins[i]  = 1000 * (i+1);
@@ -1170,7 +1174,12 @@ int TestStarting(void)
             eDataToWrite.ignTable[i][j] = 4*i+j;
             eDataToWrite.injTable[i][j] = 100; // VE set to 100%
         }
+        eDataToWrite.injAfterStartTbl[i][0] = 0 + 10*i; //CLT
+        eDataToWrite.injAfterStartTbl[i][1] = 100 - 10*i; //enrich
+        eDataToWrite.injWarmupTbl[i][0] = 0 + 10*i; //CLT
+        eDataToWrite.injWarmupTbl[i][1] = 200 - 20*i; //enrich
     }
+
     if(WriteConfigRetry(&uart_com, &eDataToWrite) != OK) return FAIL;
 
     // 1.2. Set external sensor and check inputs measurements
@@ -1212,7 +1221,7 @@ int TestStarting(void)
    
     if(verdict == FAIL) return verdict; 
 
-    // 2. Push on cranking button + start RPM generator at 500RPM : check HV enable and pump, check cranking state : advance and injection
+    // 2.1. Push on cranking button + start RPM generator at 500RPM : check HV enable and pump, check cranking state : advance and injection
     HIGH("Step 2 : Start cranking. Check pump/injection/ignition behavior\n");
     button_press(&button_cranking);
     RPMtoPeriod(500, &high, &low);
@@ -1226,11 +1235,11 @@ int TestStarting(void)
     CHECK_PIN_AND_PRINT(state.hvPin,   1, "HV        : %s\n");
     timing_analyzer_reset(&timing_analyzer_ignition, 5);
     timing_analyzer_reset(&timing_analyzer_injection, 5);
-    //SleepMs(5000);
+    SleepMs(1000);
     /* query result */
     QueryState(&uart_com, &gState);
 
-    // 3. Measure signal timing
+    // 2.2. Measure signal timing
     timing_analyzer_result(&timing_analyzer_ignition, &ignResult); // read stats
     timing_analyzer_result(&timing_analyzer_injection, &injResult); // read stats
     float ignAdvance = TimingToAdvance(500, ignResult.rising_offset);
@@ -1238,45 +1247,45 @@ int TestStarting(void)
     double computedK = ComputeK(eDataToWrite.targetAfr, gState.MAP);
     V("General                |  Measured  |  Expected  |  Error |\n");
     CHECK_AND_PRINT(gState.rpm, 500, 20, "  RPM from module      | %10d | %10d | %5.1f |\n");
-    CHECK_AND_PRINT(gState.load, 0, 1, "  Load from module     | %10d | %10.1f | %5.1f |\n");
+    CHECK_AND_PRINT(gState.load, 0., 1, "  Load from module     | %10d | %10.1f | %5.1f |\n");
 
     V("Ignition :\n");
     CHECK_AND_PRINT(ignResult.high_duration, eDataToWrite.ignDuration, 10, "  Pulse duration (us)  | %10d | %10d | %5.1f |\n");
-    CHECK_AND_PRINT(ignAdvance, eDataToWrite.ignStarter, 2, "  Advance from pin     | %10.1f | %10.1f | %5.1f |\n");
-    CHECK_AND_PRINT(gState.advance, eDataToWrite.ignStarter, 2, "  Advance from module  | %10d | %10.1f | %5.1f |\n");
+    CHECK_AND_PRINT(ignAdvance, eDataToWrite.ignStarter, 2, "  Advance from pin     | %10.1f | %10d | %5.1f |\n");
+    CHECK_AND_PRINT(gState.advance, eDataToWrite.ignStarter, 2, "  Advance from module  | %10d | %10d | %5.1f |\n");
     V("  Count                | %10d |\n", ignResult.count);
     V("  Result.rising_offset | %10d |\n", ignResult.rising_offset);
     V("  Result.falling_offset| %10d |\n", ignResult.falling_offset);
 
     V("Injection :\n");
     CHECK_AND_PRINT(gState.injK, computedK, 10, "  K                    | %10d | %10.1f | %5.1f |\n");
-    CHECK_AND_PRINT(injResult.high_duration, eDataToWrite.injectorOpen+eDataToWrite.injStarter, 10, "  Pulse dur (pin,us)   | %10d | %10d | %5.1f |\n");
-    CHECK_AND_PRINT(gState.injPulseWidth, eDataToWrite.injectorOpen+eDataToWrite.injStarter, 10, "  Pulse dur (module,us)| %10d | %10d | %5.1f |\n");
-    CHECK_AND_PRINT(injAdvance, eDataToWrite.injAdv, 2., "  Start from pin(deg)  | %10.1f | %10.1f | %5.1f |\n");
+    CHECK_AND_PRINT(injResult.high_duration, eDataToWrite.injectorOpen+eDataToWrite.injStarterCold, 10, "  Pulse dur (pin,us)   | %10d | %10d | %5.1f |\n");
+    CHECK_AND_PRINT(gState.injPulseWidth, eDataToWrite.injectorOpen+eDataToWrite.injStarterCold, 10, "  Pulse dur (module,us)| %10d | %10d | %5.1f |\n");
+    CHECK_AND_PRINT(injAdvance, eDataToWrite.injAdv, 2., "  Start from pin(deg)  | %10.1f | %10d | %5.1f |\n");
     CHECK_AND_PRINT(gState.injStart, eDataToWrite.injAdv, 10, "  Start from module(us)| %10d | %10d | %5.1f |\n");
     V("  Count                | %10d |\n", injResult.count);
     V("  Result.rising_offset | %10d |\n", injResult.rising_offset);
     V("  Result.falling_offset| %10d |\n", injResult.falling_offset);
 
-    //if(verdict == FAIL) return verdict; 
+    //FIXME if(verdict == FAIL) return verdict; 
     
     // 3. After 5sec, set RPM at 1500RPM and check injection/advance + enrich linked to CLT and afterstart
+    HIGH("Step 3 : engine is starting. Set RPM to 1500rpm in 2 sec and start CLT ramp for 30sec\n");
+    analog_input_set_value(&analog, 1, TempToVoltage(120, CLT, &eDataToWrite), 30000);
+    RPMtoPeriod(1500, &high, &low);
+    pulse_input_config(&pulse_input_engine, high, low, 2000);
+    for(int i=0; i<300; i++)
+    {
+        SleepMs(100);
+        QueryState(&uart_com, &gState);
+        DBG(logHandle, "Time %d, state %x, CLT %d, RPM %d, AfterStart %d%%, warmup %d%%, total %d%%, VE %d, QFuel %d, pulse %dus\n", i, gState.engineState, gState.CLT, gState.rpm, gState.injAfterStartEnrich, gState.injWarmupEnrich, gState.injTotalEnrich, gState.injVE, gState.injQFuel, gState.injPulseWidth);
+    }
+
     // 4. Check engine running at idle for 30sec
     // 5. Open TPS quickly and check transient behavior
     // 6. Close TPS to idle quickly and check transient behavior 
     // 7. Check for overheat protection : increase CLT to high value and check ignition retard + injection enrich
     // 8. Check for RPM limitation : check for ignition retard if RPM goes higher than limitation 
-
-    analog_input_set_value(&analog, 1, TempToVoltage(120, CLT, &eDataToWrite), 5000);
-    RPMtoPeriod(1500, &high, &low);
-    pulse_input_config(&pulse_input_engine, high, low, 5000);
-    for(int i=0; i<50; i++)
-    {
-        SleepMs(100);
-        QueryState(&uart_com, &gState);
-        DBG(logHandle, "CLT : %d, RPM : %d\n", gState.CLT, gState.rpm);
-    }
-
     return verdict;
 }
 

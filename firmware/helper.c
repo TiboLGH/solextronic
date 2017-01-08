@@ -160,3 +160,16 @@ u8  Interp1D(volatile u8 table[TABSIZE][2], u8 adcVal)
     }
 }
 
+/* Interpolation over 2 points
+ * Return y value corresponding to x value from (x1,y1)(x2,y2) points
+ * Constraint : x1<=x2, y>0
+ */ 
+u16 Interp2points(u8 x, u8 x1, u8 x2, u16 y1, u16 y2)
+{
+    u8 deltaX = x2-x1;
+    if(!deltaX) return 0; //hum that's bad
+    s16 deltaY = y2-y1;
+    if(!deltaY) return y1;
+    return y1 + ((s16)(x - x1) * deltaY) / deltaX;
+}
+
