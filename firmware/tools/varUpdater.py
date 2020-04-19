@@ -1,5 +1,29 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
+# /***************************************************************************
+# *   Copyright (C) 2015 by Thibault Bouttevin                              *
+# *   thibault.bouttevin@gmail.com                                          *
+# *   www.legalethurlant.fr.st                                              *
+# *   https://github.com/TiboLGH/solextronic                                *
+# *                                                                         *
+# *   This file is part of SolexTronic                                      *
+# *                                                                         *
+# *   SolexTronic is free software; you can redistribute it and/or modify   *
+# *   it under the terms of the GNU General Public License as published by  *
+# *   the Free Software Foundation; either version 3 of the License, or     *
+# *   any later version.                                                    *
+# *                                                                         *
+# *   This program is distributed in the hope that it will be useful,       *
+# *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+# *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+# *   GNU General Public License for more details.                          *
+# *                                                                         *
+# *   You should have received a copy of the GNU General Public License     *
+# *   along with this program; if not, write to the                         *
+# *   Free Software Foundation, Inc.,                                       *
+# *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
+# ***************************************************************************/
 # This script is used to produces tuner software INI config file, wiki documentation and description header file from source code varDef.h
 # To comply with Megasquirt serial protocol and use associated tuner software, a INI config file shall be used to described mapping of config and monitoring data buffers. 
 # This INI file also described how the tuner interface is linked to variables (panel contents, min/max, gauges...). This part is directly part of this script (don't want to have another config file), so you have to change the definition directly in the script source code (not a perfect solution but allow to have everything in the same file)
@@ -356,17 +380,23 @@ datalogSection="""
 
 # FATAL : print error and abort
 def FATAL(lineToPrint):
-    print lineToPrint
+    print(lineToPrint)
     sys.exit("FATAL ERROR !")
 
 # WARNING : print warning only
 def WARNING(lineToPrint):
-    print "WARNING : %s" % lineToPrint
+    print("WARNING : %s" % lineToPrint)
         
+# WARNING : print warning only
+def LOG(msg):
+    print(msg)
+
+
+
 ###################################################################################     
 class OutputFile():
     def __init__(self, filename=None):
-        self.filehandle = open(filename, "wb")
+        self.filehandle = open(filename, "w")
         self.output = [] # buffer to be written in file
     
         
@@ -464,7 +494,7 @@ class TunerFile(OutputFile):
         
         # Output channel header : update size of the block
         global outputChannelHeaderSection
-        outputChannelHeaderSection = re.sub("   ochBlockSize\s*= 26","   ochBlockSize = %d" % self.outputChannelSize, outputChannelHeaderSection)  
+        outputChannelHeaderSection = re.sub(r"   ochBlockSize\s*= 26","   ochBlockSize = %d" % self.outputChannelSize, outputChannelHeaderSection)  
         self.output.append(outputChannelHeaderSection)
         # Output channel content
         for item in self.outputChannelSection:
@@ -505,7 +535,7 @@ class DescFile(OutputFile):
             alias = chr(ord('#') + self.total)
             if(alias == '\\'):
                 alias = "\\\\"
-                print alias
+                LOG(alias)
         else:
             alias = '%c#' % (self.total - 90 + ord('#'))
         self.total += 1
@@ -582,7 +612,7 @@ desc_t curData_desc[] = { """ % self.outputChannelQty
 #################################
 class SourceFile:
     def __init__(self, filename=None):
-        self.fileObj = open(filename, "rb")
+        self.fileObj = open(filename, "r")
         # read the whole content in buffer and preprocess it
         self.content = self.fileObj.readlines()
         self.eepromContent = [] # list of EEPROM parameters
@@ -602,16 +632,10 @@ class SourceFile:
         self.fileObj.close()
 
     def dbgPrint(self):
-        print self.content
+        LOG(self.content)
     
-    def findTabsize(self, line):
-        if "define TABSIZE" in line:
-            return True
-        else:
-            return False
-
     def getTabsize(self):
-        found = filter(self.findTabsize, self.content)
+        found = [l for l in self.content if "define TABSIZE" in l]
         if(len(found) == 0): # hum strange
             WARNING("Tabsize not found")
             return 0
@@ -633,7 +657,7 @@ class SourceFile:
             typeMember = re.sub("[a-zA-Z]", "", lineContent['type'])
             if(typeMember.isdigit()):
                 size = int(typeMember) / 8
-                shapeMember = re.sub("\[|\]", "", lineContent['shape'])
+                shapeMember = re.sub(r"\[|\]", "", lineContent['shape'])
                 shapeList = shapeMember.split("x")  
                 for item in shapeList:
                     if(item.isdigit()):
@@ -663,11 +687,11 @@ class SourceFile:
         for line in self.content[eepromBound['start']: eepromBound['end']]:
             if "scalar" in line:
                 # sorry for this... easier debug on regex101.com
-                p = re.compile(ur"""(?P<ctype>[u|U|s|S][0-9]+)\s*(?P<name>.+);\s*(\/\*)\s*(?P<class>scalar),\s*(?P<type>[U|S][0-9]+),\s*(?P<offset>..),\s*"(?P<units>.*)",\s*(?P<scale>[0-9|\.]+),\s*(?P<translate>[0-9|\.]+),\s*(?P<lo>[0-9|\.]+),\s*(?P<hi>[0-9|\.]+),\s*(?P<digits>[0-9|\.]+)\s*;\s*(?P<comment>.*)\*\/""", re.VERBOSE)
+                p = re.compile(r"""(?P<ctype>[u|U|s|S][0-9]+)\s*(?P<name>.+);\s*(\/\*)\s*(?P<class>scalar),\s*(?P<type>[U|S][0-9]+),\s*(?P<offset>..),\s*"(?P<units>.*)",\s*(?P<scale>[0-9|\.]+),\s*(?P<translate>[0-9|\.]+),\s*(?P<lo>[0-9|\.]+),\s*(?P<hi>[0-9|\.]+),\s*(?P<digits>[0-9|\.]+)\s*;\s*(?P<comment>.*)\*\/""", re.VERBOSE)
                 mo = re.search(p, line)
                 if mo:
                     # affect the values
-                    decodedLine = {'name' : mo.group("name"), 'class' : "scalar", 'type' : mo.group("type"), 'offset' : 0, 'shape' : "", 'units' : mo.group("units"), 'scale' : float(mo.group("scale")), 'translate' : float(mo.group("translate")), 'lo' : float(mo.group("lo")), 'hi' : float(mo.group("hi")), 'digits' : int(mo.group("digits")), 'comment' :mo.group("comment")};
+                    decodedLine = {'name' : mo.group("name"), 'class' : "scalar", 'type' : mo.group("type"), 'offset' : 0, 'shape' : "", 'units' : mo.group("units"), 'scale' : float(mo.group("scale")), 'translate' : float(mo.group("translate")), 'lo' : float(mo.group("lo")), 'hi' : float(mo.group("hi")), 'digits' : int(mo.group("digits")), 'comment' :mo.group("comment")}
                     # compute size in memory
                     decodedLine['size'] = self.computeSize(decodedLine, 'eeprom')
                     self.eepromContent.append(decodedLine)
@@ -678,19 +702,19 @@ class SourceFile:
                 # replace TABSIZE
                 lineclean = str(line).replace("TABSIZE", str(self.getTabsize()))
                 # sorry for this... easier debug on regex101.com
-                pSingleDim = re.compile(ur"""(?P<ctype>[u|U|s|S][0-9]+)\s*(?P<name>.+)\[(?P<tabsize>[0-9]+)\];\s*(\/\*)\s*(?P<class>array),\s*(?P<type>[U|S][0-9]+),\s*(?P<offset>..),\s*\[(?P<shape>[0-9]+)\],\s*"(?P<units>.*)",\s*(?P<scale>[0-9|\.]+),\s*(?P<translate>[0-9|\.]+),\s*(?P<lo>[0-9|\.]+),\s*(?P<hi>[0-9|\.]+),\s*(?P<digits>[0-9|\.]+)\s*;\s*(?P<comment>.*)\*\/""", re.VERBOSE)
-                pDualDim = re.compile(ur"""(?P<ctype>[u|U|s|S][0-9]+)\s*(?P<name>.+)\[(?P<tabsize>[0-9]+)\]\[(?P<tabsize2>[0-9]+)\];\s*(\/\*)\s*(?P<class>array),\s*(?P<type>[U|S][0-9]+),\s*(?P<offset>..),\s*\[(?P<shape>.+)\],\s*"(?P<units>.*)",\s*(?P<scale>[0-9|\.]+),\s*(?P<translate>[0-9|\.]+),\s*(?P<lo>[0-9|\.]+),\s*(?P<hi>[0-9|\.]+),\s*(?P<digits>[0-9|\.]+)\s*;\s*(?P<comment>.*)\*\/""", re.VERBOSE)
+                pSingleDim = re.compile(r"""(?P<ctype>[u|U|s|S][0-9]+)\s*(?P<name>.+)\[(?P<tabsize>[0-9]+)\];\s*(\/\*)\s*(?P<class>array),\s*(?P<type>[U|S][0-9]+),\s*(?P<offset>..),\s*\[(?P<shape>[0-9]+)\],\s*"(?P<units>.*)",\s*(?P<scale>[0-9|\.]+),\s*(?P<translate>[0-9|\.]+),\s*(?P<lo>[0-9|\.]+),\s*(?P<hi>[0-9|\.]+),\s*(?P<digits>[0-9|\.]+)\s*;\s*(?P<comment>.*)\*\/""", re.VERBOSE)
+                pDualDim = re.compile(r"""(?P<ctype>[u|U|s|S][0-9]+)\s*(?P<name>.+)\[(?P<tabsize>[0-9]+)\]\[(?P<tabsize2>[0-9]+)\];\s*(\/\*)\s*(?P<class>array),\s*(?P<type>[U|S][0-9]+),\s*(?P<offset>..),\s*\[(?P<shape>.+)\],\s*"(?P<units>.*)",\s*(?P<scale>[0-9|\.]+),\s*(?P<translate>[0-9|\.]+),\s*(?P<lo>[0-9|\.]+),\s*(?P<hi>[0-9|\.]+),\s*(?P<digits>[0-9|\.]+)\s*;\s*(?P<comment>.*)\*\/""", re.VERBOSE)
                 mo = re.search(pSingleDim, lineclean)
                 moDual = re.search(pDualDim, lineclean)
                 if mo:
                     # affect the values
-                    decodedLine = {'name' : mo.group("name"), 'class' : "array", 'type' : mo.group("type"), 'offset' : 0, 'shape' : mo.group("shape"), 'units' : mo.group("units"), 'scale' : float(mo.group("scale")), 'translate' : float(mo.group("translate")), 'lo' : float(mo.group("lo")), 'hi' : float(mo.group("hi")), 'digits' : int(mo.group("digits")), 'comment' :mo.group("comment")};
+                    decodedLine = {'name' : mo.group("name"), 'class' : "array", 'type' : mo.group("type"), 'offset' : 0, 'shape' : mo.group("shape"), 'units' : mo.group("units"), 'scale' : float(mo.group("scale")), 'translate' : float(mo.group("translate")), 'lo' : float(mo.group("lo")), 'hi' : float(mo.group("hi")), 'digits' : int(mo.group("digits")), 'comment' :mo.group("comment")}
                     # compute size in memory
                     decodedLine['size'] = self.computeSize(decodedLine, 'eeprom')
                     self.eepromContent.append(decodedLine)
                 elif moDual:
                     # affect the values
-                    decodedLine = {'name' : moDual.group("name"), 'class' : "array", 'type' : moDual.group("type"), 'offset' : 0, 'shape' : moDual.group("shape"), 'units' : moDual.group("units"), 'scale' : float(moDual.group("scale")), 'translate' : float(moDual.group("translate")), 'lo' : float(moDual.group("lo")), 'hi' : float(moDual.group("hi")), 'digits' : int(moDual.group("digits")), 'comment' :moDual.group("comment")};
+                    decodedLine = {'name' : moDual.group("name"), 'class' : "array", 'type' : moDual.group("type"), 'offset' : 0, 'shape' : moDual.group("shape"), 'units' : moDual.group("units"), 'scale' : float(moDual.group("scale")), 'translate' : float(moDual.group("translate")), 'lo' : float(moDual.group("lo")), 'hi' : float(moDual.group("hi")), 'digits' : int(moDual.group("digits")), 'comment' :moDual.group("comment")}
                     # compute size in memory
                     decodedLine['size'] = self.computeSize(decodedLine, 'eeprom')
                     self.eepromContent.append(decodedLine)
@@ -700,11 +724,11 @@ class SourceFile:
             elif "bits" in line:
                 # sorry for this... easier debug on regex101.com
                 # TODO : More than 1 bit bitfields are not yet managed
-                p = re.compile(ur"""(?P<ctype>[u|U|s|S][0-9]+)\s*(?P<name>.+);\s*(\/\*)\s*(?P<class>bits),\s*(?P<type>[U|S][0-9]+),\s*(?P<offset>..),\s*\[(?P<start>[0-9]):(?P<stop>[0-9])\],\s*"(?P<state0>.*)",\s*"(?P<state1>.*)"\s*;\s*(?P<comment>.*)\*\/""", re.VERBOSE)
+                p = re.compile(r"""(?P<ctype>[u|U|s|S][0-9]+)\s*(?P<name>.+);\s*(\/\*)\s*(?P<class>bits),\s*(?P<type>[U|S][0-9]+),\s*(?P<offset>..),\s*\[(?P<start>[0-9]):(?P<stop>[0-9])\],\s*"(?P<state0>.*)",\s*"(?P<state1>.*)"\s*;\s*(?P<comment>.*)\*\/""", re.VERBOSE)
                 mo = re.search(p, line)
                 if mo:
                     # affect the values
-                    decodedLine = {'name' : mo.group("name"), 'class' : "bits", 'type' : mo.group("type"), 'offset' : 0, 'start' : int(mo.group("start")), 'stop' : int(mo.group("stop")), 'state0': mo.group("state0"), 'state1': mo.group("state1"),  'comment' :mo.group("comment")};
+                    decodedLine = {'name' : mo.group("name"), 'class' : "bits", 'type' : mo.group("type"), 'offset' : 0, 'start' : int(mo.group("start")), 'stop' : int(mo.group("stop")), 'state0': mo.group("state0"), 'state1': mo.group("state1"),  'comment' :mo.group("comment")}
                     # compute size in memory
                     decodedLine['size'] = self.computeSize(decodedLine, 'eeprom')
                     self.eepromContent.append(decodedLine)
@@ -725,7 +749,7 @@ class SourceFile:
             if "typedef struct" in line: #we will have several match
                 startList.append(i)
             elif "}current_data_t" in line:
-                print "end !"
+                LOG("end !")
                 if len(startList) == 0:
                     FATAL("Output Channel/current Data section malformed")
                 else:
@@ -735,11 +759,11 @@ class SourceFile:
         for line in self.content[outcBound['start']: outcBound['end']]:
             if "scalar" in line:
                 # sorry for this... easier debug on regex101.com
-                p = re.compile(ur"""(?P<ctype>[u|U|s|S][0-9]+)\s*(?P<name>.+);\s*(\/\*)\s*(?P<class>scalar),\s*(?P<type>[U|S][0-9]+),\s*(?P<offset>..),\s*"(?P<units>.*)",\s*(?P<scale>[0-9|\.]+),\s*(?P<translate>[0-9|\.]+)\s*;\s*(?P<comment>.*)\*\/""", re.VERBOSE)
+                p = re.compile(r"""(?P<ctype>[u|U|s|S][0-9]+)\s*(?P<name>.+);\s*(\/\*)\s*(?P<class>scalar),\s*(?P<type>[U|S][0-9]+),\s*(?P<offset>..),\s*"(?P<units>.*)",\s*(?P<scale>[0-9|\.]+),\s*(?P<translate>[0-9|\.]+)\s*;\s*(?P<comment>.*)\*\/""", re.VERBOSE)
                 mo = re.search(p, line)
                 if mo:
                     # affect the values
-                    decodedLine = {'name' : mo.group("name"), 'class' : "scalar", 'type' : mo.group("type"), 'offset' : 0, 'shape' : "", 'units' : mo.group("units"), 'scale' : float(mo.group("scale")), 'translate' : float(mo.group("translate")), 'comment' :mo.group("comment")};
+                    decodedLine = {'name' : mo.group("name"), 'class' : "scalar", 'type' : mo.group("type"), 'offset' : 0, 'shape' : "", 'units' : mo.group("units"), 'scale' : float(mo.group("scale")), 'translate' : float(mo.group("translate")), 'comment' :mo.group("comment")}
                     # compute size in memory
                     decodedLine['size'] = self.computeSize(decodedLine, 'outputChannel')
                     self.outputChannelContent.append(decodedLine)
@@ -748,7 +772,7 @@ class SourceFile:
             
             elif "array" in line: # only one dimension line
                 # sorry for this... easier debug on regex101.com
-                p = re.compile(ur"""(?P<ctype>[u|U|s|S][0-9]+)\s*(?P<name>.+)\[(?P<tabsize>[0-9]+)\];\s*(\/\*)\s*(?P<class>array),\s*(?P<type>[U|S][0-9]+),\s*(?P<offset>..),\s*\[(?P<shape>[0-9]+)\],\s*"(?P<units>.*)",\s*(?P<scale>[0-9|\.]+),\s*(?P<translate>[0-9|\.]+)\s*;\s*(?P<comment>.*)\*\/""", re.VERBOSE)
+                p = re.compile(r"""(?P<ctype>[u|U|s|S][0-9]+)\s*(?P<name>.+)\[(?P<tabsize>[0-9]+)\];\s*(\/\*)\s*(?P<class>array),\s*(?P<type>[U|S][0-9]+),\s*(?P<offset>..),\s*\[(?P<shape>[0-9]+)\],\s*"(?P<units>.*)",\s*(?P<scale>[0-9|\.]+),\s*(?P<translate>[0-9|\.]+)\s*;\s*(?P<comment>.*)\*\/""", re.VERBOSE)
                 mo = re.search(p, line)
                 if mo:
                     # affect the values
@@ -762,7 +786,7 @@ class SourceFile:
             elif "bits" in line:
                 # sorry for this... easier debug on regex101.com
                 # TODO : More than 1 bit bitfields are not yet managed
-                p = re.compile(ur"""\s*(\/\*)\s*(?P<name>.+)\s*(?P<class>bits),\s*(?P<type>[U|S][0-9]+),\s*(?P<offset>..),\s*\[(?P<start>[0-9]):(?P<stop>[0-9])\]\s*\*\/""", re.VERBOSE)
+                p = re.compile(r"""\s*(\/\*)\s*(?P<name>.+)\s*(?P<class>bits),\s*(?P<type>[U|S][0-9]+),\s*(?P<offset>..),\s*\[(?P<start>[0-9]):(?P<stop>[0-9])\]\s*\*\/""", re.VERBOSE)
                 mo = re.search(p, line)
                 if mo:
                     # affect the values
@@ -787,7 +811,7 @@ class SourceFile:
 
 def main(argv):
     if(len(argv) != 1):
-        print "Input parameters is only the varDef.h file !"
+        FATAL("Input parameters is only the varDef.h file !")
         exit(1)
 
     # open files
